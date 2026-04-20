@@ -1,0 +1,668 @@
+# DUAL LICENSE NOTICE
+
+Origin is distributed under a dual license model.
+You may choose EITHER the OPL-1.1 OR the PolyForm Shield License 1.0.0 at your option.
+
+---
+
+## Option A: Open-Pact License v1.1 (OPL-1.1)
+
+Source-available with AI-era protections, guild-governed royalties,
+and a 36-month stewardship sunset that converts to Apache-2.0 if abandoned.
+
+Full text follows below in SECTION I.
+
+---
+
+## Option B: PolyForm Shield License 1.0.0
+
+Source-available license that grants broad rights while protecting against
+competitive use. No royalties, no AI-specific terms, but includes a
+"no competing product" restriction.
+
+Full text is embedded below in SECTION II.
+
+A copy is also available at: https://polyformproject.org/licenses/shield/1.0.0
+
+---
+
+## Choosing a License
+
+- If you want to use Origin commercially and are willing to share royalties
+  through the Guild registry, use OPL-1.1.
+- If you want to use Origin commercially but will NOT build a competing
+  product, and prefer no royalties, use PolyForm Shield 1.0.0.
+- If you are using Origin for personal, non-competitive, non-commercial
+  purposes, either license works. You get the same freedoms.
+
+============================================================
+SECTION I: OPEN-PACT LICENSE v1.1 (OPL-1.1)
+============================================================
+
+# Open-Pact License v1.1 (OPL-1.1)
+
+## PREAMBLE
+
+The Open-Pact License is designed for the age of AI and automated code extraction.
+It guarantees source availability and individual freedom while establishing fair
+compensation when code is taken for commercial profit or AI training.
+
+Unlike traditional open source licenses written before the AI era, OPL-1.0
+recognizes two fundamentally different modes of software consumption:
+human use (reading, running, modifying) and machine use (training models,
+extracting patterns, automated consumption). Both are addressed under this
+license with appropriate terms.
+
+This license is governed by the Guild -- the collective of contributors
+registered in the project's on-chain royalty registry -- and is enforced
+through both traditional copyright law and on-chain verification.
+
+---
+
+TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+## SECTION 1: DEFINITIONS
+
+1.1. **"License"** means these terms and conditions for use, reproduction,
+     and distribution of the Software as defined in this document, including
+     all four tiers of use rights and their associated conditions.
+
+1.2. **"Guild"** means the collective of Contributors that govern the Software,
+     manage its royalty registry, enforce this License, and distribute
+     royalties to registered recipients. The Guild is the License Steward
+     for this Software.
+
+1.3. **"Licensee"** means an individual or Legal Entity exercising permissions
+     granted by this License.
+
+1.4. **"Contributor"** means the Guild and any individual or Legal Entity on
+     behalf of whom a Contribution has been received and subsequently
+     incorporated within the Work.
+
+1.5. **"Contribution"** means any work of authorship, including the original
+     version of the Software and any modifications or additions to that
+     Software or Derivative Works thereof, that is intentionally submitted
+     to the Guild for inclusion in the Software by the copyright owner or
+     by an individual or Legal Entity authorized to submit on behalf of
+     the copyright owner.
+
+1.6. **"Legal Entity"** means the union of the acting entity and all other
+     entities that control, are controlled by, or are under common control
+     with that entity. "Control" means (i) the power to direct management,
+     whether by contract or otherwise, or (ii) ownership of fifty percent
+     (50%) or more of outstanding shares, or (iii) beneficial ownership.
+
+1.7. **"Software"** means the work of authorship, including source code,
+     documentation, configuration files, and associated materials, made
+     available under this License, as indicated by a copyright notice
+     included in or attached to the work.
+
+1.8. **"Derivative Work"** means any work, whether in Source or Object
+      form, that is based on (or derived from) the Software, OR incorporates
+      any portion of the Software into a larger work. Modifications,
+      integrations, and translations count as Derivative Works. For purposes
+      of this License, Derivative Works shall not include works that remain
+      fully separable from, or merely link to (or bind by name), the interfaces
+      of the Software and Derivative Works thereof.
+
+1.9. **"Personal Use"** means use of the Software by an individual for
+     non-commercial purposes, including but not limited to personal projects,
+     education, research, experimentation, hobby development, and security
+     auditing. Personal Use expressly excludes any activity that generates
+     revenue, supports a business operation, or contributes to the development
+     of a commercial product or service.
+
+1.10. **"Commercial Use"** means any use of the Software in connection with a
+     revenue-generating activity, business operation, or organizational
+     function, including but not limited to: SaaS products, embedded
+     software, internal business tools, consulting services, distributed
+     products, or any use that supports commercial operations.
+
+1.11. **"AI Training Use"** means use of the Software, Derivative Works, or
+     any extract thereof to train, fine-tune, evaluate, prompt-engineer,
+     or otherwise improve an artificial intelligence model, including large
+     language models, code generation models, AI agents, and machine learning
+     systems. This includes feeding Software code into training pipelines,
+     using Software outputs as training data, and extracting patterns or
+     structures from the Software for model development.
+
+1.12. **"Object form"** means any form resulting from mechanical transformation
+      or translation of Source form, including compiled object code, generated
+      documentation, and conversions to other media types.
+
+1.13. **"Source form"** means the preferred form for making modifications,
+      including but not limited to software source code, documentation
+      source, and configuration files.
+
+1.15. **"Internal Evaluation"** means use of the Software by a Legal Entity
+      for the sole purpose of testing, development, or prototyping in a
+      non-production environment, to determine whether to acquire a
+      Commercial License or AI Training License.
+
+1.16. **"License Record"** means an on-chain record in the Guild's royalty
+      registry that documents a Licensee's registration, payment, license
+      tier, and terms of use for the Software.
+
+---
+
+## SECTION 2: TIER 1 -- PERSONAL USE LICENSE
+
+### 2.1 Grant of License
+Subject to the terms and conditions of this License, the Guild and each
+Contributor hereby grant to You a perpetual, worldwide, non-exclusive,
+no-charge, royalty-free, irrevocable copyright license to reproduce,
+prepare Derivative Works of, publicly display, publicly perform,
+sublicense, and distribute the Software and such Derivative Works in
+Source or Object form, provided that such use is exclusively for
+Personal Use as defined in Section 1.9.
+
+### 2.2 Conditions
+Personal use is granted freely. You must:
+(a) Retain all copyright, patent, and trademark notices in the Software;
+(b) Include a copy of this License in any redistribution of the Software;
+(c) Include prominent notices stating that the Software is provided
+    under the Open-Pact License and that Commercial Use and AI Training
+    Use require separate licenses;
+(d) Not represent or imply that Your Personal Use constitutes a
+    Commercial License or AI Training License.
+
+### 2.3 Internal Evaluation Use
+In addition to Personal Use, You may use the Software for Internal
+Evaluation purposes within a Legal Entity (e.g., testing, development,
+or prototyping in a non-production environment). Use for Commercial
+Evaluation (i.e., offering a service based on the Software) requires
+a Commercial License.
+
+### 2.4 Scope Limitation
+If Your use of the Software falls outside the definition of Personal
+Use (Section 1.9) or Internal Evaluation (Section 2.3), You are not
+granted rights under Section 2 and must obtain an appropriate
+Commercial License (Section 3) or AI Training License (Section 4).
+
+---
+
+## SECTION 3: TIER 2 -- COMMERCIAL USE LICENSE
+
+### 3.1 Grant of License
+Upon registration of a Royalty Agreement and integration of the required
+Smart Contract Royalty Routing, the Guild grants You a license to use,
+reproduce, prepare Derivative Works of, publicly display, publicly
+perform, and distribute the Software for Commercial Use, subject to
+the terms and conditions of this Section 3.
+
+### 3.2 Royalty Selection (The "Pay-as-you-Earn" Model)
+Unlike fixed-fee models, OPL-1.1 requires a percentage-based Royalty
+on revenue generated *by or through* the use of this Software.
+You must select **one** of the following Royalty Tiers at the time of
+first Commercial Use:
+
+(a) **Standard Community Tier:** You agree to route **5.0%** of all
+    gross revenue generated by the Software or Derivative Works to
+    the designated Guild Registry or Developer Wallet.
+(b) **High-Volume Enterprise Tier:** You agree to route **2.5%** of all
+    gross revenue generated by the Software, plus an annual minimum
+    "Stewardship Contribution" of $5,000 USD to the Guild.
+(c) **Custom Negotiated Tier:** You may negotiate a specific Royalty
+    percentage with the Guild via the On-Chain Registry. Once the
+    Guild votes to accept, this Custom Tier becomes your binding obligation.
+
+### 3.3 Smart Contract Royalty Routing
+To ensure fair and automatic compensation, Commercial Use requires
+the integration of a "Royalty Router" Smart Contract (or equivalent
+off-chain API with cryptographic proof).
+(a) **Atomic Splits:** For on-chain revenue (tokens, crypto), the
+    Royalty Router MUST execute an "Atomic Split" at the moment of
+    transaction, sending the Royalty% immediately to the Developer's
+    designated address and the remainder to the Licensee.
+(b) **Fiat Revenue Reporting:** For off-chain revenue (fiat USD),
+    You must submit monthly "Revenue Attestations" signed by your
+    corporate wallet to the Guild Registry.
+(c) **Verification:** The Guild or independent auditors may verify
+    these attestations. Discrepancies of more than 5% constitute
+    fraud.
+
+### 3.4 Conditions for Commercial Licensees
+You must:
+(a) Include all notices required under Section 2.2;
+(b) Include Your License Record identifier (Link to Royalty Agreement)
+    in any distribution of the Software or Derivative Works thereof;
+(c) Ensure the Royalty Router is active before generating any revenue.
+---
+
+## SECTION 4: TIER 3 -- AI TRAINING USE LICENSE
+
+### 4.1 Grant of License
+Upon payment of the applicable AI Training license fee and registration
+with the Guild's royalty registry, the Guild grants You a license to use
+the Software, including its Source and Object forms, for the purpose of
+training, fine-tuning, evaluating, or otherwise improving artificial
+intelligence models, subject to the terms and conditions of this Section 4.
+
+### 4.2 License Fee Schedule
+Unless otherwise specified by the Guild, the following default fee
+schedule applies on an annual basis for AI Training Use:
+
+| Tier        | Organization Size       | Annual Fee    |
+|-------------|------------------------|---------------|
+| Standard    | Any                    | $25,000 USD   |
+| Enterprise  | 1,000+ employees       | $100,000 USD  |
+
+### 4.3 AI Training Disclosure Requirement
+In addition to the requirements in Section 3.4, AI Training Licensees must:
+(a) Disclose in the model card, documentation, or public notice for any
+    AI model trained, fine-tuned, or improved using the Software that
+    the Software was used in training. Such disclosure must include:
+    (i) The name of the Software;
+    (ii) The version or commit hash used;
+    (iii) A link to the Software's repository;
+(b) Ensure that any downstream users of the resulting model who receive
+    code outputs substantially derived from the Software are notified that
+    such outputs are subject to the same licensing conditions as the
+    original Software;
+(c) Not train AI models for the purpose of creating a product or service
+    that competes with the Software or that replicates the core
+    functionality of the Software using the Software's own code as training
+    data, unless You hold both an AI Training License and a separate
+    Commercial License covering such competitive use.
+
+### 4.4 Acknowledgment
+You acknowledge that:
+(a) AI Training Use extracts compounding value from the Software that
+    extends beyond the training period into all future outputs of the
+    trained model;
+(b) The AI Training License fee reflects this enhanced extraction value;
+(c) Using the Software for AI Training without a valid License Record
+    constitutes copyright infringement.
+
+---
+
+## SECTION 5: TIER 4 -- DERIVATIVE WORKS AND RECIPROCITY
+
+### 5.1 Grant of License
+Any Derivative Work of the Software must be licensed under the terms of
+this Open-Pact License (or a later version of this License as provided
+for in Section 12), and remains subject to the conditions of Sections 3,
+4, and 5, as applicable to the Derivative Work's own use.
+
+### 5.2 Royalty Reciprocity
+If You distribute a Derivative Work of the Software and collect royalties
+for that Derivative Work under this License:
+(a) The Guild of the original Software must receive a proportional share
+    of royalties generated by the Derivative Work, being no less than
+    ten percent (10%) of Derivative Work royalties, unless the original
+    Guild has approved a different percentage;
+(b) Contributors to the Derivative Work's own Guild receive the remaining
+    share;
+(c) The split percentage between the original Guild and the Derivative
+    Work's Guild must be published in both guilds' royalty registries
+    and linked on-chain;
+(d) This reciprocity requirement extends to subsequent Derivative Works
+    (Derivative Works of Derivative Works), ensuring that original
+    contributors continue to receive recognition and compensation through
+    the chain of derivation.
+
+### 5.3 Derivative Work License Records
+The Derivative Work must establish its own royalty registry (or "Guild")
+and must register its link to the original Software's Guild in the
+on-chain registry. Failure to establish reciprocity while distributing
+a Derivative Work constitutes copyright infringement of the original Work.
+
+---
+
+## SECTION 6: COPYRIGHT GRANT
+
+### 6.1 From Contributors
+Subject to the terms and conditions of this License, each Contributor
+hereby grants to You, through the Guild, a copyright license to
+reproduce, modify, publicly display, publicly perform, and distribute
+the Software and Derivative Works, subject to the tier-specific
+conditions of Sections 2 through 5.
+
+### 6.2 Limitation by Tier
+The copyright grant is tier-specific. A license granted under Section 2
+(Personal Use) does not confer rights under Sections 3, 4, or 5. A
+license granted under Section 3 (Commercial Use) does not confer rights
+under Section 4 (AI Training Use), and vice versa. You must hold all
+applicable licenses required for Your intended use of the Software.
+
+---
+
+## SECTION 7: PATENT GRANT
+
+### 7.1 From Contributors
+Subject to the terms and conditions of this License, each Contributor
+hereby grants to You a perpetual, worldwide, non-exclusive, no-charge,
+royalty-free license under any patent rights the Contributor holds that
+are necessarily infringed by that Contributor's Contribution alone or
+by combination of its Contribution with the Software, for purposes of
+exercising the rights granted to You under the License tier applicable
+to Your use.
+
+### 7.2 Defensive Termination
+If You institute patent litigation against any entity (including a
+cross-claim or counterclaim in a lawsuit) alleging that the Software
+or a Contribution incorporated within the Software constitutes direct or
+contributory patent infringement, then any patent licenses granted to
+You under this License for that Software shall terminate as of the date
+such litigation is filed, and Your License Record shall be subject to
+termination under Section 10.
+
+---
+
+## SECTION 8: TRADEMARK
+
+### 8.1 No Trademark Grant
+This License does not grant permission to use the trade names, trademarks,
+service marks, or product names of the Guild or any Contributor, except
+as required for reasonable and customary use in describing the origin of
+the Software and reproducing the content of any required notices.
+
+### 8.2 Proper Attribution
+You must not use the name of the Guild, the Software, or any Contributor
+to endorse or promote products or services derived from the Software
+without prior written permission from the Guild, unless such use is
+required to accurately describe the relationship between Your Derivative
+Work and the original Software.
+
+---
+
+## SECTION 9: CONDITIONS AND REPRESENTATIONS
+
+### 9.1 General Conditions
+All tiers of this License are subject to the following conditions:
+(a) The Software is provided under the terms of this License, and any
+    reproduction or distribution must include a copy;
+(b) All copyright, patent, trademark, and attribution notices from the
+    Software must be retained in any copies;
+(c) You represent that Your use of the Software falls within the scope
+    of the License tier under which You claim rights.
+
+### 9.2 License Record as Evidence
+The Guild's on-chain royalty registry serves as the authoritative record
+of who holds valid Commercial Licenses and AI Training Licenses. Absence
+of a License Record for an entity engaged in Commercial Use or AI Training
+Use constitutes prima facie evidence of unlicensed use for purposes of
+any enforcement action.
+
+---
+
+## SECTION 10: TERMINATION
+
+### 10.1 Automatic Termination
+Your rights under this License terminate automatically if You fail to
+comply with any term or condition of the applicable tier, including but
+not limited to:
+(a) Using the Software for Commercial Use without a valid, active
+    License Record for the applicable tier;
+(b) Using the Software for AI Training Use without a valid, active
+    AI Training License Record;
+(c) Failing to meet the disclosure requirements of Section 4.3;
+(d) Providing materially false information during license registration;
+(e) Distributing a Derivative Work without complying with Section 5.
+
+### 10.2 Effect of Termination
+Upon termination:
+(a) All license rights granted to You under this License end
+    immediately;
+(b) You must cease all use, reproduction, and distribution of the
+    Software;
+(c) Termination of Your rights does not terminate the rights of
+    others who have received the Software from You under valid licenses;
+(d) Sections 7.2, 10.3, 11, 13, and 14 survive termination.
+
+### 10.3 Reinstatement
+If You cure the violation within thirty (30) days of first becoming
+aware of it (by receiving notice from the Guild or through Your own
+discovery), and You have not previously had rights terminated under
+this License, Your License is reinstated prospectively as of the date
+of cure. This reinstatement does not affect any claim for damages or
+equitable relief accrued before cure.
+
+---
+
+## SECTION 11: ENFORCEMENT
+
+### 11.1 Guild Enforcement Authority
+The Guild acts as the collective rights holder for purposes of enforcing
+this License. Enforcement actions may be initiated by a majority vote of
+Guild Members through the Guild's governance mechanism.
+
+### 11.2 Enforcement Mechanisms
+The Guild may pursue enforcement through:
+(a) Public notice of unlicensed use based on guild registry verification;
+(b) Formal cease-and-desist communication with non-compliant users;
+(c) Legal action for copyright infringement in the appropriate jurisdiction;
+(d) Smart contract enforcement measures (e.g., access restrictions,
+    royalty withholding) where technically feasible.
+
+### 11.3 Personal Use Exception
+This License expressly does not restrict the ability of any person or
+entity to audit, review, analyze, or experiment with the Software for
+security, research, or educational purposes. Such activities fall under
+Personal Use (Section 2) and require no payment or registration.
+
+---
+
+## SECTION 12: VERSIONS AND UPDATES
+
+### 12.1 License Versions
+The Guild may publish revised and/or new versions of the Open-Pact
+License from time to time. Each version will be given a distinguishing
+version number.
+
+### 12.2 Specified Version Only
+Unless You explicitly comply with a later version of the Open-Pact
+License, Your license and its grants, conditions, and obligations are
+governed solely by the version of the License specified in Your License
+Record (or by this version, for Personal Users).
+
+### 12.3 Upgrading Existing Licenses
+The Guild may offer to migrate existing License Records to a newer
+version of the License. Licensees may accept or decline the upgrade.
+Declining does not terminate existing rights.
+
+---
+
+## SECTION 13: DISCLAIMER OF WARRANTY
+
+### 13.1 NO WARRANTY
+UNLESS REQUIRED BY APPLICABLE LAW OR AGREED TO IN WRITING, THE GUILD
+PROVIDES THE SOFTWARE (AND EACH CONTRIBUTOR PROVIDES ITS CONTRIBUTIONS)
+ON AN "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
+EITHER EXPRESS OR IMPLIED, INCLUDING, WITHOUT LIMITATION, ANY WARRANTIES
+OR CONDITIONS OF TITLE, NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS
+FOR A PARTICULAR PURPOSE. YOU ARE SOLELY RESPONSIBLE FOR DETERMINING
+THE APPROPRIATENESS OF USING OR REDISTRIBUTING THE SOFTWARE AND ASSUME
+ANY RISKS ASSOCIATED WITH YOUR EXERCISE OF PERMISSIONS UNDER THIS
+LICENSE.
+
+### 13.2 NO ENDORSEMENT
+The Guild does not endorse, certify, or approve any Derivative Work,
+commercial product, or AI model created using the Software. Any such
+use is at Your own risk and under Your sole responsibility.
+
+---
+
+## SECTION 14: LIMITATION OF LIABILITY
+
+### 14.1 LIABILITY LIMITATION
+IN NO EVENT AND UNDER NO LEGAL THEORY, WHETHER IN TORT (INCLUDING
+NEGLIGENCE), CONTRACT, OR OTHERWISE, UNLESS REQUIRED BY APPLICABLE LAW
+(INCLUDING PRODUCT LIABILITY), SHALL ANY CONTRIBUTOR OR THE GUILD BE
+LIABLE TO YOU FOR DAMAGES, INCLUDING ANY DIRECT, INDIRECT, SPECIAL,
+INCIDENTAL, OR CONSEQUENTIAL DAMAGES OF ANY CHARACTER ARISING FROM,
+OUT OF, OR IN CONNECTION WITH THE SOFTWARE, INCLUDING DAMAGES FOR
+LOSS OF GOODWILL, WORK STOPPAGE, COMPUTER FAILURE OR MALFUNCTION, OR
+ANY AND ALL OTHER COMMERCIAL DAMAGES OR LOSSES, EVEN IF SUCH
+CONTRIBUTOR OR THE GUILD HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH
+DAMAGES.
+
+---
+
+## SECTION 15: MISCELLANEOUS PROVISIONS
+
+### 15.1 Governing Law
+This License shall be governed by and construed in accordance with the
+laws of the jurisdiction in which the primary Guild registry is
+deployed, without regard to its conflict of law provisions. If such
+jurisdiction cannot be determined, the laws of the jurisdiction where
+the majority of Guild Members reside shall apply.
+
+### 15.2 Severability
+If any provision of this License is held to be unenforceable or invalid
+by a court of competent jurisdiction, such provision shall be modified
+to the minimum extent necessary to make it enforceable and valid, and
+the remaining provisions shall remain in full force and effect.
+
+### 15.3 No Waiver
+Failure of the Guild or any Contributor to enforce any right or
+provision of this License shall not constitute a waiver of that right
+or provision, nor shall it affect the right to enforce such right or
+provision in the future. No statement, promise, or agreement made by
+an individual Guild Member or Contributor, unless formally ratified
+by a vote of the Guild, shall create any exception to or modification
+of the terms of this License.
+
+### 15.4 Entire Agreement
+This License, together with any applicable License Record, constitutes
+the entire agreement between You and the Guild regarding the Software
+and supersedes any prior or contemporaneous agreements, representations,
+or communications relating to the Software.
+
+### 15.5 Smart Contract Integration
+Where this License references on-chain royalty registries, License
+Records, guild governance, or automated royalty distribution, the
+functioning of the applicable smart contracts constitutes an
+integrated part of the License. In the event of a conflict between
+the text of this License and the behavior of a smart contract, this
+License text shall control and the Guild shall update the contract
+accordingly.
+
+### 15.6 Assignment
+This License may not be assigned or transferred, in whole or in part,
+without the prior written consent of the Guild, except that a License
+Record for Commercial Use or AI Training Use may be transferred as
+part of a merger, acquisition, or sale of substantially all assets of
+the Licensee's business, provided that the transferee agrees to be
+bound by the terms of this License.
+
+---
+
+## SECTION 16: STEWARDSHIP SUNSET (CHANGE PROTOCOL)
+
+### 16.1 Purpose
+This License is designed to ensure fair compensation while the Guild
+actively maintains and governs the Software. To prevent the Software
+from becoming "abandonware" with restrictive terms, this Section
+defines a path to open source conversion.
+
+### 16.2 The Conversion Trigger
+If the Guild fails to update the Guild Registry (e.g., via a governance
+vote, registry update, or version release) for a continuous period of
+thirty-six (36) months ("The Sunset Period"), the restrictions in
+Sections 3, 4, and 5 regarding the Software shall automatically lift,
+and the Software shall be considered licensed under the terms of the
+**Apache License, Version 2.0**.
+
+### 16.3 Effect of Conversion
+Upon conversion under Section 16.2:
+(a) The Software is available under the Apache License, Version 2.0
+    for all uses, including Commercial and AI Training Use, without
+    fees or registration.
+(b) This conversion is irrevocable.
+(c) Previous License Records for Commercial or AI Training Use are
+    honored as valid, but are no longer required.
+
+### 16.4 Restarting the Clock
+The Sunset Period is reset to zero if the Guild publishes a new version
+of the Software or updates the Registry with a governance action
+approved by Guild Members.
+
+## SECTION 17: WHISTLEBLOWER PROGRAM AND BOUNTY FUND
+
+### 17.1 The Whistleblower Fund
+To facilitate enforcement of this License, the Guild shall maintain a Bounty Pool 
+funded by a percentage (e.g., 5%) of all Royalty collections. This funds auditing, 
+legal action, and rewards for reporting violations.
+
+### 17.2 Reporting Violations
+Any individual or Automated Agent may report a violation to the Guild. A valid 
+report must provide evidence of: (a) Unauthorized Commercial Use; (b) Unauthorized 
+AI Training Use; or (c) Failure to provide required disclosure.
+
+### 17.3 Bounty Payouts
+Upon verification of a reported violation, the Guild shall use the Bounty Pool 
+to reward the reporter, calculated as a percentage of the recovered licensing 
+fee or estimated damages.
+
+### 17.4 Amnesty for Good Faith Errors
+If a Licensee's error is found to be a minor administrative oversight 
+(e.g., delayed renewal) and they cure the error within a 3-day window, 
+no bounty shall be paid to the reporter.
+
+---
+
+END OF LICENSE
+
+Open-Pact License v1.1 (OPL-1.1)
+Designed for the age of AI. Governed by Guilds.
+
+For registration, compliance verification, and guild governance:
+https://open-pact.dev
+
+
+================================================================
+SECTION II: PolyForm Shield License 1.0.0
+================================================================
+
+Any use, reproduction, or distribution of this program, in whole
+or in part, constitutes the licensee's acceptance of the terms
+and conditions of this License, the PolyForm Shield License 1.0.0.
+
+### 1. Definitions
+
+**Defend** means that the licensee's use, reproduction, or distribution
+of the program does not constitute a claim that the program infringes
+any patent or other intellectual property right.
+
+**License** means the terms and conditions stated in this document.
+
+**Program** means the software this License accompanies.
+
+**Noncompeting** means use, reproduction, or distribution of the program
+is not for the purpose of creating or promoting a competing product or
+service, or otherwise competing with the licensor's use, reproduction, or
+distribution of the program or any derivative works of it.
+
+### 2. License Grant
+
+Subject to the conditions of this License, the licensor grants the
+licensee a non-exclusive, worldwide, royalty-free copyright license
+to reproduce, modify, and distribute the program, and to prepare
+derivative works of it, solely for Noncompeting purposes.
+
+### 3. Patent Grant
+
+Subject to the conditions of this License, the licensor grants the
+licensee a non-exclusive, worldwide, royalty-free patent license
+under any patents the licensor owns that read on the program, solely
+for Noncompeting purposes.
+
+### 4. No Sublicensing
+
+The licensee may not grant sublicenses to this License. Any downstream
+recipient of the program must receive the program directly from the
+licensor or obtain their own license.
+
+### 5. No Other Rights
+
+Except as expressly stated in this License, no other intellectual
+property rights are granted. The program is provided "AS IS" without
+warranty of any kind.
+
+================================================================
+END OF LICENSES
+================================================================
+
+If you have questions about licensing, contact the Guild at:
+https://open-pact.dev

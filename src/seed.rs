@@ -172,31 +172,57 @@ pub fn derive_child_seed(parent: &[u8], domain: &str) -> Result<Vec<u8>, String>
 
 /// Derive signing keys (Ed25519 + Falcon-1024) from a seed and domain.
 ///
-/// Returns (ed25519_sk, falcon_sk) -- 32 bytes + variable-length Falcon key.
+/// Uses HKDF to derive separate seeds for each algorithm from the master seed.
+/// Returns (ed25519_sk, falcon_sk).
 pub fn derive_signing_keys(seed: &[u8], domain: &str) -> Result<(Vec<u8>, Vec<u8>), String> {
-    let mut derived = vec![0u8; 96];
-    crate::kdf::hkdf::hkdf_sha3_256(seed, Some(b"signing"), domain.as_bytes(), &mut derived)
-        .map_err(|e| format!("Key derivation failed: {}", e))?;
+    // Derive Ed25519 seed (32 bytes)
+    let mut ed_seed = [0u8; 32];
+    crate::kdf::hkdf::hkdf_sha3_256(seed, Some(b"signing"), &[domain.as_bytes(), b"ed25519"].concat(), &mut ed_seed)
+        .map_err(|e| format!("Ed25519 key derivation failed: {}", e))?;
 
-    let ed25519_sk = derived[..32].to_vec();
-    let falcon_sk = derived[32..].to_vec();
+    // Derive Falcon seed (32 bytes)
+    let mut falcon_seed = [0u8; 32];
+    crate::kdf::hkdf::hkdf_sha3_256(seed, Some(b"signing"), &[domain.as_bytes(), b"falcon1024"].concat(), &mut falcon_seed)
+        .map_err(|e| format!("Falcon key derivation failed: {}", e))?;
 
-    Ok((ed25519_sk, falcon_sk))
+    // Get Ed25519 secret key from seed
+    let ed25519_sk = ed_seed.to_vec();
+
+    // Get Falcon keypair from seed -- pack both SK and PK
+    let (falcon_pk, falcon_sk) = crate::pqc::falcon1024::generate_keypair_from_seed(&falcon_seed)
+        .map_err(|e| format!("Falcon keypair generation failed: {}", e))?;
+
+    // Pack: [sk_bytes | pk_bytes] so derive_verifying_keys can extract the PK
+    let mut falcon_packed = falcon_sk.as_bytes().to_vec();
+    falcon_packed.extend_from_slice(falcon_pk.as_bytes());
+
+    Ok((ed25519_sk, falcon_packed))
 }
 
 /// Derive verifying keys from signing keys.
 ///
-/// Returns (ed25519_pk, falcon_pk).
+/// Extracts the Falcon PK from the packed [SK|PK] bytes and
+/// derives the Ed25519 PK from the Ed25519 SK.
 pub fn derive_verifying_keys(
     ed25519_sk: &[u8],
-    falcon_sk: &[u8],
+    falcon_packed: &[u8],
 ) -> Result<(Vec<u8>, Vec<u8>), String> {
-    // Ed25519: derive public key from secret key (hash-based for now)
-    let ed25519_pk = crate::primitives::sha3::sha3_512(ed25519_sk)[..32].to_vec();
+    // Ed25519: expand secret key to get public key
+    let ed_secret = ed25519_dalek::SigningKey::from_bytes(
+        ed25519_sk
+            .try_into()
+            .map_err(|_| "Invalid Ed25519 secret key length")?,
+    );
+    let ed_public = ed_secret.verifying_key();
+    let ed25519_pk = ed_public.to_bytes().to_vec();
 
-    // Falcon: use the private key's internal bytes to reconstruct
-    // In production, would use proper key derivation
-    let falcon_pk = crate::primitives::sha3::sha3_256(falcon_sk).to_vec();
+    // Falcon: extract PK from packed [SK|PK] bytes
+    // Falcon-1024: SK = 2305 bytes, PK = 1793 bytes
+    const FALCON_SK_SIZE: usize = 2305;
+    if falcon_packed.len() <= FALCON_SK_SIZE {
+        return Err("Packed Falcon bytes too short -- missing public key".to_string());
+    }
+    let falcon_pk = falcon_packed[FALCON_SK_SIZE..].to_vec();
 
     Ok((ed25519_pk, falcon_pk))
 }

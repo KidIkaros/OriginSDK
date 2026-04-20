@@ -40,12 +40,30 @@ impl HybridSigningKey {
 
     /// Sign a message using hybrid (Ed25519 + Falcon-1024) signatures.
     pub fn sign(&self, message: &[u8]) -> Result<HybridSignatureOutput, String> {
-        let (ed_sig, falcon_sig) =
-            HybridSignature::sign(&self.ed25519_sk, &self.falcon_sk, message)?;
+        // Ed25519 sign using dalek
+        let ed_secret = ed25519_dalek::SigningKey::from_bytes(
+            self.ed25519_sk[..32].try_into()
+                .map_err(|_| "Invalid Ed25519 secret key length")?
+        );
+        use ed25519_dalek::Signer;
+        let ed_signature = ed_secret.sign(message);
+        let ed_sig = ed_signature.to_bytes().to_vec();
+
+        // Falcon sign -- extract SK from packed [SK|PK] bytes
+        const FALCON_SK_SIZE: usize = 2305;
+        let falcon_sk_bytes = if self.falcon_sk.len() > FALCON_SK_SIZE {
+            &self.falcon_sk[..FALCON_SK_SIZE]
+        } else {
+            &self.falcon_sk
+        };
+        let falcon_sk = crate::pqc::falcon1024::FalconPrivateKey::from_bytes(falcon_sk_bytes)
+            .map_err(|e| format!("Invalid Falcon key: {}", e))?;
+        let falcon_sig = crate::pqc::falcon1024::sign(message, &falcon_sk)
+            .map_err(|e| format!("Falcon sign failed: {}", e))?;
 
         Ok(HybridSignatureOutput {
             ed25519_signature: ed_sig,
-            falcon_signature: falcon_sig,
+            falcon_signature: falcon_sig.as_bytes().to_vec(),
         })
     }
 
@@ -97,24 +115,37 @@ impl HybridVerifyingKey {
     ///
     /// Both Ed25519 and Falcon-1024 signatures must be valid.
     pub fn verify(&self, message: &[u8], signature: &HybridSignatureOutput) -> bool {
-        // Verify Falcon-1024 signature
+        // Ed25519 verify using dalek
+        let ed_pk_bytes: [u8; 32] = match self.ed25519_pk[..32].try_into() {
+            Ok(b) => b,
+            Err(_) => return false,
+        };
+        let ed_public = match ed25519_dalek::VerifyingKey::from_bytes(&ed_pk_bytes) {
+            Ok(pk) => pk,
+            Err(_) => return false,
+        };
+        let ed_sig_bytes: [u8; 64] = match signature.ed25519_signature[..64].try_into() {
+            Ok(b) => b,
+            Err(_) => return false,
+        };
+        let ed_signature = ed25519_dalek::Signature::from_bytes(&ed_sig_bytes);
+        use ed25519_dalek::Verifier;
+        if ed_public.verify(message, &ed_signature).is_err() {
+            return false;
+        }
+
+        // Falcon verify
         let falcon_pk = match falcon1024::FalconPublicKey::from_bytes(&self.falcon_pk) {
             Ok(pk) => pk,
             Err(_) => return false,
         };
-        let falcon_sig = match falcon1024::FalconSignature::from_bytes(&signature.falcon_signature) {
+        let falcon_sig = match falcon1024::FalconSignature::from_bytes(&signature.falcon_signature)
+        {
             Ok(sig) => sig,
             Err(_) => return false,
         };
 
-        if falcon1024::verify(message, &falcon_sig, &falcon_pk).is_err() {
-            return false;
-        }
-
-        // Ed25519 verification (simplified -- in production use ed25519-dalek)
-        // For now, we trust the Falcon verification as the primary check
-        // and use Ed25519 as a secondary commitment
-        true
+        falcon1024::verify(message, &falcon_sig, &falcon_pk).is_ok()
     }
 
     /// Constant-time comparison of verifying keys.

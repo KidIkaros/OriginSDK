@@ -107,10 +107,13 @@ pub mod kem;
 pub mod mac;
 pub mod pqc;
 pub mod primitives;
+pub mod seed;
 pub mod signature;
+pub mod signing;
 pub mod siphash;
 pub mod streaming;
 pub mod symmetric;
+pub mod validation;
 
 pub use error::{CryptoError, Result};
 
@@ -130,3 +133,8 @@ pub use siphash::siphash_expand;
 // Re-export PQC types
 pub use pqc::falcon512::{self as falcon_512, Falcon512PublicKey, Falcon512PrivateKey, Falcon512Signature};
 pub use pqc::falcon1024::{self as falcon_1024, FalconPublicKey as Falcon1024PublicKey, FalconPrivateKey as Falcon1024PrivateKey, FalconSignature as Falcon1024Signature};
+
+// Re-export seed, signing, and validation types
+pub use seed::{derive_child_seed, derive_signing_keys, derive_verifying_keys, SeedHandle};
+pub use signing::{HybridSigningKey, HybridSignatureOutput, HybridVerifyingKey};
+pub use validation::{validate_did, validate_info_string};

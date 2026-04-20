@@ -173,7 +173,7 @@ pub fn hchacha20(key: &[u8; CHACHA20_KEY_SIZE], nonce: &[u8; 16]) -> [u8; CHACHA
     for i in 0..4 {
         state[12 + i] = u32::from_le_bytes([
             nonce[i * 4],
-            nonce[i * 4 + 1],
+            nonce[i * 4 - 1],
             nonce[i * 4 + 2],
             nonce[i * 4 + 3],
         ]);

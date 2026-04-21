@@ -279,4 +279,28 @@ mod tests {
         assert_eq!(restored.ed25519_signature, sig.ed25519_signature);
         assert_eq!(restored.falcon_signature, sig.falcon_signature);
     }
+
+    #[test]
+    fn test_from_bytes_rejects_too_short() {
+        // Less than 4 bytes — can't read the ed_len header
+        assert!(HybridSignatureOutput::from_bytes(&[]).is_err());
+        assert!(HybridSignatureOutput::from_bytes(&[0x01]).is_err());
+        assert!(HybridSignatureOutput::from_bytes(&[0x01, 0x02, 0x03]).is_err());
+    }
+
+    #[test]
+    fn test_from_bytes_rejects_truncated() {
+        // Header says ed_len=10 but only 4+2=6 bytes total
+        let bytes = [0x0a, 0x00, 0x00, 0x00, 0x01, 0x02];
+        assert!(HybridSignatureOutput::from_bytes(&bytes).is_err());
+    }
+
+    #[test]
+    fn test_from_bytes_rejects_empty_ed_with_valid_header() {
+        // Header says ed_len=0, then falcon data follows — this is valid
+        let bytes = [0x00, 0x00, 0x00, 0x00, 0xaa, 0xbb];
+        let sig = HybridSignatureOutput::from_bytes(&bytes).unwrap();
+        assert!(sig.ed25519_signature.is_empty());
+        assert_eq!(sig.falcon_signature, vec![0xaa, 0xbb]);
+    }
 }

@@ -111,6 +111,43 @@ pub struct HybridVerifyingKey {
 }
 
 impl HybridVerifyingKey {
+    /// Reconstruct a verifying key from raw public key bytes.
+    ///
+    /// `ed25519_pk` must be exactly 32 bytes (Ed25519 public key).
+    /// `falcon_pk` must be exactly 1793 bytes (Falcon-1024 public key).
+    pub fn from_raw_bytes(
+        ed25519_pk: &[u8],
+        falcon_pk: &[u8],
+        domain: &str,
+    ) -> Result<Self, String> {
+        if ed25519_pk.len() != 32 {
+            return Err(format!(
+                "Invalid Ed25519 public key length: expected 32, got {}",
+                ed25519_pk.len()
+            ));
+        }
+        // Validate that the Ed25519 bytes form a valid point
+        ed25519_dalek::VerifyingKey::from_bytes(
+            ed25519_pk.try_into().map_err(|_| "Ed25519 pk conversion")?
+        ).map_err(|e| format!("Invalid Ed25519 public key: {}", e))?;
+
+        if falcon_pk.len() != 1793 {
+            return Err(format!(
+                "Invalid Falcon-1024 public key length: expected 1793, got {}",
+                falcon_pk.len()
+            ));
+        }
+        // Validate that the Falcon bytes parse as a valid public key
+        falcon1024::FalconPublicKey::from_bytes(falcon_pk)
+            .map_err(|e| format!("Invalid Falcon-1024 public key: {}", e))?;
+
+        Ok(Self {
+            ed25519_pk: ed25519_pk.to_vec(),
+            falcon_pk: falcon_pk.to_vec(),
+            domain: domain.to_string(),
+        })
+    }
+
     /// Verify a hybrid signature against a message.
     ///
     /// Both Ed25519 and Falcon-1024 signatures must be valid.
@@ -302,5 +339,57 @@ mod tests {
         let sig = HybridSignatureOutput::from_bytes(&bytes).unwrap();
         assert!(sig.ed25519_signature.is_empty());
         assert_eq!(sig.falcon_signature, vec![0xaa, 0xbb]);
+    }
+
+    #[test]
+    fn test_from_raw_bytes_roundtrip() {
+        let seed = [99u8; 32];
+        let handle = SeedHandle::new(&seed, None);
+        let sk = HybridSigningKey::from_handle(&handle, "raw-test").unwrap();
+        let original = sk.public_key().unwrap();
+
+        let reconstructed = HybridVerifyingKey::from_raw_bytes(
+            original.ed25519_pk(),
+            original.falcon_pk(),
+            original.domain(),
+        ).unwrap();
+
+        assert!(original.ct_eq(&reconstructed));
+    }
+
+    #[test]
+    fn test_from_raw_bytes_sign_verify() {
+        let seed = [77u8; 32];
+        let handle = SeedHandle::new(&seed, None);
+        let sk = HybridSigningKey::from_handle(&handle, "verify-raw").unwrap();
+        let original = sk.public_key().unwrap();
+
+        let reconstructed = HybridVerifyingKey::from_raw_bytes(
+            original.ed25519_pk(),
+            original.falcon_pk(),
+            original.domain(),
+        ).unwrap();
+
+        let msg = b"verify through reconstructed key";
+        let sig = sk.sign(msg).unwrap();
+        assert!(reconstructed.verify(msg, &sig));
+    }
+
+    #[test]
+    fn test_from_raw_bytes_rejects_bad_ed25519_len() {
+        assert!(HybridVerifyingKey::from_raw_bytes(&[0u8; 31], &[0u8; 1793], "d").is_err());
+        assert!(HybridVerifyingKey::from_raw_bytes(&[0u8; 33], &[0u8; 1793], "d").is_err());
+    }
+
+    #[test]
+    fn test_from_raw_bytes_rejects_bad_falcon_len() {
+        // Need a valid Ed25519 point for the first arg
+        let seed = [1u8; 32];
+        let handle = SeedHandle::new(&seed, None);
+        let sk = HybridSigningKey::from_handle(&handle, "t").unwrap();
+        let pk = sk.public_key().unwrap();
+
+        assert!(HybridVerifyingKey::from_raw_bytes(pk.ed25519_pk(), &[0u8; 1792], "t").is_err());
+        assert!(HybridVerifyingKey::from_raw_bytes(pk.ed25519_pk(), &[0u8; 1794], "t").is_err());
     }
 }

@@ -14,9 +14,10 @@ homepage = "https://github.com/KidIkaros/OriginSDK"
 rust-version = "1.70"
 
 [dependencies]
-# External crypto crates
+# External crypto crates`
 falcon-rust = "=0.1.2"
 chacha20poly1305 = { version = "=0.10.1", features = ["getrandom"] }
+chacha20-blake3 = "0.9.11"  # ChaCha20-BLAKE3 AEAD (committing)
 argon2 = { version = "=0.5.3", features = ["password-hash"] }
 sha3 = "=0.10.8"
 sha2 = "=0.10.8"

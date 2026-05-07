@@ -7,7 +7,7 @@
 //!
 //! # Features
 //!
-//! - **AEAD Encryption**: XChaCha20-Poly1305 with 256-bit keys
+//! - **AEAD Encryption**: XChaCha20-Poly1305, ChaCha20-BLAKE3 (committing)
 //! - **Key Derivation**: Argon2id with configurable security levels
 //! - **Post-Quantum Crypto**: NTRU Prime KEM, Falcon-512/1024 signatures
 //! - **Error Correction**: Reed-Solomon with parallel encoding support
@@ -15,10 +15,10 @@
 //!
 //! # Quick Start
 //!
-//! ## Encrypt Data with XChaCha20-Poly1305
+//! ## Encrypt Data with ChaCha20-BLAKE3 (Committing AEAD)
 //!
-//! ```
-//! use origin_crypto_sdk::{aead, kdf};
+//! ```rust
+//! use origin_crypto_sdk::{chacha20_blake3, kdf};
 //!
 //! // Derive key from password
 //! let password = b"secure_password";
@@ -26,18 +26,29 @@
 //! let key = kdf::Argon2id::derive_key(password, &salt, false).unwrap();
 //!
 //! // Generate nonce and encrypt
-//! let nonce = aead::generate_nonce();
+//! let nonce = chacha20_blake3::ChaCha20Blake3::generate_nonce();
 //! let plaintext = b"Hello, World!";
-//! let ciphertext = aead::XChaCha20Poly1305::encrypt(&key, &nonce, plaintext).unwrap();
+//! let ciphertext = chacha20_blake3::ChaCha20Blake3::encrypt(&key, &nonce, plaintext, b"").unwrap();
 //!
 //! // Decrypt
-//! let decrypted = aead::XChaCha20Poly1305::decrypt(&key, &nonce, &ciphertext).unwrap();
+//! let decrypted = chacha20_blake3::ChaCha20Blake3::decrypt(&key, &nonce, &ciphertext, b"").unwrap();
 //! assert_eq!(plaintext.to_vec(), decrypted);
+//! ```
+//!
+//! ## Or use XChaCha20-Poly1305 (non-committing, faster)
+//!
+//! ```rust
+//! use origin_crypto_sdk::aead;
+//!
+//! let key = aead::XChaCha20Poly1305::generate_key();
+//! let nonce = aead::generate_nonce();
+//! let plaintext = b"Hello, World!";
+//! let encrypted = aead::XChaCha20Poly1305::encrypt(&key, &nonce, plaintext).unwrap();
 //! ```
 //!
 //! ## Post-Quantum Signatures with Falcon-512
 //!
-//! ```
+//! ```rust
 //! use origin_crypto_sdk::pqc::falcon512;
 //!
 //! // Generate keypair from seed
@@ -97,6 +108,7 @@
 //! - Use paranoid mode for high-security applications (slower but more secure)
 
 pub mod aead;
+pub mod chacha20_blake3;  // ChaCha20-BLAKE3 AEAD (committing, secure)
 pub mod blob;
 pub mod compression;
 pub mod drbg;

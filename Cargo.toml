@@ -40,7 +40,10 @@ subtle = "=2.5.0"
 thiserror = "1.0.69"
 serde = { version = "=1.0.228", features = ["derive"] }
 serde_bytes = "=0.11"
+serde_json = "1.0"
 hex = "0.4"
+k256 = { version = "0.13", features = ["ecdsa", "arithmetic", "serde"] }
+elliptic-curve = "0.13"
 
 # Parallel processing (optional)
 rayon = { version = "1.11", optional = true }

@@ -12,7 +12,7 @@
 //! - Max signature: 666 bytes
 
 use crate::error::{CryptoError, Result};
-use zeroize::{Zeroize, ZeroizeOnDrop};
+use crate::internal::zeroize::Zeroize;
 
 /// Maximum Falcon-1024 signature length.
 pub const MAX_SIGNATURE_LEN: usize = 666;
@@ -22,7 +22,6 @@ pub const MAX_SIGNATURE_LEN: usize = 666;
 pub struct Falcon512PublicKey(pub Vec<u8>);
 
 /// Falcon-512 private key (zeroized on drop).
-#[derive(Zeroize)]
 pub struct Falcon512PrivateKey {
     sk: Vec<u8>,
 }
@@ -35,7 +34,17 @@ impl Clone for Falcon512PrivateKey {
     }
 }
 
-impl ZeroizeOnDrop for Falcon512PrivateKey {}
+impl Zeroize for Falcon512PrivateKey {
+    fn zeroize(&mut self) {
+        self.sk.zeroize();
+    }
+}
+
+impl Drop for Falcon512PrivateKey {
+    fn drop(&mut self) {
+        self.zeroize();
+    }
+}
 
 /// Falcon-512 signature.
 #[derive(Clone)]

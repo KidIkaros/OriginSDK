@@ -11,10 +11,9 @@
 //! across all tiers. Only the Argon2id password-to-seed cost changes.
 
 use argon2::Params;
-use serde::{Deserialize, Serialize};
 
 /// Device memory tier — gates only the Argon2id KDF cost.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum MemoryTier {
     /// IoT / Edge / RPi Zero: 8 MB, 2 iterations, 1 lane.
     Nano,

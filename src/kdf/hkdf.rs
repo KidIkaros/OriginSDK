@@ -3,8 +3,7 @@
 //! HKDF module for key derivation
 
 use crate::error::{CryptoError, Result};
-use crate::primitives::sha3::Sha3_256;
-use hkdf::Hkdf;
+use crate::internal::hkdf::{hkdf_sha3_256 as native_hkdf, derive_subkeys as native_derive_subkeys};
 
 /// Derive subkeys using HKDF-SHA3-256
 pub fn hkdf_sha3_256(
@@ -13,9 +12,8 @@ pub fn hkdf_sha3_256(
     info: &[u8],
     output: &mut [u8],
 ) -> Result<()> {
-    let hk = Hkdf::<Sha3_256>::new(hkdf_salt, master_key);
-    hk.expand(info, output)
-        .map_err(|e| CryptoError::Kdf(format!("HKDF expand failed: {}", e)))?;
+    native_hkdf(hkdf_salt, master_key, info, output)
+        .map_err(|e| CryptoError::Kdf(format!("HKDF failed: {}", e)))?;
     Ok(())
 }
 
@@ -24,13 +22,7 @@ pub fn derive_subkeys(
     master_key: &[u8; 32],
     hkdf_salt: &[u8; 32],
 ) -> Result<([u8; 32], [u8; 32])> {
-    let mut enc_key = [0u8; 32];
-    let mut auth_key = [0u8; 32];
-    
-    hkdf_sha3_256(master_key, Some(hkdf_salt), b"encryption", &mut enc_key)?;
-    hkdf_sha3_256(master_key, Some(hkdf_salt), b"authentication", &mut auth_key)?;
-    
-    Ok((enc_key, auth_key))
+    Ok(native_derive_subkeys(master_key, hkdf_salt))
 }
 
 #[cfg(test)]

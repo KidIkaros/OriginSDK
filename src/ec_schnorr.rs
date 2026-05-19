@@ -5,53 +5,48 @@
 //! Provides zero-knowledge proofs of knowledge of a discrete logarithm
 //! using the Schnorr identification protocol with Fiat-Shamir heuristic.
 
-use elliptic_curve::sec1::{FromEncodedPoint, ToEncodedPoint};
-use elliptic_curve::PrimeField;
-use k256::{AffinePoint, ProjectivePoint, Scalar};
-use rand::RngCore;
-use serde::{Deserialize, Serialize};
-use sha3::{Digest, Sha3_256};
-use subtle::{Choice, ConstantTimeEq};
-
 use crate::error::{CryptoError, Result};
+use crate::primitives::sha3::sha3_256;
+use crate::internal::secp256k1::{AffinePoint, ProjectivePoint, Scalar, EncodedPoint};
+use crate::internal::subtle::{ConstantTimeEq, CtOption, ct_option_to_option};
+use rand::RngCore;
 
 /// An EC-Schnorr proof of knowledge of a discrete logarithm.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct EcSchnorrProof {
     /// Commitment point R = r*G (compressed SEC1 encoding, 33 bytes)
-    #[serde(with = "serde_bytes")]
     pub commitment: Vec<u8>,
     /// Response scalar s = r + e*x (32 bytes, big-endian)
-    #[serde(with = "serde_bytes")]
     pub response: Vec<u8>,
 }
 
 /// Errors specific to EC-Schnorr operations.
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug)]
 pub enum SchnorrError {
-    #[error("Invalid commitment point: {0}")]
     InvalidCommitment(String),
-    #[error("Invalid response scalar: {0}")]
     InvalidResponse(String),
-    #[error("Invalid public key: {0}")]
     InvalidPublicKey(String),
-    #[error("Proof verification failed")]
     VerificationFailed,
-    #[error("Random number generation failed")]
     RngFailed,
 }
+
+impl std::fmt::Display for SchnorrError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            SchnorrError::InvalidCommitment(msg) => write!(f, "Invalid commitment point: {msg}"),
+            SchnorrError::InvalidResponse(msg) => write!(f, "Invalid response scalar: {msg}"),
+            SchnorrError::InvalidPublicKey(msg) => write!(f, "Invalid public key: {msg}"),
+            SchnorrError::VerificationFailed => write!(f, "Proof verification failed"),
+            SchnorrError::RngFailed => write!(f, "Random number generation failed"),
+        }
+    }
+}
+
+impl std::error::Error for SchnorrError {}
 
 impl From<SchnorrError> for CryptoError {
     fn from(e: SchnorrError) -> Self {
         CryptoError::InvalidParameter(e.to_string())
-    }
-}
-
-fn ct_option_to_option<T>(ct: subtle::CtOption<T>) -> Option<T> {
-    if ct.is_some().into() {
-        Some(ct.unwrap())
-    } else {
-        None
     }
 }
 
@@ -61,7 +56,7 @@ pub fn prove(
     public_key: &[u8],
     message: &[u8],
 ) -> Result<EcSchnorrProof> {
-    let x = ct_option_to_option(Scalar::from_repr((*secret_key).into()))
+    let x = ct_option_to_option(Scalar::from_repr(secret_key))
         .ok_or_else(|| CryptoError::InvalidParameter("Invalid secret key scalar".into()))?;
 
     // Generate random nonce r
@@ -69,19 +64,20 @@ pub fn prove(
         let mut rng = rand::thread_rng();
         let mut buf = [0u8; 32];
         rng.fill_bytes(&mut buf);
-        ct_option_to_option(Scalar::from_repr(buf.into()))
+        ct_option_to_option(Scalar::from_repr(&buf))
             .ok_or(SchnorrError::RngFailed)?
     };
 
     // R = r*G
-    let r_point = ProjectivePoint::GENERATOR * r;
+    let r_point = ProjectivePoint::GENERATOR.mul(&r);
     let r_compressed = r_point.to_encoded_point(true);
 
     // e = H(R || P || message)
     let challenge = compute_challenge(r_compressed.as_bytes(), public_key, message);
 
     // s = r + e*x  (mod n)
-    let s = r + challenge * x;
+    let ex = challenge.mul(&x);
+    let s = r.add(&ex);
 
     Ok(EcSchnorrProof {
         commitment: r_compressed.as_bytes().to_vec(),
@@ -92,8 +88,11 @@ pub fn prove(
 /// Verify an EC-Schnorr proof.
 pub fn verify(proof: &EcSchnorrProof, public_key: &[u8], message: &[u8]) -> Result<bool> {
     // Parse commitment point R
-    let r_encoded = k256::EncodedPoint::from_bytes(&proof.commitment)
-        .map_err(|e| SchnorrError::InvalidCommitment(e.to_string()))?;
+    let r_ctoption = EncodedPoint::from_bytes(&proof.commitment);
+    if !bool::from(r_ctoption.is_some()) {
+        return Err(SchnorrError::InvalidCommitment("Invalid encoding".into()).into());
+    }
+    let r_encoded = r_ctoption.unwrap();
     let r_affine = ct_option_to_option(AffinePoint::from_encoded_point(&r_encoded))
         .ok_or_else(|| SchnorrError::InvalidCommitment("Identity point".into()))?;
 
@@ -103,12 +102,15 @@ pub fn verify(proof: &EcSchnorrProof, public_key: &[u8], message: &[u8]) -> Resu
         .as_slice()
         .try_into()
         .map_err(|_| SchnorrError::InvalidResponse("Wrong length".into()))?;
-    let s = ct_option_to_option(Scalar::from_repr(s_bytes.into()))
+    let s = ct_option_to_option(Scalar::from_repr(&s_bytes))
         .ok_or_else(|| SchnorrError::InvalidResponse("Not a valid scalar".into()))?;
 
     // Parse public key P
-    let p_encoded = k256::EncodedPoint::from_bytes(public_key)
-        .map_err(|e| SchnorrError::InvalidPublicKey(e.to_string()))?;
+    let p_ctoption = EncodedPoint::from_bytes(public_key);
+    if !bool::from(p_ctoption.is_some()) {
+        return Err(SchnorrError::InvalidPublicKey("Invalid encoding".into()).into());
+    }
+    let p_encoded = p_ctoption.unwrap();
     let p_affine = ct_option_to_option(AffinePoint::from_encoded_point(&p_encoded))
         .ok_or_else(|| SchnorrError::InvalidPublicKey("Identity point".into()))?;
 
@@ -116,9 +118,11 @@ pub fn verify(proof: &EcSchnorrProof, public_key: &[u8], message: &[u8]) -> Resu
     let challenge = compute_challenge(&proof.commitment, public_key, message);
 
     // Verify: s*G == R + e*P
-    let s_g = ProjectivePoint::GENERATOR * s;
-    let e_p = ProjectivePoint::from(p_affine) * challenge;
-    let r_plus_ep = ProjectivePoint::from(r_affine) + e_p;
+    let s_g = ProjectivePoint::GENERATOR.mul(&s);
+    let p_projective = ProjectivePoint::from(p_affine);
+    let e_p = p_projective.mul(&challenge);
+    let r_projective = ProjectivePoint::from(r_affine);
+    let r_plus_ep = r_projective.add(&e_p);
 
     let equal = s_g.ct_eq(&r_plus_ep);
     Ok(bool::from(equal))
@@ -145,34 +149,35 @@ pub fn batch_verify(
 
 /// Compute the Fiat-Shamir challenge: e = SHA3-256(R || P || message)
 fn compute_challenge(commitment: &[u8], public_key: &[u8], message: &[u8]) -> Scalar {
-    let mut hasher = Sha3_256::new();
-    hasher.update(b"ec-schnorr-challenge-v1");
-    hasher.update(commitment);
-    hasher.update(public_key);
-    hasher.update(message);
-    let hash: [u8; 32] = hasher.finalize().into();
+    // Build input: domain || commitment || public_key || message
+    let mut input = Vec::with_capacity(23 + commitment.len() + public_key.len() + message.len());
+    input.extend_from_slice(b"ec-schnorr-challenge-v1");
+    input.extend_from_slice(commitment);
+    input.extend_from_slice(public_key);
+    input.extend_from_slice(message);
+    let hash = sha3_256(&input);
 
-    ct_option_to_option(Scalar::from_repr(hash.into())).unwrap_or_else(|| {
-        let mut hasher2 = Sha3_256::new();
-        hasher2.update(b"ec-schnorr-rehash");
-        hasher2.update(&hash);
-        let hash2: [u8; 32] = hasher2.finalize().into();
-        ct_option_to_option(Scalar::from_repr(hash2.into()))
+    ct_option_to_option(Scalar::from_repr(&hash)).unwrap_or_else(|| {
+        let mut rehash_input = Vec::with_capacity(22 + 32);
+        rehash_input.extend_from_slice(b"ec-schnorr-rehash");
+        rehash_input.extend_from_slice(&hash);
+        let hash2 = sha3_256(&rehash_input);
+        ct_option_to_option(Scalar::from_repr(&hash2))
             .unwrap_or(Scalar::ONE)
     })
 }
 
 /// Generate a secp256k1 keypair from a 32-byte seed.
 pub fn generate_keypair(seed: &[u8; 32]) -> ([u8; 32], Vec<u8>) {
-    let mut hasher = Sha3_256::new();
-    hasher.update(b"ec-schnorr-keygen-v1");
-    hasher.update(seed);
-    let hash: [u8; 32] = hasher.finalize().into();
+    let mut input = Vec::with_capacity(22 + 32);
+    input.extend_from_slice(b"ec-schnorr-keygen-v1");
+    input.extend_from_slice(seed);
+    let hash = sha3_256(&input);
 
-    let secret = ct_option_to_option(Scalar::from_repr(hash.into()))
+    let secret = ct_option_to_option(Scalar::from_repr(&hash))
         .unwrap_or(Scalar::ONE);
 
-    let public = ProjectivePoint::GENERATOR * secret;
+    let public = ProjectivePoint::GENERATOR.mul(&secret);
     let public_compressed = public.to_encoded_point(true);
 
     (
@@ -258,15 +263,6 @@ mod tests {
         pks.push(pk);
         msgs.push(b"wrong message".to_vec());
         assert!(!batch_verify(&proofs, &pks, &msgs).unwrap());
-    }
-
-    #[test]
-    fn test_proof_serialization_roundtrip() {
-        let (sk, pk) = generate_keypair(&[42u8; 32]);
-        let proof = prove(&sk, &pk, b"serialization test").unwrap();
-        let json = serde_json::to_vec(&proof).unwrap();
-        let deserialized: EcSchnorrProof = serde_json::from_slice(&json).unwrap();
-        assert!(verify(&deserialized, &pk, b"serialization test").unwrap());
     }
 
     #[test]

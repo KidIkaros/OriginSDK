@@ -11,7 +11,8 @@
 use core::ops::{Add, Mul, Neg, Sub};
 
 use rand::{CryptoRng, RngCore};
-use zeroize::Zeroize;
+
+use crate::internal::zeroize::Zeroize;
 
 use super::{EDWARDS_L_BYTES, SCALAR_SIZE};
 

@@ -14,42 +14,25 @@ homepage = "https://github.com/KidIkaros/OriginSDK"
 rust-version = "1.70"
 
 [dependencies]
-# External crypto crates`
+# External crypto crates
 falcon-rust = "=0.1.2"
 chacha20poly1305 = { version = "=0.10.1", features = ["getrandom"] }
 chacha20-blake3 = "0.9.11"  # ChaCha20-BLAKE3 AEAD (committing)
 argon2 = { version = "=0.5.3", features = ["password-hash"] }
-sha3 = "=0.10.8"
 sha2 = "=0.10.8"
-hmac = "0.12"
-hkdf = "0.12"
 serpent = "0.5"
 cipher = { version = "0.4", features = ["block-padding"] }
 
 # Compression
 flate2 = "1.0"
 
-# Utility crates
+# Utility crates — kept until their dependents are replaced
 rand = "=0.8.5"
 ed25519-dalek = { version = "2", features = ["rand_core"] }
-libc = "0.2"
-rand_chacha = "=0.3.1"
-getrandom = "0.2"
-zeroize = { version = "1.8", features = ["derive"] }
 subtle = "=2.5.0"
-thiserror = "1.0.69"
-serde = { version = "=1.0.228", features = ["derive"] }
-serde_bytes = "=0.11"
-serde_json = "1.0"
-hex = "0.4"
-k256 = { version = "0.13", features = ["ecdsa", "arithmetic", "serde"] }
-elliptic-curve = "0.13"
 
 # Parallel processing (optional)
 rayon = { version = "1.11", optional = true }
-
-# Audit logging timestamps
-chrono = { version = "=0.4.38", default-features = false, features = ["clock", "serde"] }
 
 [features]
 default = ["parallel"]
@@ -59,7 +42,6 @@ pqc-simd = []
 [dev-dependencies]
 tempfile = "3.10"
 criterion = "0.5"
-rand_chacha = "0.3.1"
 
 [[bench]]
 name = "crypto_benchmarks"

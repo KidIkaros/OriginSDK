@@ -6,9 +6,8 @@
 //! Keys are derived deterministically from a seed handle and domain string
 //! using HKDF-SHA3-256.
 
-use subtle::ConstantTimeEq;
-use zeroize::Zeroize;
-
+use crate::internal::subtle::ConstantTimeEq;
+use crate::internal::zeroize::Zeroize;
 use crate::pqc::falcon1024;
 use crate::seed::{derive_signing_keys, derive_verifying_keys, SeedHandle};
 use crate::signature::HybridSignature;

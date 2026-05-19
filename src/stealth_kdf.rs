@@ -6,14 +6,12 @@
 //! Each stealth address gets a unique set of viewing, spending, and ephemeral
 //! keys derived from the master keys at a specific index.
 
-use serde::{Deserialize, Serialize};
-
 use crate::error::{CryptoError, Result};
 use crate::kdf::hkdf::hkdf_sha3_256;
 use crate::seed::SeedHandle;
 
 /// Master keys for stealth address derivation.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct StealthMasterKeys {
     /// Master viewing key (for deriving per-address viewing secrets).
     pub viewing: [u8; 32],
@@ -24,7 +22,7 @@ pub struct StealthMasterKeys {
 }
 
 /// Per-address stealth keys derived at a specific index.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct StealthAddressKeys {
     /// Viewing secret key for this address.
     pub viewing_secret: [u8; 32],

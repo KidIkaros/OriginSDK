@@ -5,9 +5,11 @@
 //! All randomness in Origin flows through this DRBG so that
 //! PQC key generation (NTRU, Falcon) is fully deterministic from the master seed.
 
-use rand::{RngCore, SeedableRng};
-use rand_chacha::ChaCha20Rng;
-use zeroize::{Zeroize, ZeroizeOnDrop};
+use rand::RngCore;
+
+use crate::internal::getrandom;
+use crate::internal::rng::ChaCha20Rng;
+use crate::internal::zeroize::Zeroize;
 
 /// Maximum bytes before automatic reseed from OS entropy.
 const MAX_BYTES_BEFORE_RESEED: u64 = 1 << 24; // 16 MB
@@ -17,9 +19,7 @@ const MAX_BYTES_BEFORE_RESEED: u64 = 1 << 24; // 16 MB
 /// When created from a seed, all output is deterministic.
 /// After `MAX_BYTES_BEFORE_RESEED` bytes, the DRBG automatically mixes
 /// in OS entropy to limit exposure if state is compromised.
-#[derive(ZeroizeOnDrop)]
 pub struct ChaCha20Drbg {
-    #[zeroize(skip)] // ChaCha20Rng handles its own zeroization
     inner: ChaCha20Rng,
     generated: u64,
 }
@@ -59,7 +59,7 @@ impl ChaCha20Drbg {
     pub fn random_bytes(&mut self, n: usize) -> Vec<u8> {
         if self.generated + n as u64 > MAX_BYTES_BEFORE_RESEED {
             let mut os_entropy = [0u8; 32];
-            rand::thread_rng().fill_bytes(&mut os_entropy);
+            getrandom::fill(&mut os_entropy).expect("OS entropy failed");
             self.reseed(&os_entropy);
             os_entropy.zeroize();
         }
@@ -74,6 +74,15 @@ impl ChaCha20Drbg {
     pub fn fill(&mut self, dest: &mut [u8]) {
         let bytes = self.random_bytes(dest.len());
         dest.copy_from_slice(&bytes);
+    }
+}
+
+impl Drop for ChaCha20Drbg {
+    fn drop(&mut self) {
+        // Zeroize inner state via explicit reseed with zeros
+        let mut zeros = [0u8; 32];
+        self.inner.fill_bytes(&mut zeros);
+        zeros.zeroize();
     }
 }
 

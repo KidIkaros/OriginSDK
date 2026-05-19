@@ -6,7 +6,7 @@
 //! NTRU lattices. It provides compact signatures with fast verification.
 
 use crate::error::{CryptoError, Result};
-use zeroize::{Zeroize, ZeroizeOnDrop};
+use crate::internal::zeroize::Zeroize;
 
 /// Falcon-1024 size constants
 pub mod sizes {
@@ -23,8 +23,20 @@ pub mod sizes {
 pub struct FalconPublicKey(pub(crate) Vec<u8>);
 
 /// Falcon-1024 private key (2305 bytes)
-#[derive(Clone, Zeroize, ZeroizeOnDrop)]
+#[derive(Clone)]
 pub struct FalconPrivateKey(pub(crate) Vec<u8>);
+
+impl Zeroize for FalconPrivateKey {
+    fn zeroize(&mut self) {
+        self.0.zeroize();
+    }
+}
+
+impl Drop for FalconPrivateKey {
+    fn drop(&mut self) {
+        self.zeroize();
+    }
+}
 
 /// Falcon-1024 signature (variable length, max ~1280 bytes)
 #[derive(Clone)]

@@ -12,13 +12,11 @@
 //! such that `SHA3-256(pubkey || hint || nonce || counter)` has at least
 //! `difficulty` leading zero bits.
 
-use serde::{Deserialize, Serialize};
-use sha3::{Digest, Sha3_256};
-
 use crate::error::{CryptoError, Result};
+use crate::primitives::sha3::sha3_256;
 
 /// Configuration for the stealth PoW system.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct StealthPowConfig {
     /// Base difficulty (leading zero bits required). Default: 20.
     pub base_difficulty: u32,
@@ -39,7 +37,7 @@ impl Default for StealthPowConfig {
 }
 
 /// A proof-of-work solution for stealth address generation.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct StealthPowProof {
     /// The nonce that satisfies the difficulty requirement.
     pub nonce: [u8; 32],
@@ -92,11 +90,11 @@ pub fn solve(
     let mut extra = [0u8; 16];
 
     // Use a deterministic but varied starting nonce
-    let mut hasher = Sha3_256::new();
-    hasher.update(b"stealth-pow-seed");
-    hasher.update(identity_pk);
-    hasher.update(destination_hint);
-    let seed_hash: [u8; 32] = hasher.finalize().into();
+    let mut seed_input = Vec::with_capacity(16 + identity_pk.len() + destination_hint.len());
+    seed_input.extend_from_slice(b"stealth-pow-seed");
+    seed_input.extend_from_slice(identity_pk);
+    seed_input.extend_from_slice(destination_hint);
+    let seed_hash = sha3_256(&seed_input);
     nonce.copy_from_slice(&seed_hash);
     extra.copy_from_slice(&seed_hash[0..16]);
 
@@ -186,14 +184,14 @@ fn compute_hash(
     extra: &[u8; 16],
     counter: u64,
 ) -> [u8; 32] {
-    let mut hasher = Sha3_256::new();
-    hasher.update(b"stealth-pow-v1");
-    hasher.update(identity_pk);
-    hasher.update(destination_hint);
-    hasher.update(nonce);
-    hasher.update(extra);
-    hasher.update(&counter.to_be_bytes());
-    hasher.finalize().into()
+    let mut input = Vec::with_capacity(14 + identity_pk.len() + destination_hint.len() + 32 + 16 + 8);
+    input.extend_from_slice(b"stealth-pow-v1");
+    input.extend_from_slice(identity_pk);
+    input.extend_from_slice(destination_hint);
+    input.extend_from_slice(nonce);
+    input.extend_from_slice(extra);
+    input.extend_from_slice(&counter.to_be_bytes());
+    sha3_256(&input)
 }
 
 fn compute_target(difficulty: u32) -> [u8; 32] {
@@ -307,19 +305,6 @@ mod tests {
         assert_eq!(effective_difficulty(&config, 0), 20);
         assert_eq!(effective_difficulty(&config, 3), 23);
         assert_eq!(effective_difficulty(&config, 10), 25); // Capped at max
-    }
-
-    #[test]
-    fn test_proof_serialization() {
-        let pk = [42u8; 32];
-        let hint = b"serialization test";
-        let difficulty = 14;
-
-        let (proof, _) = solve(&pk, hint, difficulty).unwrap();
-        let json = serde_json::to_vec(&proof).unwrap();
-        let restored: StealthPowProof = serde_json::from_slice(&json).unwrap();
-
-        assert!(verify(&restored, &pk, hint).unwrap());
     }
 
     #[test]

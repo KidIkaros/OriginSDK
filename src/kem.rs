@@ -9,8 +9,8 @@
 //! - Quantum insurance: If quantum computers arrive, NTRU/Falcon protect us
 //! - Defense in depth: Attacker must break BOTH algorithms
 
+use crate::internal::zeroize::Zeroizing;
 use crate::primitives::sha3 as native_sha3;
-use zeroize::Zeroizing;
 
 /// Hybrid KEM ciphertext containing both classical and PQC components.
 #[derive(Debug, Clone)]

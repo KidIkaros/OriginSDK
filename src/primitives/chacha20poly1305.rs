@@ -13,7 +13,7 @@
 //! - **ChaCha20-Poly1305**: 256-bit key, 96-bit nonce (RFC 8439)
 //! - **XChaCha20-Poly1305**: 256-bit key, 192-bit nonce (extended nonce via HChaCha20)
 
-use subtle::ConstantTimeEq;
+use crate::internal::subtle::ConstantTimeEq;
 
 use super::chacha20::{
     chacha20_block, chacha20_encrypt, hchacha20, CHACHA20_KEY_SIZE, CHACHA20_NONCE_SIZE,
@@ -94,7 +94,8 @@ pub fn chacha20_poly1305_open(
     poly.update(&poly_data);
     let computed_tag = poly.finalize();
 
-    if computed_tag.ct_eq(received_tag).into() {
+    let received_tag_arr: [u8; 16] = received_tag.try_into().unwrap();
+    if computed_tag.ct_eq(&received_tag_arr).into() {
         let plaintext = chacha20_encrypt(key, 1, nonce, ciphertext);
         Ok(plaintext)
     } else {

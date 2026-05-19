@@ -3,33 +3,16 @@
 //! HMAC module for message authentication
 
 use crate::error::{CryptoError, Result};
-use crate::primitives::sha3::Sha3_256;
-use hmac::{Hmac, Mac};
-
-type HmacSha3 = Hmac<Sha3_256>;
+use crate::internal::hmac::{hmac_sha3_256 as native_hmac, hmac_sha3_256_multi as native_hmac_multi};
 
 /// Compute HMAC-SHA3-256
 pub fn hmac_sha3_256(key: &[u8], data: &[u8]) -> Result<[u8; 32]> {
-    let mut mac = HmacSha3::new_from_slice(key)
-        .map_err(|e| CryptoError::InvalidParameter(format!("Invalid HMAC key: {}", e)))?;
-    mac.update(data);
-    let result = mac.finalize();
-    let mut output = [0u8; 32];
-    output.copy_from_slice(&result.into_bytes());
-    Ok(output)
+    Ok(native_hmac(key, data))
 }
 
 /// Compute HMAC-SHA3-256 with multiple data chunks
 pub fn hmac_sha3_256_multi(key: &[u8], chunks: &[&[u8]]) -> Result<[u8; 32]> {
-    let mut mac = HmacSha3::new_from_slice(key)
-        .map_err(|e| CryptoError::InvalidParameter(format!("Invalid HMAC key: {}", e)))?;
-    for chunk in chunks {
-        mac.update(chunk);
-    }
-    let result = mac.finalize();
-    let mut output = [0u8; 32];
-    output.copy_from_slice(&result.into_bytes());
-    Ok(output)
+    Ok(native_hmac_multi(key, chunks))
 }
 
 #[cfg(test)]

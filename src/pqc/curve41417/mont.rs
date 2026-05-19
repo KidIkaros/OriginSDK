@@ -16,7 +16,8 @@
 //! with no secret-dependent branches or memory accesses.
 
 use rand::{CryptoRng, RngCore};
-use zeroize::Zeroize;
+
+use crate::internal::zeroize::Zeroize;
 
 use super::fe::FieldElem;
 use super::{clamp_scalar, BYTES_SIZE, SCALAR_SIZE};

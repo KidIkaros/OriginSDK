@@ -25,13 +25,11 @@
 //! assert!(Mmr::verify_proof(&proof, &root));
 //! ```
 
-use serde::{Deserialize, Serialize};
-use sha3::{Digest, Sha3_256};
-
 use crate::error::{CryptoError, Result};
+use crate::primitives::sha3::sha3_256;
 
 /// A Merkle Mountain Range — append-only incremental Merkle tree.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct Mmr {
     /// All leaf hashes (level 0).
     leaves: Vec<[u8; 32]>,
@@ -43,7 +41,7 @@ pub struct Mmr {
 }
 
 /// A proof of membership for a specific leaf in the MMR.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct MmrProof {
     /// Index of the leaf being proven.
     pub leaf_index: u64,
@@ -54,7 +52,7 @@ pub struct MmrProof {
 }
 
 /// A single node in the MMR proof path.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct MmrPathNode {
     /// The sibling hash at this level.
     pub hash: [u8; 32],
@@ -63,7 +61,7 @@ pub struct MmrPathNode {
 }
 
 /// Proof that a leaf was appended (includes the new root).
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct AppendProof {
     /// The index of the newly appended leaf.
     pub leaf_index: u64,
@@ -243,18 +241,18 @@ impl Mmr {
     }
 
     fn hash_leaf(data: &[u8]) -> [u8; 32] {
-        let mut hasher = Sha3_256::new();
-        hasher.update(b"mmr-leaf-v1");
-        hasher.update(data);
-        hasher.finalize().into()
+        let mut input = Vec::with_capacity(12 + data.len());
+        input.extend_from_slice(b"mmr-leaf-v1");
+        input.extend_from_slice(data);
+        sha3_256(&input)
     }
 
     fn hash_pair(left: &[u8; 32], right: &[u8; 32]) -> [u8; 32] {
-        let mut hasher = Sha3_256::new();
-        hasher.update(b"mmr-node-v1");
-        hasher.update(left);
-        hasher.update(right);
-        hasher.finalize().into()
+        let mut input = Vec::with_capacity(12 + 64);
+        input.extend_from_slice(b"mmr-node-v1");
+        input.extend_from_slice(left);
+        input.extend_from_slice(right);
+        sha3_256(&input)
     }
 }
 
@@ -385,17 +383,4 @@ mod tests {
         assert!(mmr.prove_membership(100).is_err());
     }
 
-    #[test]
-    fn test_serialization_roundtrip() {
-        let mut mmr = Mmr::new();
-        for i in 0u64..50 {
-            mmr.append(&i.to_be_bytes());
-        }
-
-        let json = serde_json::to_vec(&mmr).unwrap();
-        let restored: Mmr = serde_json::from_slice(&json).unwrap();
-
-        assert_eq!(restored.leaf_count(), mmr.leaf_count());
-        assert_eq!(restored.root(), mmr.root());
-    }
 }

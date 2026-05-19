@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: OPL-1.1
 
 use rand::{CryptoRng, RngCore};
-use zeroize::Zeroize;
 
 use crate::error::{CryptoError, Result};
+use crate::internal::zeroize::Zeroize;
 
 use super::{EdwardsPoint, Scalar, BYTES_SIZE, SCALAR_SIZE};
 
@@ -171,13 +171,13 @@ impl Signature {
 }
 
 fn hash_to_scalar(domain: &[u8], parts: &[&[u8]]) -> Scalar {
-    use crate::primitives::sha3::Digest;
-    let mut hasher = crate::primitives::sha3::Sha3_512::new();
+    use crate::internal::sha3::Sha3_512;
+    let mut hasher = Sha3_512::new();
     hasher.update(domain);
     for p in parts {
         hasher.update(p);
     }
-    let hash = hasher.finalize();
+    let hash: [u8; 64] = hasher.finalize();
     Scalar::from_bytes_mod_order_wide(&hash).expect("sha3-512 output is 64 bytes")
 }
 

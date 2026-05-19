@@ -10,9 +10,8 @@
 //!
 //! Uses native ChaCha20-Poly1305 implementation.
 
-use zeroize::Zeroize;
-
 use crate::error::{CryptoError, Result};
+use crate::internal::zeroize::Zeroize;
 use crate::primitives::chacha20poly1305 as native;
 use crate::primitives::tier::MemoryTier;
 

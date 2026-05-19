@@ -67,8 +67,7 @@
 //!
 //! ```
 //! use origin_crypto_sdk::pqc::ntru_prime;
-//! use rand::SeedableRng;
-//! use rand_chacha::ChaCha20Rng;
+//! use origin_crypto_sdk::internal::rng::ChaCha20Rng;
 //!
 //! let mut rng = ChaCha20Rng::from_seed([42u8; 32]);
 //!
@@ -115,6 +114,7 @@ pub mod drbg;
 pub mod ec_schnorr;
 pub mod error;
 pub mod error_correction;
+pub mod internal;
 pub mod kdf;
 pub mod kem;
 pub mod mac;

@@ -9,8 +9,8 @@
 //! - Fingerprint for identity commitment
 
 use std::time::{Duration, Instant};
-use zeroize::Zeroize;
 
+use crate::internal::zeroize::Zeroize;
 use crate::kdf::hkdf::hkdf_sha3_256;
 use crate::primitives::sha3::sha3_256;
 use crate::primitives::MemoryTier;
@@ -39,7 +39,10 @@ impl SeedHandle {
         #[cfg(unix)]
         if !seed_vec.is_empty() {
             let _ = unsafe {
-                libc::mlock(seed_vec.as_ptr() as *const libc::c_void, seed_vec.len());
+                extern "C" {
+                    fn mlock(addr: *const u8, len: usize) -> i32;
+                }
+                mlock(seed_vec.as_ptr(), seed_vec.len());
             };
         }
 
@@ -136,7 +139,10 @@ impl Drop for SeedHandle {
         if !self.seed.is_empty() {
             // seed is already zeroized, but munlock the pages
             unsafe {
-                libc::munlock(self.seed.as_ptr() as *const libc::c_void, self.seed.capacity());
+                extern "C" {
+                    fn munlock(addr: *const u8, len: usize) -> i32;
+                }
+                munlock(self.seed.as_ptr(), self.seed.capacity());
             }
         }
     }

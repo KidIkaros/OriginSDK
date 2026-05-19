@@ -10,5 +10,5 @@ pub mod poly1305;
 pub mod sha3;
 pub mod tier;
 
-pub use sha3::Sha3_256;
+pub use sha3::{Sha3_256, Sha3_512, sha3_256, sha3_512};
 pub use tier::MemoryTier;

@@ -154,8 +154,7 @@ fn create_ciphertext(r: [i8; P], pk: PublicKey) -> (Ciphertext, SharedSecret) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rand::SeedableRng;
-    use rand_chacha::ChaCha20Rng;
+    use crate::internal::rng::ChaCha20Rng;
 
     #[test]
     fn test_ntru_prime_roundtrip() {

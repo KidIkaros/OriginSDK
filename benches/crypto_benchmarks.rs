@@ -5,8 +5,7 @@ use origin_crypto_sdk::{
     aead, kdf, error_correction, symmetric,
     pqc::falcon512, pqc::falcon1024, pqc::ntru_prime,
 };
-use rand::SeedableRng;
-use rand_chacha::ChaCha20Rng;
+use origin_crypto_sdk::internal::rng::ChaCha20Rng;
 
 fn benchmark_aead(c: &mut Criterion) {
     let mut group = c.benchmark_group("aead");

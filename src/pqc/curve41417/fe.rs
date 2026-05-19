@@ -15,7 +15,8 @@
 //! All operations use arithmetic masking for conditional operations.
 
 use core::ops::{Add, Mul, Neg, Sub};
-use zeroize::Zeroize;
+
+use crate::internal::zeroize::Zeroize;
 
 use super::BYTES_SIZE;
 

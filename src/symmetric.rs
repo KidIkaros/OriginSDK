@@ -3,6 +3,7 @@
 //! Symmetric encryption (non-AEAD)
 //!
 //! Provides Serpent CBC for paranoid mode.
+//! Note: Serpent is currently provided by external crate (to be replaced in future phase).
 
 use crate::error::{CryptoError, Result};
 use cipher::{

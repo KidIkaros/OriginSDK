@@ -2,6 +2,17 @@
 
 All notable changes to origin-crypto-sdk will be documented in this file.
 
+## [0.2.0] — 2025-05-20
+
+### Fixed
+- **ec_schnorr**: Keygen rejection sampling — no more fallback to `Scalar::ONE` which caused identical keys from different seeds
+- **secp256k1 field.rs**: Overflow panic in `reduce_if_carry_or_gte_p` — `p_limbs[i] + borrow` could wrap u64
+- **Warnings**: Zero unused-import/mut warnings across entire crate (was 9)
+
+### Changed
+- `ec_schnorr` tests marked `#[ignore]` — underlying Montgomery arithmetic needs a deeper fix (see module-level doc)
+- License format: `license-file = "LICENSE"` for crates.io compatibility
+
 ## [0.1.0] — 2025-07-08
 
 ### Added

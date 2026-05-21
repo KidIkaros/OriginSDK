@@ -8,7 +8,7 @@
 use crate::error::{CryptoError, Result};
 use crate::primitives::sha3::sha3_256;
 use crate::internal::secp256k1::{AffinePoint, ProjectivePoint, Scalar, EncodedPoint};
-use crate::internal::subtle::{ConstantTimeEq, CtOption, ct_option_to_option};
+use crate::internal::subtle::{ConstantTimeEq, ct_option_to_option};
 use rand::RngCore;
 
 /// An EC-Schnorr proof of knowledge of a discrete logarithm.
@@ -169,13 +169,20 @@ fn compute_challenge(commitment: &[u8], public_key: &[u8], message: &[u8]) -> Sc
 
 /// Generate a secp256k1 keypair from a 32-byte seed.
 pub fn generate_keypair(seed: &[u8; 32]) -> ([u8; 32], Vec<u8>) {
-    let mut input = Vec::with_capacity(22 + 32);
-    input.extend_from_slice(b"ec-schnorr-keygen-v1");
+    let mut input = Vec::with_capacity(23 + 32);
+    input.extend_from_slice(b"ec-schnorr-keygen-v2");
     input.extend_from_slice(seed);
-    let hash = sha3_256(&input);
+    let mut counter = 0u32;
 
-    let secret = ct_option_to_option(Scalar::from_repr(&hash))
-        .unwrap_or(Scalar::ONE);
+    let secret = loop {
+        let hash = sha3_256(&input);
+        if let Some(s) = ct_option_to_option(Scalar::from_repr(&hash)) {
+            break s;
+        }
+        counter += 1;
+        input.truncate(23 + 32);
+        input.extend_from_slice(&counter.to_le_bytes());
+    };
 
     let public = ProjectivePoint::GENERATOR.mul(&secret);
     let public_compressed = public.to_encoded_point(true);

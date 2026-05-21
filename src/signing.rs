@@ -10,7 +10,6 @@ use crate::internal::subtle::ConstantTimeEq;
 use crate::internal::zeroize::Zeroize;
 use crate::pqc::falcon1024;
 use crate::seed::{derive_signing_keys, derive_verifying_keys, SeedHandle};
-use crate::signature::HybridSignature;
 
 /// A hybrid signing key (Ed25519 + Falcon-1024) derived from seed + domain.
 ///

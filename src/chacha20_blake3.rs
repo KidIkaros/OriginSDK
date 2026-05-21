@@ -72,14 +72,14 @@ impl ChaCha20Blake3 {
     /// Generate a secure random nonce (192-bit / 24 bytes)
     pub fn generate_nonce() -> [u8; 24] {
         let mut nonce = [0u8; 24];
-        getrandom::getrandom(&mut nonce).expect("RNG failed");
+        crate::internal::getrandom::fill(&mut nonce).expect("RNG failed");
         nonce
     }
     
     /// Generate a secure random key (256-bit / 32 bytes)
     pub fn generate_key() -> [u8; 32] {
         let mut key = [0u8; 32];
-        getrandom::getrandom(&mut key).expect("RNG failed");
+        crate::internal::getrandom::fill(&mut key).expect("RNG failed");
         key
     }
 }

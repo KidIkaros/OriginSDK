@@ -8,7 +8,6 @@
 //! Used for secret keys, nonces, and signature components.
 
 use crate::internal::subtle::{Choice, ConstantTimeEq, CtOption};
-use core::ops::{Add, Mul, Neg, Sub};
 
 /// Curve order n
 const N: [u64; 4] = [

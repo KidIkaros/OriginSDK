@@ -184,9 +184,10 @@ impl FieldElement {
         let mut sub_result = [0u64; 4];
 
         for i in 0..4 {
-            let (diff, b) = result[i].overflowing_sub(p_limbs[i] + borrow);
+            let (p_plus_borrow, carry) = p_limbs[i].overflowing_add(borrow);
+            let (diff, b) = result[i].overflowing_sub(p_plus_borrow);
             sub_result[i] = diff;
-            borrow = u64::from(b);
+            borrow = u64::from(b | carry);
         }
 
         // Select between result and sub_result based on gte_p

@@ -11,7 +11,6 @@
 use std::time::{Duration, Instant};
 
 use crate::internal::zeroize::Zeroize;
-use crate::kdf::hkdf::hkdf_sha3_256;
 use crate::primitives::sha3::sha3_256;
 use crate::primitives::MemoryTier;
 
@@ -34,7 +33,7 @@ impl SeedHandle {
     /// * `seed` - Raw seed bytes (will be copied and zeroized on drop)
     /// * `ttl` - Optional time-to-live. None = never expires.
     pub fn new(seed: &[u8], ttl: Option<Duration>) -> Self {
-        let mut seed_vec = seed.to_vec();
+        let seed_vec = seed.to_vec();
         // mlock for Sovereign tier to prevent swapping
         #[cfg(unix)]
         if !seed_vec.is_empty() {

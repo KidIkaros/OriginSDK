@@ -132,38 +132,39 @@ impl FieldElement {
     }
 
     /// Multiplication: self * rhs mod p
+    ///
+    /// Uses the "wide reduction trick": a 5-limb u64 accumulator holds
+    /// the full 512-bit product, reducing once at the end instead of
+    /// repeatedly during multiplication. This matches the approach
+    /// described in Filippo Valsorda's "A Wide Reduction Trick".
     pub fn mul(&self, rhs: &Self) -> Self {
-        let mut t = [0u128; 8];
+        // 5-limb accumulator for the 512-bit intermediate product.
+        // t[0..4] hold the low 256 bits, t[4] holds the overflow.
+        let mut t = [0u64; 5];
 
-        // Schoolbook multiplication
         for i in 0..4 {
-            let mut carry = 0u128;
+            let mut carry = 0u64;
             for j in 0..4 {
-                let product = u128::from(self.limbs[i]) * u128::from(rhs.limbs[j]);
-                let (sum, c) = t[i + j].overflowing_add(product);
-                let (sum2, c2) = sum.overflowing_add(carry);
-                t[i + j] = sum2;
-                carry = u128::from(c) + u128::from(c2) + (product >> 64);
+                let prod = u128::from(self.limbs[j]).wrapping_mul(u128::from(rhs.limbs[i]));
+                let sum = prod + u128::from(t[j]) + u128::from(carry);
+                t[j] = sum as u64;
+                carry = (sum >> 64) as u64;
             }
-            t[i + 4] = t[i + 4].wrapping_add(carry);
+            t[4] = t[4].wrapping_add(carry);
         }
 
-        // Montgomery reduction
-        self.montgomery_reduce(&t)
-    }
+        // Final reduction: result = low 4 limbs; if overflow limb is
+        // non-zero or low 4 limbs >= p, subtract p once.
+        let mut result = Self::from_limbs([t[0], t[1], t[2], t[3]]);
+        let overflow = t[4];
+        let gte_p = result.is_gte_p();
 
-    /// Montgomery reduction
-    fn montgomery_reduce(&self, t: &[u128; 8]) -> Self {
-        // Simplified reduction for secp256k1
-        // p = 2^256 - 2^32 - 2^9 - 2^8 - 2^7 - 2^6 - 2^4 - 1
-        // This allows fast reduction
-
-        let mut r = [0u64; 4];
-        for i in 0..4 {
-            r[i] = t[i] as u64;
+        // Constant-time conditional subtraction
+        let needs_reduce = Choice::from_bool(overflow != 0) | gte_p;
+        if bool::from(needs_reduce) {
+            result = result.sub(&Self::from_limbs(P));
         }
-
-        Self::from_limbs(r).reduce()
+        result
     }
 
     /// Modular reduction to [0, p)

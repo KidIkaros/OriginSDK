@@ -34,7 +34,7 @@ const R2: [u64; 4] = [
 ];
 
 /// Scalar element modulo curve order n
-#[derive(Clone, Copy, Debug, Default)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Scalar {
     limbs: [u64; 4],
 }

@@ -47,6 +47,11 @@ impl ChaCha20Rng {
         self.counter = self.counter.wrapping_add(1);
         self.block_pos = 0;
     }
+
+    /// Fill `dest` with random bytes (convenience method).
+    pub fn fill(&mut self, dest: &mut [u8]) {
+        self.fill_bytes(dest);
+    }
 }
 
 impl RngCore for ChaCha20Rng {

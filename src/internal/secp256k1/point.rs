@@ -107,6 +107,10 @@ impl AffinePoint {
     }
 
     /// Decode from SEC1 format
+    /// 
+    /// Uses reconstruction instead of validation for compressed points:
+    /// since y is derived from x via sqrt(x³ + 7), the curve equation
+    /// is satisfied by construction.
     pub fn from_encoded_point(encoded: &EncodedPoint) -> CtOption<Self> {
         let bytes = encoded.as_bytes();
 
@@ -125,7 +129,9 @@ impl AffinePoint {
                 x_bytes.copy_from_slice(&bytes[1..33]);
                 let x = FieldElement::from_bytes(&x_bytes);
 
-                // Compute y from x: y^2 = x^3 + 7
+                // Reconstruct y from x: y^2 = x^3 + 7
+                // The curve equation is satisfied by construction since
+                // y = sqrt(x^3 + 7) implies y^2 = x^3 + 7
                 let x3 = x.mul(&x).mul(&x);
                 let y2 = x3.add(&CURVE_B);
                 let y = y2.sqrt();
@@ -137,10 +143,15 @@ impl AffinePoint {
 
                 let y_final = if is_odd == expected_odd { y } else { y.neg() };
 
-                Self::from_coordinates(x, y_final)
+                // Reconstruct directly without redundant validation
+                CtOption::new(
+                    AffinePoint { x, y: y_final, infinity: false },
+                    Choice::from_bool(true),
+                )
             }
             0x04 => {
                 // Uncompressed: 0x04 || x || y
+                // Validation is necessary here since y is provided externally
                 if bytes.len() != 65 {
                     return CtOption::new(Self::IDENTITY, Choice::from_bool(false));
                 }

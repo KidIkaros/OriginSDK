@@ -2,13 +2,44 @@
 
 //! OS entropy extraction — replacement for the `getrandom` crate.
 //!
-//! Uses direct syscalls to avoid pulling in the `getrandom` dependency.
+//! Sources random bytes directly from the operating system's
+//! cryptographically secure pseudorandom number generator (CSPRNG).
+//!
+//! # Randomness Sources by Platform
+//!
+//! | Platform | Source | Kernel Version |
+//! |----------|--------|----------------|
+//! | Linux x86_64 | `getrandom(2)` syscall | 3.17+ |
+//! | Linux aarch64 | `getrandom(2)` syscall | 3.17+ |
+//! | Other Unix | `/dev/urandom` | N/A |
+//! | Windows | `BCryptGenRandom` | Vista+ |
+//!
+//! # Why These Sources?
+//!
+//! Per "Avoid The Randomness From The Sky" (Filippo Valsorda):
+//! We document exactly where every random byte comes from.
+//!
+//! - **Linux**: `getrandom(2)` draws from the kernel's ChaCha20-based
+//!   CSPRNG, seeded from hardware RNG if available, plus entropy
+//!   from interrupts, keyboard timing, disk latency, etc.
+//! - **Unix fallback**: `/dev/urandom` provides the same ChaCha20
+//!   output as `getrandom(2)` but via the device interface.
+//! - **Windows**: `BCryptGenRandom` with `BCRYPT_USE_SYSTEM_PREFERRED_RNG`
+//!   uses the system RNG (RNGSYS) which is FIPS 140-2 validated.
+//!
+//! # Security Properties
+//!
+//! - Blocks until the CSPRNG is initialized (prevents boot-time
+//!   weakness exploitation).
+//! - Never returns predictable output.
+//! - Uses `EINTR` handling for signal safety.
 
 /// Fill `dest` with random bytes from the OS CSPRNG.
 ///
-/// On Linux, this uses `getrandom(2)`.
-/// On other Unix platforms, it falls back to `/dev/urandom`.
-/// On Windows, it uses `BCryptGenRandom`.
+/// # Errors
+///
+/// Returns an error if the OS RNG fails or is unavailable.
+/// This should never happen on a properly configured system.
 pub fn fill(dest: &mut [u8]) -> Result<(), &'static str> {
     #[cfg(target_os = "linux")]
     {

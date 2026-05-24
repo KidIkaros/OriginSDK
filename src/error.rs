@@ -49,7 +49,26 @@ impl std::error::Error for CryptoError {
 
 impl From<std::io::Error> for CryptoError {
     fn from(err: std::io::Error) -> Self {
-        CryptoError::Io(err)
+        CryptoError::Io(std::io::Error::new(err.kind(), err.to_string()))
+    }
+}
+
+impl Clone for CryptoError {
+    fn clone(&self) -> Self {
+        match self {
+            CryptoError::Encryption(msg) => CryptoError::Encryption(msg.clone()),
+            CryptoError::Decryption(msg) => CryptoError::Decryption(msg.clone()),
+            CryptoError::InvalidKey(msg) => CryptoError::InvalidKey(msg.clone()),
+            CryptoError::InvalidNonce(msg) => CryptoError::InvalidNonce(msg.clone()),
+            CryptoError::AuthenticationFailed => CryptoError::AuthenticationFailed,
+            CryptoError::ReedSolomon(msg) => CryptoError::ReedSolomon(msg.clone()),
+            CryptoError::Kdf(msg) => CryptoError::Kdf(msg.clone()),
+            CryptoError::Pqc(msg) => CryptoError::Pqc(msg.clone()),
+            CryptoError::Io(err) => CryptoError::Io(std::io::Error::new(err.kind(), err.to_string())),
+            CryptoError::Serialization(msg) => CryptoError::Serialization(msg.clone()),
+            CryptoError::InvalidParameter(msg) => CryptoError::InvalidParameter(msg.clone()),
+            CryptoError::Compression(msg) => CryptoError::Compression(msg.clone()),
+        }
     }
 }
 

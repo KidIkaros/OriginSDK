@@ -118,7 +118,8 @@ pub fn sign(message: &[u8], private_key: &SlhDsaPrivateKey) -> Result<Vec<u8>> {
     let sk = SigningKey::<Shake128f>::try_from(&sk_bytes[..])
         .map_err(|e| CryptoError::InvalidKey(format!("Invalid SLH-DSA secret key: {:?}", e)))?;
 
-    let sig = sk.try_sign(message)
+    let sig = sk
+        .try_sign(message)
         .map_err(|e| CryptoError::Pqc(format!("SLH-DSA signing failed: {:?}", e)))?;
 
     Ok(sig.to_bytes().to_vec())

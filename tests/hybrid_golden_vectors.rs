@@ -198,7 +198,8 @@ fn golden_rfc8032_ed25519_test1() {
 
     // Verify the signature (sanity check)
     let sig_obj = Signature::from_bytes(&sig_bytes);
-    pk.verify(b"", &sig_obj).expect("RFC 8032 test 1 sig should verify");
+    pk.verify(b"", &sig_obj)
+        .expect("RFC 8032 test 1 sig should verify");
 }
 
 // =============================================================================
@@ -232,7 +233,8 @@ fn golden_ed41417_blank_sign_verify() {
     let pk = sk.verifying_key();
 
     let sig = sk.sign(b"");
-    pk.verify(b"", &sig).expect("Ed41417 sig on empty msg should verify");
+    pk.verify(b"", &sig)
+        .expect("Ed41417 sig on empty msg should verify");
 }
 
 // =============================================================================

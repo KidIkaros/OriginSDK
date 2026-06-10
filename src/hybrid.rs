@@ -77,7 +77,6 @@ use std::sync::Arc;
 use std::sync::OnceLock;
 
 use crate::error::{CryptoError, Result};
-use crate::primitives::{blake3, sha3_256, Shake128, Shake256};
 use crate::pqc::curve41417::ed41417::{
     Signature as Ed41417Signature, SigningKey as Ed41417SigningKey,
     VerifyingKey as Ed41417VerifyingKey,
@@ -87,12 +86,13 @@ use crate::pqc::falcon1024::{
     FalconPrivateKey, FalconPublicKey, FalconSignature,
 };
 use crate::pqc::falcon512::{
-    sign as falcon512_sign, verify as falcon512_verify,
-    Falcon512PrivateKey, Falcon512PublicKey, Falcon512Signature,
+    sign as falcon512_sign, verify as falcon512_verify, Falcon512PrivateKey, Falcon512PublicKey,
+    Falcon512Signature,
 };
+use crate::primitives::{blake3, sha3_256, Shake128, Shake256};
 use ed25519_dalek::{
-    Signature as Ed25519Signature, Signer, SigningKey as Ed25519SigningKey,
-    VerifyingKey as Ed25519VerifyingKey, Verifier,
+    Signature as Ed25519Signature, Signer, SigningKey as Ed25519SigningKey, Verifier,
+    VerifyingKey as Ed25519VerifyingKey,
 };
 use sha3::digest::{ExtendableOutput, Update, XofReader};
 use skein::digest::Digest;
@@ -600,7 +600,8 @@ impl Ed25519ChaCha20Blake3Sha3_256 {
             .try_into()
             .map_err(|_| CryptoError::InvalidKey("Ed25519 key len".into()))?;
         let ed_pk = Ed25519SigningKey::from_bytes(&ed_arr).verifying_key();
-        ed_pk.verify(message, &sig.ed25519_sig)
+        ed_pk
+            .verify(message, &sig.ed25519_sig)
             .map_err(|_| CryptoError::AuthenticationFailed)?;
 
         let mut chacha_key_arr = [0u8; blake3::KEY_LEN];
@@ -721,7 +722,9 @@ impl HybridSigningKeyBundle {
 /// bundles are cheap to clone (Arc) and Falcon-1024 keys are large enough
 /// (~2.3KB) that the memory tradeoff is worthwhile for repeated sign calls.
 struct BundleCache {
-    bundle_cache: std::sync::Mutex<std::collections::HashMap<([u8; 32], String), Arc<HybridSigningKeyBundle>>>,
+    bundle_cache: std::sync::Mutex<
+        std::collections::HashMap<([u8; 32], String), Arc<HybridSigningKeyBundle>>,
+    >,
 }
 
 impl BundleCache {
@@ -740,7 +743,10 @@ thread_local! {
 /// environments.
 pub fn bundle_cache_clear() {
     BUNDLE_CACHE.with(|c| {
-        c.bundle_cache.lock().expect("bundle cache poisoned").clear();
+        c.bundle_cache
+            .lock()
+            .expect("bundle cache poisoned")
+            .clear();
     });
 }
 
@@ -954,13 +960,7 @@ mod tests {
         // Sign a message with the canonical hybrid
         let msg = b"hello bundle";
         let sig = bundle.sign_hybrid(msg);
-        Ed25519Falcon1024::verify(
-            bundle.ed25519_pk(),
-            bundle.falcon1024_pk(),
-            msg,
-            &sig,
-        )
-        .unwrap();
+        Ed25519Falcon1024::verify(bundle.ed25519_pk(), bundle.falcon1024_pk(), msg, &sig).unwrap();
     }
 
     #[test]
@@ -1007,14 +1007,8 @@ mod tests {
         let b2 = HybridSigningKeyBundle::from_seed_cached(&seed, "test-domain")
             .expect("cached should succeed");
 
-        assert_eq!(
-            b1.ed25519_pk().to_bytes(),
-            b2.ed25519_pk().to_bytes()
-        );
-        assert_eq!(
-            b1.falcon1024_pk().as_bytes(),
-            b2.falcon1024_pk().as_bytes()
-        );
+        assert_eq!(b1.ed25519_pk().to_bytes(), b2.ed25519_pk().to_bytes());
+        assert_eq!(b1.falcon1024_pk().as_bytes(), b2.falcon1024_pk().as_bytes());
     }
 
     /// Cached and non-cached paths must produce functionally identical bundles.

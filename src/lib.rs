@@ -122,6 +122,7 @@ pub mod mmr;
 pub mod pqc;
 pub mod primitives;
 pub mod seed;
+pub mod seed_gen; // Multi-hash seed generation (from cryp prototype)
 pub mod signature;
 pub mod signing;
 pub mod siphash;
@@ -163,7 +164,9 @@ pub use validation::{validate_did, validate_info_string};
 // Re-export hybrid constructions module
 pub mod hybrid;
 
-// Convenience: derive Falcon-1024 / Falcon-512 keypair from seed
+pub mod entropy; // Entropy analysis (from cryp prototype)
+pub mod otp; // HOTP/TOTP (from spork prototype)
+
 pub use hybrid::falcon1024_keygen;
 pub use hybrid::HybridSigningKeyBundle;
 pub use hybrid::{skein1024, skein512};

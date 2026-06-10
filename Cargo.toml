@@ -2,7 +2,7 @@
 
 [package]
 name = "origin-crypto-sdk"
-version = "0.2.0"
+version = "0.3.1"
 edition = "2021"
 authors = ["Origin Contributors"]
 description = "Standalone cryptographic SDK with post-quantum and classical primitives"
@@ -38,6 +38,13 @@ rand = "=0.8.5"
 digest = "0.11"
 ed25519-dalek = { version = "2", features = ["rand_core"] }
 subtle = "2.6.1"
+
+# OTP / HOTP / TOTP dependencies
+hmac = "0.12"
+sha1 = "0.10"
+
+# Seed generation
+getrandom = "0.2"
 
 # Parallel processing (optional)
 rayon = { version = "1.11", optional = true }

@@ -10,8 +10,8 @@ use origin_crypto_sdk::hybrid::{
 use origin_crypto_sdk::internal::rng::ChaCha20Rng;
 use origin_crypto_sdk::pqc::curve41417::ed41417::SigningKey as Ed41417Sk;
 use origin_crypto_sdk::{
-    aead, error_correction, kdf,
-    pqc::falcon1024, pqc::falcon512, pqc::mldsa, pqc::ntru_prime, pqc::slhdsa, symmetric,
+    aead, error_correction, kdf, pqc::falcon1024, pqc::falcon512, pqc::mldsa, pqc::ntru_prime,
+    pqc::slhdsa, symmetric,
 };
 
 fn benchmark_aead(c: &mut Criterion) {
@@ -152,9 +152,7 @@ fn benchmark_slhdsa(c: &mut Criterion) {
     let sig = slhdsa::sign(message, &sk).unwrap();
 
     group.bench_function("verify", |b| {
-        b.iter(|| {
-            slhdsa::verify(black_box(message), black_box(&sig), black_box(&pk)).is_ok()
-        })
+        b.iter(|| slhdsa::verify(black_box(message), black_box(&sig), black_box(&pk)).is_ok())
     });
 
     group.finish();
@@ -179,9 +177,7 @@ fn benchmark_mldsa(c: &mut Criterion) {
     let sig = mldsa::sign(message, &sk).unwrap();
 
     group.bench_function("verify", |b| {
-        b.iter(|| {
-            mldsa::verify(black_box(message), black_box(&sig), black_box(&pk)).is_ok()
-        })
+        b.iter(|| mldsa::verify(black_box(message), black_box(&sig), black_box(&pk)).is_ok())
     });
 
     group.finish();
@@ -283,7 +279,9 @@ fn benchmark_hybrid_signatures(c: &mut Criterion) {
     let (f1024_pk, f1024_sk) = falcon1024::generate_keypair_from_seed(&seed).unwrap();
     let h_sig = Ed25519Falcon1024::sign(&ed_sk, &f1024_sk, message);
     group.bench_function("ed25519_falcon1024_sign", |b| {
-        b.iter(|| Ed25519Falcon1024::sign(black_box(&ed_sk), black_box(&f1024_sk), black_box(message)))
+        b.iter(|| {
+            Ed25519Falcon1024::sign(black_box(&ed_sk), black_box(&f1024_sk), black_box(message))
+        })
     });
     group.bench_function("ed25519_falcon1024_verify", |b| {
         b.iter(|| {
@@ -300,7 +298,9 @@ fn benchmark_hybrid_signatures(c: &mut Criterion) {
     let (f512_sk, f512_pk) = falcon512::generate_keypair(seed);
     let h512_sig = Ed25519Falcon512::sign(&ed_sk, &f512_sk, message);
     group.bench_function("ed25519_falcon512_sign", |b| {
-        b.iter(|| Ed25519Falcon512::sign(black_box(&ed_sk), black_box(&f512_sk), black_box(message)))
+        b.iter(|| {
+            Ed25519Falcon512::sign(black_box(&ed_sk), black_box(&f512_sk), black_box(message))
+        })
     });
     group.bench_function("ed25519_falcon512_verify", |b| {
         b.iter(|| {
@@ -316,7 +316,13 @@ fn benchmark_hybrid_signatures(c: &mut Criterion) {
     // Ed448 + Falcon-1024
     let h448_sig = Ed448Falcon1024::sign(&ed448_sk, &f1024_sk, message);
     group.bench_function("ed448_falcon1024_sign", |b| {
-        b.iter(|| Ed448Falcon1024::sign(black_box(&ed448_sk), black_box(&f1024_sk), black_box(message)))
+        b.iter(|| {
+            Ed448Falcon1024::sign(
+                black_box(&ed448_sk),
+                black_box(&f1024_sk),
+                black_box(message),
+            )
+        })
     });
     group.bench_function("ed448_falcon1024_verify", |b| {
         b.iter(|| {
@@ -343,7 +349,9 @@ fn benchmark_hybrid_signatures(c: &mut Criterion) {
         b.iter(|| Ed25519Skein512::sign(black_box(&ed_sk), black_box(message)))
     });
     group.bench_function("ed25519_skein512_verify", |b| {
-        b.iter(|| Ed25519Skein512::verify(black_box(&ed_pk), black_box(message), black_box(&sk512_sig)))
+        b.iter(|| {
+            Ed25519Skein512::verify(black_box(&ed_pk), black_box(message), black_box(&sk512_sig))
+        })
     });
 
     let sh256_sig = Ed25519Shake256::sign(&ed_sk, message, 64);
@@ -351,7 +359,9 @@ fn benchmark_hybrid_signatures(c: &mut Criterion) {
         b.iter(|| Ed25519Shake256::sign(black_box(&ed_sk), black_box(message), 64))
     });
     group.bench_function("ed25519_shake256_verify", |b| {
-        b.iter(|| Ed25519Shake256::verify(black_box(&ed_pk), black_box(message), black_box(&sh256_sig)))
+        b.iter(|| {
+            Ed25519Shake256::verify(black_box(&ed_pk), black_box(message), black_box(&sh256_sig))
+        })
     });
 
     // Ed448 variants
@@ -360,7 +370,13 @@ fn benchmark_hybrid_signatures(c: &mut Criterion) {
         b.iter(|| Ed448Sha3_256::sign(black_box(&ed448_sk), black_box(message)))
     });
     group.bench_function("ed448_sha3_256_verify", |b| {
-        b.iter(|| Ed448Sha3_256::verify(black_box(&ed448_pk), black_box(message), black_box(&ed448_s3)))
+        b.iter(|| {
+            Ed448Sha3_256::verify(
+                black_box(&ed448_pk),
+                black_box(message),
+                black_box(&ed448_s3),
+            )
+        })
     });
 
     let ed448_sk512 = Ed448Skein512::sign(&ed448_sk, message);
@@ -368,7 +384,13 @@ fn benchmark_hybrid_signatures(c: &mut Criterion) {
         b.iter(|| Ed448Skein512::sign(black_box(&ed448_sk), black_box(message)))
     });
     group.bench_function("ed448_skein512_verify", |b| {
-        b.iter(|| Ed448Skein512::verify(black_box(&ed448_pk), black_box(message), black_box(&ed448_sk512)))
+        b.iter(|| {
+            Ed448Skein512::verify(
+                black_box(&ed448_pk),
+                black_box(message),
+                black_box(&ed448_sk512),
+            )
+        })
     });
 
     let ed448_sh = Ed448Shake256::sign(&ed448_sk, message, 64);
@@ -376,7 +398,13 @@ fn benchmark_hybrid_signatures(c: &mut Criterion) {
         b.iter(|| Ed448Shake256::sign(black_box(&ed448_sk), black_box(message), 64))
     });
     group.bench_function("ed448_shake256_verify", |b| {
-        b.iter(|| Ed448Shake256::verify(black_box(&ed448_pk), black_box(message), black_box(&ed448_sh)))
+        b.iter(|| {
+            Ed448Shake256::verify(
+                black_box(&ed448_pk),
+                black_box(message),
+                black_box(&ed448_sh),
+            )
+        })
     });
 
     group.finish();
@@ -413,11 +441,8 @@ fn benchmark_hybrid_kdf(c: &mut Criterion) {
     let _ = HybridSigningKeyBundle::from_seed_cached(&master_seed, domain).unwrap();
     group.bench_function("bundle_from_seed_cached", |b| {
         b.iter(|| {
-            HybridSigningKeyBundle::from_seed_cached(
-                black_box(&master_seed),
-                black_box(domain),
-            )
-            .unwrap()
+            HybridSigningKeyBundle::from_seed_cached(black_box(&master_seed), black_box(domain))
+                .unwrap()
         })
     });
 
@@ -426,11 +451,8 @@ fn benchmark_hybrid_kdf(c: &mut Criterion) {
     group.bench_function("bundle_from_seed_uncached", |b| {
         b.iter(|| {
             hybrid::bundle_cache_clear();
-            HybridSigningKeyBundle::from_seed_cached(
-                black_box(&master_seed),
-                black_box(domain),
-            )
-            .unwrap()
+            HybridSigningKeyBundle::from_seed_cached(black_box(&master_seed), black_box(domain))
+                .unwrap()
         })
     });
 

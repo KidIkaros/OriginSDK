@@ -426,7 +426,6 @@ mod tests {
 
         let msg = b"hello from bundle";
         let sig = bundle.sign_hybrid(msg);
-        Ed25519Falcon1024::verify(bundle.ed25519_pk(), bundle.falcon1024_pk(), msg, &sig)
-            .unwrap();
+        Ed25519Falcon1024::verify(bundle.ed25519_pk(), bundle.falcon1024_pk(), msg, &sig).unwrap();
     }
 }

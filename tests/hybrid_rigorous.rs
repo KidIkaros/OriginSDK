@@ -32,7 +32,9 @@ struct TestRng {
 
 impl TestRng {
     fn new(seed: u64) -> Self {
-        Self { state: seed.wrapping_add(0x9E3779B97F4A7C15) }
+        Self {
+            state: seed.wrapping_add(0x9E3779B97F4A7C15),
+        }
     }
     fn next_u64(&mut self) -> u64 {
         // xorshift64
@@ -59,8 +61,7 @@ fn prop_ed25519_blake3_sign_verify_5_rounds() {
     for _ in 0..5 {
         let msg = rng.message(1024);
         let sig = Ed25519Blake3::sign(&sk, &msg);
-        Ed25519Blake3::verify(&pk, &msg, &sig)
-            .expect("valid signature should always verify");
+        Ed25519Blake3::verify(&pk, &msg, &sig).expect("valid signature should always verify");
     }
 }
 
@@ -74,8 +75,7 @@ fn prop_ed25519_shake256_sign_verify_5_rounds() {
         let msg = rng.message(512);
         let shake_len = 64 + (rng.next_u64() as usize % 128); // 64..192
         let sig = Ed25519Shake256::sign(&sk, &msg, shake_len);
-        Ed25519Shake256::verify(&pk, &msg, &sig)
-            .expect("valid signature should always verify");
+        Ed25519Shake256::verify(&pk, &msg, &sig).expect("valid signature should always verify");
     }
 }
 
@@ -88,8 +88,7 @@ fn prop_ed25519_skein512_sign_verify_5_rounds() {
     for _ in 0..5 {
         let msg = rng.message(1024);
         let sig = Ed25519Skein512::sign(&sk, &msg);
-        Ed25519Skein512::verify(&pk, &msg, &sig)
-            .expect("valid signature should always verify");
+        Ed25519Skein512::verify(&pk, &msg, &sig).expect("valid signature should always verify");
     }
 }
 
@@ -102,8 +101,7 @@ fn prop_ed448_sha3_256_sign_verify_3_rounds() {
     for _ in 0..3 {
         let msg = rng.message(1024);
         let sig = Ed448Sha3_256::sign(&sk, &msg);
-        Ed448Sha3_256::verify(&pk, &msg, &sig)
-            .expect("valid signature should always verify");
+        Ed448Sha3_256::verify(&pk, &msg, &sig).expect("valid signature should always verify");
     }
 }
 
@@ -117,8 +115,7 @@ fn prop_ed448_shake256_sign_verify_3_rounds() {
         let msg = rng.message(1024);
         let shake_len = 32 + (rng.next_u64() as usize % 256); // 32..288
         let sig = Ed448Shake256::sign(&sk, &msg, shake_len);
-        Ed448Shake256::verify(&pk, &msg, &sig)
-            .expect("valid signature should always verify");
+        Ed448Shake256::verify(&pk, &msg, &sig).expect("valid signature should always verify");
     }
 }
 
@@ -131,8 +128,7 @@ fn prop_ed448_skein512_sign_verify_3_rounds() {
     for _ in 0..3 {
         let msg = rng.message(1024);
         let sig = Ed448Skein512::sign(&sk, &msg);
-        Ed448Skein512::verify(&pk, &msg, &sig)
-            .expect("valid signature should always verify");
+        Ed448Skein512::verify(&pk, &msg, &sig).expect("valid signature should always verify");
     }
 }
 
@@ -195,8 +191,8 @@ fn prop_kdf_construction_sign_verify_5_rounds() {
         let domain = format!("domain-{}", i);
         let msg = rng.message(2048);
 
-        let sig = Ed25519ChaCha20Blake3Sha3_256::sign(&seed, &domain, &msg)
-            .expect("sign should succeed");
+        let sig =
+            Ed25519ChaCha20Blake3Sha3_256::sign(&seed, &domain, &msg).expect("sign should succeed");
         Ed25519ChaCha20Blake3Sha3_256::verify(&seed, &domain, &msg, &sig)
             .expect("valid KDF sig should always verify");
     }
@@ -369,9 +365,15 @@ fn domain_separation_hybrid_signing_key_bundle() {
     let bundle3 = HybridSigningKeyBundle::from_seed(&seed, "DOMAIN1").unwrap();
 
     // Different domain -> different Ed25519 key
-    assert_ne!(bundle1.ed25519_pk().to_bytes(), bundle2.ed25519_pk().to_bytes());
+    assert_ne!(
+        bundle1.ed25519_pk().to_bytes(),
+        bundle2.ed25519_pk().to_bytes()
+    );
     // Case-sensitive
-    assert_ne!(bundle1.ed25519_pk().to_bytes(), bundle3.ed25519_pk().to_bytes());
+    assert_ne!(
+        bundle1.ed25519_pk().to_bytes(),
+        bundle3.ed25519_pk().to_bytes()
+    );
 }
 
 /// Same seed + same domain must always give the same key

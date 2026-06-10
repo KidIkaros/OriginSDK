@@ -182,9 +182,10 @@ pub use pqc::falcon512::{
     self as falcon_512, Falcon512PrivateKey, Falcon512PublicKey, Falcon512Signature,
 };
 
-// Ed448 — Curve41417 exposed under the standard name
-pub use pqc::curve41417 as ed448;
-pub use pqc::curve41417::ed41417 as ed448_raw;
+// Ed448 — RFC 8032 signature scheme on the 448-bit Goldilocks curve.
+// Exposed at `origin_crypto_sdk::pqc::ed448`.
+// Ed41417 — Daniel J. Bernstein's signature scheme on curve41417.
+pub use pqc::curve41417::ed41417 as ed41417_raw;
 
 // SLH-DSA direct access (feature-gated)
 #[cfg(feature = "slh-dsa")]

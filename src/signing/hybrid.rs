@@ -11,7 +11,7 @@
 //!
 //! Following the colleague's threat model, this module targets DSA (Digital Signature
 //! Algorithms) as the primary attack surface. By pairing classical high-security curves
-//! (Ed25519, Ed448/Ed41417) with post-quantum primitives (Falcon, SPHINCS+/SLH-DSA,
+//! (Ed25519, Ed448) with post-quantum primitives (Falcon, SPHINCS+/SLH-DSA,
 //! and SHAKE/Skein/BLAKE3 hashes), we get:
 //!
 //! - **Classical insurance**: if PQC has implementation bugs, classical curves protect us
@@ -68,7 +68,7 @@
 //!
 //! ## Security Notes
 //!
-//! - All constructions use **constant-time** verification (Ed25519 dalek, Falcon, Ed41417).
+//! - All constructions use **constant-time** verification (Ed25519 dalek, Falcon, Ed448).
 //! - Skein is a SHA-3 finalist; combining it with SHA3-256 in KDF mode gives hash diversity.
 //! - The KDF constructions derive independent subkeys via HKDF-SHA3-256 with domain
 //!   separation, so the same master seed can be reused across domains safely.
@@ -77,9 +77,9 @@ use std::sync::Arc;
 use std::sync::OnceLock;
 
 use crate::error::{CryptoError, Result};
-use crate::pqc::curve41417::ed41417::{
-    Signature as Ed41417Signature, SigningKey as Ed41417SigningKey,
-    VerifyingKey as Ed41417VerifyingKey,
+use crate::pqc::ed448::{
+    Signature as Ed448Signature, SigningKey as Ed448SigningKey, VerifyingKey as Ed448VerifyingKey,
+    SECRET_KEY_SIZE as ED448_SECRET_KEY_SIZE,
 };
 use crate::pqc::falcon1024::{
     generate_keypair_from_seed as falcon_keygen, sign as falcon_sign, verify as falcon_verify,
@@ -125,24 +125,24 @@ pub struct Ed25519Skein512 {
     pub skein512_hash: [u8; 64],
 }
 
-/// Ed448 (Ed41417) + SHAKE256 combiner (non-KDF)
+/// Ed448 + SHAKE256 combiner (non-KDF)
 #[derive(Clone, Debug)]
 pub struct Ed448Shake256 {
-    pub ed448_sig: Ed41417Signature,
+    pub ed448_sig: Ed448Signature,
     pub shake_output: Vec<u8>,
 }
 
-/// Ed448 (Ed41417) + Skein-512 hash combiner (non-KDF)
+/// Ed448 + Skein-512 hash combiner (non-KDF)
 #[derive(Clone, Debug)]
 pub struct Ed448Skein512 {
-    pub ed448_sig: Ed41417Signature,
+    pub ed448_sig: Ed448Signature,
     pub skein512_hash: [u8; 64],
 }
 
-/// Ed448 (Ed41417) + SHA3-256 hash combiner (non-KDF)
+/// Ed448 + SHA3-256 hash combiner (non-KDF)
 #[derive(Clone, Debug)]
 pub struct Ed448Sha3_256 {
-    pub ed448_sig: Ed41417Signature,
+    pub ed448_sig: Ed448Signature,
     pub sha3_hash: [u8; 32],
 }
 
@@ -163,7 +163,7 @@ pub struct Ed25519Falcon512 {
 /// Ed448 + Falcon-1024 hybrid signature (both must verify)
 #[derive(Clone, Debug)]
 pub struct Ed448Falcon1024 {
-    pub ed448_sig: Ed41417Signature,
+    pub ed448_sig: Ed448Signature,
     pub falcon_sig: FalconSignature,
 }
 
@@ -339,8 +339,8 @@ impl Ed25519Skein512 {
 // ============================================================================
 
 impl Ed448Shake256 {
-    /// Sign message with Ed448 (Ed41417) and compute SHAKE256 output
-    pub fn sign(signing_key: &Ed41417SigningKey, message: &[u8], shake_len: usize) -> Self {
+    /// Sign message with Ed448 and compute SHAKE256 output
+    pub fn sign(signing_key: &Ed448SigningKey, message: &[u8], shake_len: usize) -> Self {
         let ed448_sig = signing_key.sign(message);
         let shake_output = shake256_output(message, shake_len);
         Self {
@@ -350,7 +350,7 @@ impl Ed448Shake256 {
     }
 
     /// Verify Ed448 signature and check SHAKE256 output
-    pub fn verify(verifying_key: &Ed41417VerifyingKey, message: &[u8], sig: &Self) -> Result<()> {
+    pub fn verify(verifying_key: &Ed448VerifyingKey, message: &[u8], sig: &Self) -> Result<()> {
         verifying_key
             .verify(message, &sig.ed448_sig)
             .map_err(|_| CryptoError::AuthenticationFailed)?;
@@ -368,7 +368,7 @@ impl Ed448Shake256 {
 
 impl Ed448Skein512 {
     /// Sign message with Ed448 and compute Skein-512 hash
-    pub fn sign(signing_key: &Ed41417SigningKey, message: &[u8]) -> Self {
+    pub fn sign(signing_key: &Ed448SigningKey, message: &[u8]) -> Self {
         let ed448_sig = signing_key.sign(message);
         let skein512_hash = skein512(message);
         Self {
@@ -378,7 +378,7 @@ impl Ed448Skein512 {
     }
 
     /// Verify Ed448 signature and check Skein-512 hash
-    pub fn verify(verifying_key: &Ed41417VerifyingKey, message: &[u8], sig: &Self) -> Result<()> {
+    pub fn verify(verifying_key: &Ed448VerifyingKey, message: &[u8], sig: &Self) -> Result<()> {
         verifying_key
             .verify(message, &sig.ed448_sig)
             .map_err(|_| CryptoError::AuthenticationFailed)?;
@@ -396,7 +396,7 @@ impl Ed448Skein512 {
 
 impl Ed448Sha3_256 {
     /// Sign message with Ed448 and compute SHA3-256 hash
-    pub fn sign(signing_key: &Ed41417SigningKey, message: &[u8]) -> Self {
+    pub fn sign(signing_key: &Ed448SigningKey, message: &[u8]) -> Self {
         let ed448_sig = signing_key.sign(message);
         let sha3_hash = sha3_256(message);
         Self {
@@ -406,7 +406,7 @@ impl Ed448Sha3_256 {
     }
 
     /// Verify Ed448 signature and check SHA3-256 hash
-    pub fn verify(verifying_key: &Ed41417VerifyingKey, message: &[u8], sig: &Self) -> Result<()> {
+    pub fn verify(verifying_key: &Ed448VerifyingKey, message: &[u8], sig: &Self) -> Result<()> {
         verifying_key
             .verify(message, &sig.ed448_sig)
             .map_err(|_| CryptoError::AuthenticationFailed)?;
@@ -496,7 +496,7 @@ impl Ed25519Falcon512 {
 impl Ed448Falcon1024 {
     /// Sign with both Ed448 and Falcon-1024 keys
     pub fn sign(
-        ed448_sk: &Ed41417SigningKey,
+        ed448_sk: &Ed448SigningKey,
         falcon_sk: &FalconPrivateKey,
         message: &[u8],
     ) -> Self {
@@ -510,7 +510,7 @@ impl Ed448Falcon1024 {
 
     /// Verify both signatures - both MUST be valid
     pub fn verify(
-        ed448_pk: &Ed41417VerifyingKey,
+        ed448_pk: &Ed448VerifyingKey,
         falcon_pk: &FalconPublicKey,
         message: &[u8],
         sig: &Self,
@@ -632,7 +632,7 @@ pub struct HybridSigningKeyBundle {
     ed25519: (Ed25519SigningKey, Ed25519VerifyingKey),
     falcon1024: (FalconPrivateKey, FalconPublicKey),
     falcon512: Option<(Falcon512PrivateKey, Falcon512PublicKey)>,
-    ed448: Option<(Ed41417SigningKey, Ed41417VerifyingKey)>,
+    ed448: Option<(Ed448SigningKey, Ed448VerifyingKey)>,
     domain: String,
 }
 
@@ -858,7 +858,7 @@ mod tests {
 
     #[test]
     fn test_ed448_sha3_256() {
-        let sk = Ed41417SigningKey::from_bytes_mod_order([42u8; 52]);
+        let sk = Ed448SigningKey::from_bytes(&[42u8; ED448_SECRET_KEY_SIZE]).unwrap();
         let pk = sk.verifying_key();
         let msg = b"hello";
         let sig = Ed448Sha3_256::sign(&sk, msg);
@@ -867,7 +867,7 @@ mod tests {
 
     #[test]
     fn test_ed448_shake256() {
-        let sk = Ed41417SigningKey::from_bytes_mod_order([42u8; 52]);
+        let sk = Ed448SigningKey::from_bytes(&[42u8; ED448_SECRET_KEY_SIZE]).unwrap();
         let pk = sk.verifying_key();
         let msg = b"hello";
         let sig = Ed448Shake256::sign(&sk, msg, 64);
@@ -876,7 +876,7 @@ mod tests {
 
     #[test]
     fn test_ed448_skein512() {
-        let sk = Ed41417SigningKey::from_bytes_mod_order([42u8; 52]);
+        let sk = Ed448SigningKey::from_bytes(&[42u8; ED448_SECRET_KEY_SIZE]).unwrap();
         let pk = sk.verifying_key();
         let msg = b"hello";
         let sig = Ed448Skein512::sign(&sk, msg);
@@ -920,7 +920,7 @@ mod tests {
     fn test_ed448_falcon1024() {
         let seed = [42u8; 32];
         let (falcon_pk, falcon_sk) = falcon_keygen(&seed).unwrap();
-        let ed_sk = Ed41417SigningKey::from_bytes_mod_order([1u8; 52]);
+        let ed_sk = Ed448SigningKey::from_bytes(&[1u8; ED448_SECRET_KEY_SIZE]).unwrap();
         let ed_pk = ed_sk.verifying_key();
         let msg = b"hello";
         let sig = Ed448Falcon1024::sign(&ed_sk, &falcon_sk, msg);

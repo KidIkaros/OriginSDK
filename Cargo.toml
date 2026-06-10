@@ -37,7 +37,12 @@ flate2 = "1.0"
 rand = "=0.8.5"
 digest = "0.11"
 ed25519-dalek = { version = "2", features = ["rand_core"] }
+ed448 = "0.5"
+ed448-goldilocks = { version = "0.14.0-pre.13", features = ["std", "signing", "pkcs8", "getrandom"] }
+elliptic-curve = "0.13"
+signature = "2"
 subtle = "2.6.1"
+hex = "0.4"
 
 # OTP / HOTP / TOTP dependencies
 hmac = "0.12"

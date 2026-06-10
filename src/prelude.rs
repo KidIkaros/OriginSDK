@@ -73,6 +73,7 @@ pub use crate::pqc::slhdsa::{
 #[cfg(feature = "ml-dsa")]
 pub use crate::pqc::mldsa::{MldsaPrivateKey, MldsaPublicKey};
 
-// Ed448 — Curve41417 exposed under the standard name
-pub use crate::pqc::curve41417 as ed448;
-pub use crate::pqc::curve41417::ed41417 as ed448_raw;
+// Ed448 — RFC 8032 signature scheme (Goldilocks curve).
+pub use crate::pqc::ed448 as ed448;
+// Ed41417 — Daniel J. Bernstein's curve41417 signature scheme.
+pub use crate::pqc::curve41417::ed41417 as ed41417_raw;

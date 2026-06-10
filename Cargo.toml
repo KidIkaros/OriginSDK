@@ -2,10 +2,10 @@
 
 [package]
 name = "origin-crypto-sdk"
-version = "0.3.1"
+version = "0.4.0"
 edition = "2021"
 authors = ["Origin Contributors"]
-description = "Standalone cryptographic SDK with post-quantum and classical primitives"
+description = "Standalone cryptographic SDK with classical (Ed25519) and post-quantum (Falcon, SLH-DSA, ML-DSA, NTRU Prime, Curve41417) primitives. Hybrid signing by default."
 license-file = "LICENSE"
 keywords = ["cryptography", "post-quantum", "encryption", "signatures", "aead"]
 categories = ["cryptography"]

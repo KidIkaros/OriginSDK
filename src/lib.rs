@@ -1,153 +1,179 @@
 // SPDX-License-Identifier: OPL-1.1
 
-//! Origin Crypto SDK - Production-Ready Cryptographic Primitives
+//! Origin Crypto SDK — Post-quantum and classical cryptographic primitives.
 //!
-//! A standalone cryptographic SDK providing post-quantum and classical
-//! cryptographic primitives with a unified, developer-friendly API.
+//! A standalone Rust SDK for signing, encryption, key derivation, and
+//! key encapsulation, with first-class support for both classical
+//! (Ed25519, X25519) and post-quantum (Falcon-1024, SLH-DSA, ML-DSA,
+//! NTRU Prime, Curve41417) primitives.
 //!
-//! # Features
+//! # Quick start
 //!
-//! - **AEAD Encryption**: XChaCha20-Poly1305, ChaCha20-BLAKE3 (committing)
-//! - **Key Derivation**: Argon2id with configurable security levels
-//! - **Post-Quantum Crypto**: NTRU Prime KEM, Falcon-512/1024 signatures
-//! - **Error Correction**: Reed-Solomon with parallel encoding support
-//! - **Symmetric Encryption**: Serpent CBC for paranoid mode
-//!
-//! # Quick Start
-//!
-//! ## Encrypt Data with ChaCha20-BLAKE3 (Committing AEAD)
+//! For most users, importing the [`prelude`] gives you everything:
 //!
 //! ```rust
-//! use origin_crypto_sdk::{chacha20_blake3, kdf};
+//! use origin_crypto_sdk::prelude::*;
 //!
-//! // Derive key from password
-//! let password = b"secure_password";
-//! let salt = [1u8; 16];
-//! let key = kdf::Argon2id::derive_key(password, &salt, false).unwrap();
-//!
-//! // Generate nonce and encrypt
-//! let nonce = chacha20_blake3::ChaCha20Blake3::generate_nonce();
-//! let plaintext = b"Hello, World!";
-//! let ciphertext = chacha20_blake3::ChaCha20Blake3::encrypt(&key, &nonce, plaintext, b"").unwrap();
-//!
-//! // Decrypt
-//! let decrypted = chacha20_blake3::ChaCha20Blake3::decrypt(&key, &nonce, &ciphertext, b"").unwrap();
-//! assert_eq!(plaintext.to_vec(), decrypted);
+//! // Hybrid Ed25519 + Falcon-1024 signature (recommended default)
+//! let master_seed = [0x42u8; 32];
+//! let bundle = HybridSigningKeyBundle::from_seed(&master_seed, "my-app")
+//!     .expect("valid seed");
+//! let msg = b"sign this";
+//! let sig = bundle.sign_hybrid(msg);
+//! // sig is an Ed25519 + Falcon-1024 hybrid signature
 //! ```
 //!
-//! ## Or use XChaCha20-Poly1305 (non-committing, faster)
+//! For users who only need a single primitive:
 //!
 //! ```rust
-//! use origin_crypto_sdk::aead;
+//! use origin_crypto_sdk::signing::classical::Ed25519Signer;
+//! use origin_crypto_sdk::signing::postquantum::Falcon1024Signer;
 //!
-//! let key = aead::XChaCha20Poly1305::generate_key();
-//! let nonce = aead::generate_nonce();
-//! let plaintext = b"Hello, World!";
-//! let encrypted = aead::XChaCha20Poly1305::encrypt(&key, &nonce, plaintext).unwrap();
+//! // Just Ed25519
+//! let ed = Ed25519Signer::from_seed(&[1u8; 32]);
+//! let sig = ed.sign(b"hello");
+//! assert!(ed.verify(b"hello", &sig));
+//!
+//! // Just Falcon-1024
+//! let falcon = Falcon1024Signer::from_seed(&[1u8; 32]);
+//! let sig = falcon.sign(b"hello").expect("Falcon sign");
+//! assert!(falcon.verify(b"hello", &sig));
 //! ```
 //!
-//! ## Post-Quantum Signatures with Falcon-512
+//! # Module organization
 //!
-//! ```rust
-//! use origin_crypto_sdk::pqc::falcon512;
+//! - [`signing`] — Direct access to signing primitives, organized by family:
+//!   - [`signing::classical`] — Ed25519 (no PQ dependencies)
+//!   - [`signing::postquantum`] — Falcon-512/1024, SLH-DSA, ML-DSA
+//!   - [`signing::hybrid`] — Recommended default. Ed25519 + PQ combined.
+//! - [`aead`] / [`chacha20_blake3`] — Symmetric encryption (committing & non-committing)
+//! - [`kdf`] — Key derivation (Argon2id, HKDF-SHA3-256)
+//! - [`pqc`] — Raw post-quantum primitives (advanced use)
+//! - [`ec_schnorr`] — secp256k1 Schnorr signatures (native, no external deps)
+//! - [`prelude`] — One-line import for common types
 //!
-//! // Generate keypair from seed
-//! let seed = [42u8; 32];
-//! let (sk, pk) = falcon512::generate_keypair(seed);
+//! # Security defaults
 //!
-//! // Sign message
-//! let message = b"Important message";
-//! let signature = falcon512::sign(message, &sk).unwrap();
-//!
-//! // Verify signature
-//! assert!(falcon512::verify(message, &signature, &pk));
-//! ```
-//!
-//! ## NTRU Prime Key Encapsulation
-//!
-//! ```
-//! use origin_crypto_sdk::pqc::ntru_prime;
-//! use origin_crypto_sdk::internal::rng::ChaCha20Rng;
-//!
-//! let mut rng = ChaCha20Rng::from_seed([42u8; 32]);
-//!
-//! // Generate keypair
-//! let (pk, sk) = ntru_prime::NtruPrime::generate_keypair(&mut rng);
-//!
-//! // Encapsulate shared secret
-//! let (ciphertext, shared_secret_1) = ntru_prime::NtruPrime::encapsulate(&pk, &mut rng);
-//!
-//! // Decapsulate
-//! let shared_secret_2 = ntru_prime::NtruPrime::decapsulate(&ciphertext, &sk).unwrap();
-//!
-//! assert_eq!(shared_secret_1, shared_secret_2);
-//! ```
-//!
-//! ## Reed-Solomon Error Correction
-//!
-//! ```
-//! use origin_crypto_sdk::error_correction::ReedSolomonCodec;
-//!
-//! let codec = ReedSolomonCodec::new(16, 8); // 16 data shards, 8 parity shards
-//! let data = b"Important data that needs protection";
-//!
-//! // Encode
-//! let encoded = codec.encode(data).unwrap();
-//!
-//! // Decode (can recover from up to 8 corrupted shards)
-//! let decoded = codec.decode(&encoded).unwrap();
-//! assert_eq!(data.to_vec(), decoded);
-//! ```
-//!
-//! # Security Notes
-//!
-//! - Always use unique nonces for XChaCha20-Poly1305 encryption
-//! - Use unique salts for Argon2id key derivation
-//! - Store seeds securely for deterministic key generation
-//! - Use paranoid mode for high-security applications (slower but more secure)
+//! - For **signatures**: use the hybrid (Ed25519 + PQ) — see [`signing::hybrid`].
+//!   Both must verify, so a vulnerability in one primitive does not break security.
+//! - For **encryption**: prefer [`chacha20_blake3`] (committing AEAD).
+//!   Avoid XChaCha20-Poly1305 unless you specifically need the smaller tag
+//!   and accept the partitioning-oracle risk.
+//! - For **key derivation**: use Argon2id (memory-hard) for password-based KDF,
+//!   HKDF-SHA3-256 for HKDF-style derivation.
 
-pub mod aead;
-pub mod blob;
-pub mod chacha20_blake3; // ChaCha20-BLAKE3 AEAD (committing, secure)
-pub mod compression;
-pub mod drbg;
-pub mod ec_schnorr;
+#![doc(html_root_url = "https://docs.rs/origin-crypto-sdk/0.4.0")]
+#![allow(clippy::result_large_err)]
+
+// ──────────────────────────────────────────────────────────────────────
+// Public modules
+// ──────────────────────────────────────────────────────────────────────
+
+/// Error types and `Result` alias.
 pub mod error;
-pub mod error_correction;
-pub mod internal;
-pub mod kdf;
-pub mod kem;
-pub mod mac;
-pub mod mmr;
-pub mod pqc;
-pub mod primitives;
-pub mod seed;
-pub mod seed_gen; // Multi-hash seed generation (from cryp prototype)
-pub mod signature;
-pub mod signing;
-pub mod siphash;
-pub mod stealth_kdf;
-pub mod stealth_pow;
-pub mod streaming;
-pub mod symmetric;
-pub mod validation;
-
 pub use error::{CryptoError, Result};
 
-// Re-export commonly used types
+/// Prelude — re-exports common types for `use origin_crypto_sdk::prelude::*`.
+pub mod prelude;
+
+// ── Symmetric encryption ──
+pub mod aead;
+pub mod chacha20_blake3;
+pub mod symmetric;
+pub mod streaming;
+
+// ── Hashing & KDF ──
+pub mod kdf;
+pub mod mac;
+pub mod compression;
+pub mod siphash;
+pub mod primitives;
+
+// ── Signatures ──
+/// Signing primitives: classical, post-quantum, and hybrid.
+///
+/// **Recommended**: use [`signing::hybrid::HybridSigningKeyBundle`] for
+/// new applications. It pairs Ed25519 with a post-quantum primitive so
+/// the signature remains unforgeable even if one primitive is broken.
+pub mod signing;
+pub mod pqc;
+pub mod ec_schnorr;
+
+// Legacy flat `signing` API (pre-restructuring). Re-exported as
+// `origin_crypto_sdk::signing_legacy` for callers that imported the
+// old types directly.
+pub mod signing_legacy;
+
+// ── Randomness & DRBG ──
+pub mod drbg;
+
+// ── Entropy analysis & secret management (utility) ──
+pub mod entropy;
+pub mod otp;
+pub mod seed;
+pub mod seed_gen;
+pub mod blob;
+pub mod mmr;
+pub mod stealth_kdf;
+pub mod stealth_pow;
+
+// ── Error correction ──
+pub mod error_correction;
+
+// ── Hybrid construction types (re-exports of [`signing::hybrid`]) ──
+pub mod hybrid;
+
+// ──────────────────────────────────────────────────────────────────────
+// Internal modules (not part of public API; use at your own risk)
+// ──────────────────────────────────────────────────────────────────────
+#[doc(hidden)]
+pub mod internal;
+
+// ──────────────────────────────────────────────────────────────────────
+// Re-exports at crate root for convenience
+// ──────────────────────────────────────────────────────────────────────
+
+// Errors
+pub use error::{CryptoError as Error, Result as StdResult};
+
+// Encryption
 pub use aead::XChaCha20Poly1305;
-pub use blob::{create_blob, recover_seed, rotate_blob};
-pub use compression::{compress, decompress};
-pub use drbg::ChaCha20Drbg;
-pub use kdf::hkdf::{derive_subkeys, hkdf_sha3_256};
+
+// KDF
 pub use kdf::Argon2id;
-pub use kem::{Ciphertext as HybridCiphertext, HybridKem, SharedSecret as HybridSharedSecret};
+pub use kdf::hkdf::{derive_subkeys, hkdf_sha3_256};
+
+// MAC
 pub use mac::hmac_sha3_256;
-pub use primitives::{sha3, MemoryTier};
-pub use signature::HybridSignature;
+
+// Hashes
+pub use primitives::blake3;
+pub use primitives::sha3;
+pub use primitives::MemoryTier;
+
+// DRBG
+pub use drbg::ChaCha20Drbg;
+
+// Seed handling
+pub use seed::{derive_child_seed, derive_signing_keys, derive_verifying_keys, SeedHandle};
+
+// SipHash
 pub use siphash::siphash_expand;
 
-// Re-export PQC types
+// Compression
+pub use compression::{compress, decompress};
+
+// Signatures — re-exports
+pub use signing::HybridSignatureOutput;
+pub use signing::HybridSigningKey;
+pub use signing::HybridVerifyingKey;
+
+// Hybrid bundle (canonical PQ-hybrid signing)
+pub use signing::hybrid::HybridSigningKeyBundle;
+pub use signing::hybrid::falcon1024_keygen;
+pub use signing::hybrid::{skein1024, skein512};
+
+// PQC direct access
 pub use pqc::falcon1024::{
     self as falcon_1024, FalconPrivateKey as Falcon1024PrivateKey,
     FalconPublicKey as Falcon1024PublicKey, FalconSignature as Falcon1024Signature,
@@ -156,17 +182,14 @@ pub use pqc::falcon512::{
     self as falcon_512, Falcon512PrivateKey, Falcon512PublicKey, Falcon512Signature,
 };
 
-// Re-export seed, signing, and validation types
-pub use seed::{derive_child_seed, derive_signing_keys, derive_verifying_keys, SeedHandle};
-pub use signing::{HybridSignatureOutput, HybridSigningKey, HybridVerifyingKey};
-pub use validation::{validate_did, validate_info_string};
+// Ed448 — Curve41417 exposed under the standard name
+pub use pqc::curve41417 as ed448;
+pub use pqc::curve41417::ed41417 as ed448_raw;
 
-// Re-export hybrid constructions module
-pub mod hybrid;
+// SLH-DSA direct access (feature-gated)
+#[cfg(feature = "slh-dsa")]
+pub use pqc::slhdsa::{sign as slhdsa_sign, verify as slhdsa_verify, SlhDsaPrivateKey, SlhDsaPublicKey};
 
-pub mod entropy; // Entropy analysis (from cryp prototype)
-pub mod otp; // HOTP/TOTP (from spork prototype)
-
-pub use hybrid::falcon1024_keygen;
-pub use hybrid::HybridSigningKeyBundle;
-pub use hybrid::{skein1024, skein512};
+// ML-DSA direct access (feature-gated)
+#[cfg(feature = "ml-dsa")]
+pub use pqc::mldsa::{MldsaPrivateKey, MldsaPublicKey};

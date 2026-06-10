@@ -42,7 +42,7 @@ pub fn hkdf_expand(prk: &[u8], info: &[u8], output: &mut [u8]) -> Result<(), &'s
     if output.is_empty() {
         return Ok(());
     }
-    
+
     if output.len() > MAX_OUTPUT_LEN {
         return Err("HKDF output length exceeds maximum (8160 bytes)");
     }
@@ -57,12 +57,12 @@ pub fn hkdf_expand(prk: &[u8], info: &[u8], output: &mut [u8]) -> Result<(), &'s
         hmac_input.extend_from_slice(&t_prev);
         hmac_input.extend_from_slice(info);
         hmac_input.push(i as u8);
-        
+
         let t_i = hmac_sha3_256(prk, &hmac_input);
-        
+
         let to_copy = std::cmp::min(HASH_LEN, output.len() - offset);
         output[offset..offset + to_copy].copy_from_slice(&t_i[..to_copy]);
-        
+
         t_prev = t_i.to_vec();
         offset += to_copy;
     }
@@ -93,16 +93,13 @@ pub fn hkdf_sha3_256(
 /// Derive multiple subkeys using HKDF-SHA3-256
 ///
 /// Convenience function to derive encryption and authentication keys.
-pub fn derive_subkeys(
-    master_key: &[u8; 32],
-    salt: &[u8; 32],
-) -> ([u8; 32], [u8; 32]) {
+pub fn derive_subkeys(master_key: &[u8; 32], salt: &[u8; 32]) -> ([u8; 32], [u8; 32]) {
     let mut enc_key = [0u8; 32];
     let mut auth_key = [0u8; 32];
-    
+
     let _ = hkdf_sha3_256(Some(salt), master_key, b"encryption", &mut enc_key);
     let _ = hkdf_sha3_256(Some(salt), master_key, b"authentication", &mut auth_key);
-    
+
     (enc_key, auth_key)
 }
 
@@ -115,12 +112,12 @@ mod tests {
         let ikm = [1u8; 32];
         let salt = [2u8; 32];
         let mut output = [0u8; 32];
-        
+
         hkdf_sha3_256(Some(&salt), &ikm, b"test", &mut output).unwrap();
-        
+
         // Verify non-zero output
         assert_ne!(output, [0u8; 32]);
-        
+
         // Verify determinism
         let mut output2 = [0u8; 32];
         hkdf_sha3_256(Some(&salt), &ikm, b"test", &mut output2).unwrap();
@@ -131,7 +128,7 @@ mod tests {
     fn test_hkdf_no_salt() {
         let ikm = [1u8; 32];
         let mut output = [0u8; 32];
-        
+
         hkdf_sha3_256(None, &ikm, b"test", &mut output).unwrap();
         assert_ne!(output, [0u8; 32]);
     }
@@ -140,13 +137,13 @@ mod tests {
     fn test_hkdf_different_info_different_output() {
         let ikm = [1u8; 32];
         let salt = [2u8; 32];
-        
+
         let mut output1 = [0u8; 32];
         let mut output2 = [0u8; 32];
-        
+
         hkdf_sha3_256(Some(&salt), &ikm, b"info1", &mut output1).unwrap();
         hkdf_sha3_256(Some(&salt), &ikm, b"info2", &mut output2).unwrap();
-        
+
         assert_ne!(output1, output2);
     }
 
@@ -155,9 +152,9 @@ mod tests {
         let ikm = [1u8; 32];
         let salt = [2u8; 32];
         let mut output = [0u8; 100];
-        
+
         hkdf_sha3_256(Some(&salt), &ikm, b"test", &mut output).unwrap();
-        
+
         // Verify non-zero
         assert!(output.iter().any(|&b| b != 0));
     }
@@ -166,9 +163,9 @@ mod tests {
     fn test_derive_subkeys() {
         let master_key = [1u8; 32];
         let salt = [2u8; 32];
-        
+
         let (enc_key, auth_key) = derive_subkeys(&master_key, &salt);
-        
+
         assert_ne!(enc_key, [0u8; 32]);
         assert_ne!(auth_key, [0u8; 32]);
         assert_ne!(enc_key, auth_key);
@@ -178,7 +175,7 @@ mod tests {
     fn test_hkdf_expand_too_long() {
         let prk = [1u8; 32];
         let mut output = [0u8; 8200]; // Exceeds max
-        
+
         let result = hkdf_expand(&prk, b"", &mut output);
         assert!(result.is_err());
     }
@@ -187,7 +184,7 @@ mod tests {
     fn test_hkdf_empty_output() {
         let ikm = [1u8; 32];
         let mut output: [u8; 0] = [];
-        
+
         let result = hkdf_sha3_256(None, &ikm, b"test", &mut output);
         assert!(result.is_ok());
     }
@@ -198,10 +195,10 @@ mod tests {
         let ikm = hex_to_bytes("0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b");
         let salt = hex_to_bytes("000102030405060708090a0b0c");
         let info = hex_to_bytes("f0f1f2f3f4f5f6f7f8f9");
-        
+
         let mut okm = [0u8; 42];
         hkdf_sha3_256(Some(&salt), &ikm, &info, &mut okm).unwrap();
-        
+
         // Just verify it produces consistent output
         let mut okm2 = [0u8; 42];
         hkdf_sha3_256(Some(&salt), &ikm, &info, &mut okm2).unwrap();

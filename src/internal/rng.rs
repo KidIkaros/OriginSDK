@@ -8,9 +8,7 @@
 
 use rand::{CryptoRng, RngCore, SeedableRng};
 
-use crate::primitives::chacha20::{
-    chacha20_block, CHACHA20_KEY_SIZE, CHACHA20_NONCE_SIZE,
-};
+use crate::primitives::chacha20::{chacha20_block, CHACHA20_KEY_SIZE, CHACHA20_NONCE_SIZE};
 
 /// A ChaCha20-based CSPRNG backed by our native implementation.
 pub struct ChaCha20Rng {
@@ -84,7 +82,8 @@ impl RngCore for ChaCha20Rng {
                 self.refill_block();
             }
             let n = std::cmp::min(64 - self.block_pos, dest.len() - written);
-            dest[written..written + n].copy_from_slice(&self.block[self.block_pos..self.block_pos + n]);
+            dest[written..written + n]
+                .copy_from_slice(&self.block[self.block_pos..self.block_pos + n]);
             self.block_pos += n;
             written += n;
         }

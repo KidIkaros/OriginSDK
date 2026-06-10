@@ -44,7 +44,8 @@ mod tests {
 
     #[test]
     fn test_compress_decompress() {
-        let original = b"Hello, World! This is a test message that should compress reasonably well.";
+        let original =
+            b"Hello, World! This is a test message that should compress reasonably well.";
         let compressed = compress(original).unwrap();
         let decompressed = decompress(&compressed).unwrap();
 

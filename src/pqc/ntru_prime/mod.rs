@@ -15,8 +15,8 @@ mod r3;
 mod rq;
 mod zx;
 
-use crate::primitives::sha3 as native_sha3;
 use crate::error::{CryptoError, Result};
+use crate::primitives::sha3 as native_sha3;
 use rand::{CryptoRng, RngCore};
 
 pub use constants::*;
@@ -37,6 +37,17 @@ pub type SharedSecret = [u8; K_SIZE];
 pub struct NtruPrime;
 
 impl NtruPrime {
+    /// Generate an NTRU Prime key pair deterministically from a 32-byte seed.
+    ///
+    /// Uses ChaCha20 as a CSPRNG seeded with `seed`, producing the same
+    /// keypair for the same seed every time. This enables HKDF-style
+    /// derivation in `signet-core::Identity`.
+    pub fn generate_keypair_from_seed(seed: &[u8; 32]) -> (PublicKey, PrivateKey) {
+        use crate::internal::rng::ChaCha20Rng;
+        let mut rng = ChaCha20Rng::from_seed(*seed);
+        Self::generate_keypair(&mut rng)
+    }
+
     /// Generate an NTRU Prime key pair using the provided RNG.
     ///
     /// This is deterministic given the same RNG state, allowing for
@@ -109,7 +120,9 @@ impl NtruPrime {
             shared_secret.copy_from_slice(&s[32..64]);
             Ok(shared_secret)
         } else {
-            Err(CryptoError::Decryption("NTRU Prime decapsulation failed".to_string()))
+            Err(CryptoError::Decryption(
+                "NTRU Prime decapsulation failed".to_string(),
+            ))
         }
     }
 }

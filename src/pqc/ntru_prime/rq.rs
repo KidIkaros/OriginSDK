@@ -259,8 +259,8 @@ fn mult_scalar(h: &mut [i16; P], f: [i16; P], g: [i8; P]) {
 }
 
 pub mod encoding {
-    use super::modq;
     use super::super::constants::P;
+    use super::modq;
 
     pub fn encode(f: [i16; P]) -> [u8; 1218] {
         const QSHIFT: i32 = 2295;

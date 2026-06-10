@@ -107,8 +107,8 @@
 //! - Use paranoid mode for high-security applications (slower but more secure)
 
 pub mod aead;
-pub mod chacha20_blake3;  // ChaCha20-BLAKE3 AEAD (committing, secure)
 pub mod blob;
+pub mod chacha20_blake3; // ChaCha20-BLAKE3 AEAD (committing, secure)
 pub mod compression;
 pub mod drbg;
 pub mod ec_schnorr;
@@ -138,19 +138,32 @@ pub use aead::XChaCha20Poly1305;
 pub use blob::{create_blob, recover_seed, rotate_blob};
 pub use compression::{compress, decompress};
 pub use drbg::ChaCha20Drbg;
+pub use kdf::hkdf::{derive_subkeys, hkdf_sha3_256};
 pub use kdf::Argon2id;
-pub use kdf::hkdf::{hkdf_sha3_256, derive_subkeys};
-pub use kem::{HybridKem, Ciphertext as HybridCiphertext, SharedSecret as HybridSharedSecret};
+pub use kem::{Ciphertext as HybridCiphertext, HybridKem, SharedSecret as HybridSharedSecret};
 pub use mac::hmac_sha3_256;
 pub use primitives::{sha3, MemoryTier};
 pub use signature::HybridSignature;
 pub use siphash::siphash_expand;
 
 // Re-export PQC types
-pub use pqc::falcon512::{self as falcon_512, Falcon512PublicKey, Falcon512PrivateKey, Falcon512Signature};
-pub use pqc::falcon1024::{self as falcon_1024, FalconPublicKey as Falcon1024PublicKey, FalconPrivateKey as Falcon1024PrivateKey, FalconSignature as Falcon1024Signature};
+pub use pqc::falcon1024::{
+    self as falcon_1024, FalconPrivateKey as Falcon1024PrivateKey,
+    FalconPublicKey as Falcon1024PublicKey, FalconSignature as Falcon1024Signature,
+};
+pub use pqc::falcon512::{
+    self as falcon_512, Falcon512PrivateKey, Falcon512PublicKey, Falcon512Signature,
+};
 
 // Re-export seed, signing, and validation types
 pub use seed::{derive_child_seed, derive_signing_keys, derive_verifying_keys, SeedHandle};
-pub use signing::{HybridSigningKey, HybridSignatureOutput, HybridVerifyingKey};
+pub use signing::{HybridSignatureOutput, HybridSigningKey, HybridVerifyingKey};
 pub use validation::{validate_did, validate_info_string};
+
+// Re-export hybrid constructions module
+pub mod hybrid;
+
+// Convenience: derive Falcon-1024 / Falcon-512 keypair from seed
+pub use hybrid::falcon1024_keygen;
+pub use hybrid::HybridSigningKeyBundle;
+pub use hybrid::{skein1024, skein512};

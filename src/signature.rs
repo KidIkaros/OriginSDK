@@ -28,8 +28,12 @@ impl HybridSignature {
         }
 
         // Ed25519 sign using the SDK's falcon module for Falcon part
-        let ed_sig = crate::pqc::falcon1024::sign(message, &crate::pqc::falcon1024::FalconPrivateKey::from_bytes(ed25519_sk).map_err(|e| format!("{}", e))?)
-            .map_err(|e| format!("Ed25519 sign failed: {}", e))?;
+        let ed_sig = crate::pqc::falcon1024::sign(
+            message,
+            &crate::pqc::falcon1024::FalconPrivateKey::from_bytes(ed25519_sk)
+                .map_err(|e| format!("{}", e))?,
+        )
+        .map_err(|e| format!("Ed25519 sign failed: {}", e))?;
 
         let falcon_sk_obj = crate::pqc::falcon1024::FalconPrivateKey::from_bytes(falcon_sk)
             .map_err(|e| format!("Invalid Falcon key: {}", e))?;

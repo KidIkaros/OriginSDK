@@ -34,19 +34,19 @@ impl Argon2id {
         .map_err(|e| CryptoError::Kdf(e.to_string()))?;
 
         let argon2 = Argon2::new(Algorithm::Argon2id, Version::V0x13, params);
-        
+
         // Convert salt to SaltString using encode_b64
-        let salt_string = SaltString::encode_b64(salt)
-            .map_err(|e| CryptoError::Kdf(e.to_string()))?;
+        let salt_string =
+            SaltString::encode_b64(salt).map_err(|e| CryptoError::Kdf(e.to_string()))?;
 
         let password_hash = argon2
             .hash_password(password, &salt_string)
             .map_err(|e| CryptoError::Kdf(e.to_string()))?;
 
         let mut key = [0u8; 32];
-        let hash = password_hash.hash.ok_or_else(|| {
-            CryptoError::Kdf("No hash generated".to_string())
-        })?;
+        let hash = password_hash
+            .hash
+            .ok_or_else(|| CryptoError::Kdf("No hash generated".to_string()))?;
         let hash_bytes = hash.as_bytes();
         let len = hash_bytes.len().min(32);
         key[..len].copy_from_slice(&hash_bytes[..len]);

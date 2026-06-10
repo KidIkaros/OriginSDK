@@ -41,7 +41,9 @@ pub struct FieldElement {
 
 impl FieldElement {
     /// Zero element
-    pub const ZERO: Self = Self { limbs: [0, 0, 0, 0] };
+    pub const ZERO: Self = Self {
+        limbs: [0, 0, 0, 0],
+    };
 
     /// One element (in Montgomery form)
     pub const ONE: Self = Self { limbs: R };
@@ -168,6 +170,7 @@ impl FieldElement {
     }
 
     /// Modular reduction to [0, p)
+    #[allow(dead_code)]
     fn reduce(&self) -> Self {
         self.reduce_if_carry_or_gte_p(0)
     }
@@ -193,7 +196,11 @@ impl FieldElement {
 
         // Select between result and sub_result based on gte_p
         for i in 0..4 {
-            result[i] = if gte_p.is_true() { sub_result[i] } else { result[i] };
+            result[i] = if gte_p.is_true() {
+                sub_result[i]
+            } else {
+                result[i]
+            };
         }
 
         Self::from_limbs(result)

@@ -7,9 +7,8 @@
 
 use crate::error::{CryptoError, Result};
 use cipher::{
-    generic_array::GenericArray,
-    generic_array::typenum::U16,
-    BlockEncryptMut, BlockDecryptMut, KeyInit,
+    generic_array::typenum::U16, generic_array::GenericArray, BlockDecryptMut, BlockEncryptMut,
+    KeyInit,
 };
 use serpent::Serpent;
 
@@ -51,7 +50,9 @@ impl SerpentCbc {
     /// Decrypt data using Serpent in CBC mode
     pub fn decrypt(key: &[u8; 32], iv: &[u8; 16], ciphertext: &[u8]) -> Result<Vec<u8>> {
         if ciphertext.len() % 16 != 0 {
-            return Err(CryptoError::Decryption("Invalid ciphertext length".to_string()));
+            return Err(CryptoError::Decryption(
+                "Invalid ciphertext length".to_string(),
+            ));
         }
 
         let key_array = GenericArray::<u8, U16>::from_slice(&key[..16]);

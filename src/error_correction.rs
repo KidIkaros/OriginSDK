@@ -15,13 +15,13 @@ struct GaloisField;
 
 impl GaloisField {
     const PRIMITIVE_POLYNOMIAL: u8 = 0x1B;
-    
+
     /// Multiply two elements in GF(2^8) using polynomial reduction
     pub fn mul(a: u8, b: u8) -> u8 {
         let mut result = 0u8;
         let mut a = a;
         let mut b = b;
-        
+
         while b != 0 {
             if (b & 1) != 0 {
                 result ^= a;
@@ -33,7 +33,7 @@ impl GaloisField {
             }
             b >>= 1;
         }
-        
+
         result
     }
 
@@ -45,7 +45,7 @@ impl GaloisField {
         let mut result = 1u8;
         let mut base = a;
         let mut exp = n;
-        
+
         while exp > 0 {
             if exp & 1 != 0 {
                 result = Self::mul(result, base);
@@ -53,7 +53,7 @@ impl GaloisField {
             base = Self::mul(base, base);
             exp >>= 1;
         }
-        
+
         result
     }
 }
@@ -72,30 +72,31 @@ impl ReedSolomonCodec {
             parity_shards,
         }
     }
-    
+
     /// Generate Vandermonde matrix for encoding
     fn vandermonde_matrix(data_shards: usize, parity_shards: usize) -> Vec<Vec<u8>> {
         let mut matrix = vec![vec![0u8; data_shards]; parity_shards];
-        
+
         for i in 0..parity_shards {
             for j in 0..data_shards {
                 matrix[i][j] = GaloisField::exp(j as u8, i as u8 + 1);
             }
         }
-        
+
         matrix
     }
-    
+
     /// Encode data by computing parity shards using matrix multiplication
     pub fn encode(&self, data: &[u8]) -> Result<Vec<u8>> {
         let shard_size = (data.len() + self.data_shards - 1) / self.data_shards;
-        let mut shards: Vec<Vec<u8>> = vec![vec![0u8; shard_size]; self.data_shards + self.parity_shards];
-        
+        let mut shards: Vec<Vec<u8>> =
+            vec![vec![0u8; shard_size]; self.data_shards + self.parity_shards];
+
         // Split data into shards
         for (i, chunk) in data.chunks(shard_size).enumerate() {
             shards[i][..chunk.len()].copy_from_slice(chunk);
         }
-        
+
         // Compute parity shards
         let matrix = Self::vandermonde_matrix(self.data_shards, self.parity_shards);
         for i in 0..self.parity_shards {
@@ -107,7 +108,7 @@ impl ReedSolomonCodec {
                 shards[self.data_shards + i][j] = parity;
             }
         }
-        
+
         // Flatten shards into encoded data
         let mut encoded = Vec::new();
         // Store original data length at the beginning
@@ -115,42 +116,48 @@ impl ReedSolomonCodec {
         for shard in &shards {
             encoded.extend_from_slice(shard);
         }
-        
+
         Ok(encoded)
     }
-    
+
     /// Decode data and reconstruct using parity shards
     pub fn decode(&self, encoded: &[u8]) -> Result<Vec<u8>> {
         let total_shards = self.data_shards + self.parity_shards;
-        
+
         if encoded.len() < 4 {
             return Err(CryptoError::ReedSolomon(
                 "Encoded data too short to read length".to_string(),
             ));
         }
-        let original_len = u32::from_le_bytes([encoded[0], encoded[1], encoded[2], encoded[3]]) as usize;
-        
+        let original_len =
+            u32::from_le_bytes([encoded[0], encoded[1], encoded[2], encoded[3]]) as usize;
+
         let shard_size = (encoded.len() - 4) / total_shards;
-        
+
         if (encoded.len() - 4) % total_shards != 0 {
             return Err(CryptoError::ReedSolomon(
                 "Encoded data length not divisible by total shards".to_string(),
             ));
         }
 
-        let mut shards: Vec<Vec<u8>> = encoded[4..].chunks(shard_size).map(|s| s.to_vec()).collect();
-        
+        let mut shards: Vec<Vec<u8>> = encoded[4..]
+            .chunks(shard_size)
+            .map(|s| s.to_vec())
+            .collect();
+
         if shards.len() != total_shards {
-            return Err(CryptoError::ReedSolomon(
-                format!("Expected {} shards, got {}", total_shards, shards.len()),
-            ));
+            return Err(CryptoError::ReedSolomon(format!(
+                "Expected {} shards, got {}",
+                total_shards,
+                shards.len()
+            )));
         }
 
         let matrix = Self::vandermonde_matrix(self.data_shards, self.parity_shards);
-        
+
         // Try to detect corrupted shards
         let mut corrupted_shards = Vec::new();
-        
+
         for i in 0..self.parity_shards {
             let parity_shard = self.data_shards + i;
             for j in 0..shard_size {
@@ -163,10 +170,12 @@ impl ReedSolomonCodec {
                         let mut test_calc = 0u8;
                         for m in 0..self.data_shards {
                             if m != k {
-                                test_calc = test_calc ^ GaloisField::mul(matrix[i][m], shards[m][j]);
+                                test_calc =
+                                    test_calc ^ GaloisField::mul(matrix[i][m], shards[m][j]);
                             }
                         }
-                        if GaloisField::mul(shards[k][j], matrix[i][k]) == (calculated ^ test_calc) {
+                        if GaloisField::mul(shards[k][j], matrix[i][k]) == (calculated ^ test_calc)
+                        {
                             if !corrupted_shards.contains(&k) {
                                 corrupted_shards.push(k);
                             }
@@ -202,7 +211,8 @@ impl ReedSolomonCodec {
                 }
                 if calculated != shards[parity_shard][j] {
                     return Err(CryptoError::ReedSolomon(
-                        "Parity check failed - data corruption beyond recovery capacity".to_string(),
+                        "Parity check failed - data corruption beyond recovery capacity"
+                            .to_string(),
                     ));
                 }
             }
@@ -226,40 +236,43 @@ impl ReedSolomonCodec {
     #[cfg(feature = "parallel")]
     pub fn encode_parallel(&self, data: &[u8]) -> Result<Vec<u8>> {
         let shard_size = (data.len() + self.data_shards - 1) / self.data_shards;
-        let mut shards: Vec<Vec<u8>> = vec![vec![0u8; shard_size]; self.data_shards + self.parity_shards];
-        
+        let mut shards: Vec<Vec<u8>> =
+            vec![vec![0u8; shard_size]; self.data_shards + self.parity_shards];
+
         // Split data into shards
         for (i, chunk) in data.chunks(shard_size).enumerate() {
             shards[i][..chunk.len()].copy_from_slice(chunk);
         }
-        
+
         // Compute parity shards in parallel
         let matrix = Self::vandermonde_matrix(self.data_shards, self.parity_shards);
         let parity_shards: Vec<Vec<u8>> = (0..self.parity_shards)
             .into_par_iter()
             .map(|i| {
-                (0..shard_size).map(|j| {
-                    let mut parity = 0u8;
-                    for k in 0..self.data_shards {
-                        parity = parity ^ GaloisField::mul(matrix[i][k], shards[k][j]);
-                    }
-                    parity
-                }).collect()
+                (0..shard_size)
+                    .map(|j| {
+                        let mut parity = 0u8;
+                        for k in 0..self.data_shards {
+                            parity = parity ^ GaloisField::mul(matrix[i][k], shards[k][j]);
+                        }
+                        parity
+                    })
+                    .collect()
             })
             .collect();
-        
+
         // Copy parity shards back
         for (i, parity_shard) in parity_shards.iter().enumerate() {
             shards[self.data_shards + i].copy_from_slice(parity_shard);
         }
-        
+
         // Flatten shards into encoded data
         let mut encoded = Vec::new();
         encoded.extend_from_slice(&(data.len() as u32).to_le_bytes());
         for shard in &shards {
             encoded.extend_from_slice(shard);
         }
-        
+
         Ok(encoded)
     }
 }
@@ -271,7 +284,7 @@ impl DataReedSolomon {
     pub fn new() -> Self {
         Self
     }
-    
+
     /// Encode a 128-byte block to 136 bytes (128+8)
     pub fn encode_block(&self, block: &[u8]) -> Result<Vec<u8>> {
         if block.len() != 128 {
@@ -279,12 +292,12 @@ impl DataReedSolomon {
                 "Block must be exactly 128 bytes".to_string(),
             ));
         }
-        
+
         let codec = ReedSolomonCodec::new(128, 8);
         let encoded = codec.encode(block)?;
         Ok(encoded[4..].to_vec())
     }
-    
+
     /// Decode a 136-byte block back to 128 bytes
     pub fn decode_block(&self, encoded: &[u8]) -> Result<Vec<u8>> {
         if encoded.len() != 136 {
@@ -292,11 +305,11 @@ impl DataReedSolomon {
                 "Encoded block must be exactly 136 bytes".to_string(),
             ));
         }
-        
+
         let mut encoded_with_prefix = Vec::with_capacity(140);
         encoded_with_prefix.extend_from_slice(&(128u32).to_le_bytes());
         encoded_with_prefix.extend_from_slice(encoded);
-        
+
         let codec = ReedSolomonCodec::new(128, 8);
         codec.decode(&encoded_with_prefix)
     }

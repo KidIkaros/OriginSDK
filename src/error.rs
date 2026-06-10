@@ -64,7 +64,9 @@ impl Clone for CryptoError {
             CryptoError::ReedSolomon(msg) => CryptoError::ReedSolomon(msg.clone()),
             CryptoError::Kdf(msg) => CryptoError::Kdf(msg.clone()),
             CryptoError::Pqc(msg) => CryptoError::Pqc(msg.clone()),
-            CryptoError::Io(err) => CryptoError::Io(std::io::Error::new(err.kind(), err.to_string())),
+            CryptoError::Io(err) => {
+                CryptoError::Io(std::io::Error::new(err.kind(), err.to_string()))
+            }
             CryptoError::Serialization(msg) => CryptoError::Serialization(msg.clone()),
             CryptoError::InvalidParameter(msg) => CryptoError::InvalidParameter(msg.clone()),
             CryptoError::Compression(msg) => CryptoError::Compression(msg.clone()),

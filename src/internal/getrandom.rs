@@ -61,7 +61,12 @@ pub fn fill(dest: &mut [u8]) -> Result<(), &'static str> {
         let mut offset = 0;
         while offset < dest.len() {
             let ret = unsafe {
-                syscall(SYS_GETRANDOM, dest.as_mut_ptr().add(offset), dest.len() - offset, 0)
+                syscall(
+                    SYS_GETRANDOM,
+                    dest.as_mut_ptr().add(offset),
+                    dest.len() - offset,
+                    0,
+                )
             };
             if ret < 0 {
                 let errno = unsafe { *__errno_location() };
@@ -78,8 +83,8 @@ pub fn fill(dest: &mut [u8]) -> Result<(), &'static str> {
     #[cfg(all(unix, not(target_os = "linux")))]
     {
         use std::io::Read;
-        let mut file = std::fs::File::open("/dev/urandom")
-            .map_err(|_| "failed to open /dev/urandom")?;
+        let mut file =
+            std::fs::File::open("/dev/urandom").map_err(|_| "failed to open /dev/urandom")?;
         file.read_exact(dest)
             .map_err(|_| "failed to read from /dev/urandom")?;
         Ok(())

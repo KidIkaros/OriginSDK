@@ -3,7 +3,9 @@
 //! HMAC module for message authentication
 
 use crate::error::Result;
-use crate::internal::hmac::{hmac_sha3_256 as native_hmac, hmac_sha3_256_multi as native_hmac_multi};
+use crate::internal::hmac::{
+    hmac_sha3_256 as native_hmac, hmac_sha3_256_multi as native_hmac_multi,
+};
 
 /// Compute HMAC-SHA3-256
 pub fn hmac_sha3_256(key: &[u8], data: &[u8]) -> Result<[u8; 32]> {

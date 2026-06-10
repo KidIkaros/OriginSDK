@@ -170,8 +170,13 @@ pub fn derive_child_seed(parent: &[u8], domain: &str) -> Result<Vec<u8>, String>
         return Err("Domain is empty".to_string());
     }
     let mut output = [0u8; 32];
-    crate::kdf::hkdf::hkdf_sha3_256(parent, Some(domain.as_bytes()), b"origin-child-seed", &mut output)
-        .map_err(|e| format!("HKDF failed: {}", e))?;
+    crate::kdf::hkdf::hkdf_sha3_256(
+        parent,
+        Some(domain.as_bytes()),
+        b"origin-child-seed",
+        &mut output,
+    )
+    .map_err(|e| format!("HKDF failed: {}", e))?;
     Ok(output.to_vec())
 }
 
@@ -182,13 +187,23 @@ pub fn derive_child_seed(parent: &[u8], domain: &str) -> Result<Vec<u8>, String>
 pub fn derive_signing_keys(seed: &[u8], domain: &str) -> Result<(Vec<u8>, Vec<u8>), String> {
     // Derive Ed25519 seed (32 bytes)
     let mut ed_seed = [0u8; 32];
-    crate::kdf::hkdf::hkdf_sha3_256(seed, Some(b"signing"), &[domain.as_bytes(), b"ed25519"].concat(), &mut ed_seed)
-        .map_err(|e| format!("Ed25519 key derivation failed: {}", e))?;
+    crate::kdf::hkdf::hkdf_sha3_256(
+        seed,
+        Some(b"signing"),
+        &[domain.as_bytes(), b"ed25519"].concat(),
+        &mut ed_seed,
+    )
+    .map_err(|e| format!("Ed25519 key derivation failed: {}", e))?;
 
     // Derive Falcon seed (32 bytes)
     let mut falcon_seed = [0u8; 32];
-    crate::kdf::hkdf::hkdf_sha3_256(seed, Some(b"signing"), &[domain.as_bytes(), b"falcon1024"].concat(), &mut falcon_seed)
-        .map_err(|e| format!("Falcon key derivation failed: {}", e))?;
+    crate::kdf::hkdf::hkdf_sha3_256(
+        seed,
+        Some(b"signing"),
+        &[domain.as_bytes(), b"falcon1024"].concat(),
+        &mut falcon_seed,
+    )
+    .map_err(|e| format!("Falcon key derivation failed: {}", e))?;
 
     // Get Ed25519 secret key from seed
     let ed25519_sk = ed_seed.to_vec();
@@ -270,7 +285,10 @@ mod tests {
         let parent = [1u8; 32];
         let child1 = derive_child_seed(&parent, "domain1").unwrap();
         let child2 = derive_child_seed(&parent, "domain2").unwrap();
-        assert_ne!(child1, child2, "Different domains should produce different children");
+        assert_ne!(
+            child1, child2,
+            "Different domains should produce different children"
+        );
         assert_eq!(child1.len(), 32, "Child seed should be 32 bytes");
     }
 
@@ -287,6 +305,6 @@ mod tests {
         let seed = [42u8; 32];
         let handle = SeedHandle::new(&seed, None);
         let _ = handle; // drop triggers zeroize
-        // Can't directly verify zeroization, but no panic = success
+                        // Can't directly verify zeroization, but no panic = success
     }
 }

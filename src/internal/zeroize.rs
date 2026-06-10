@@ -51,7 +51,8 @@ impl<const N: usize> Zeroize for [u8; N] {
 impl<const N: usize> Zeroize for [i64; N] {
     fn zeroize(&mut self) {
         let ptr = self.as_mut_ptr() as *mut u8;
-        let bytes = unsafe { core::slice::from_raw_parts_mut(ptr, N * core::mem::size_of::<i64>()) };
+        let bytes =
+            unsafe { core::slice::from_raw_parts_mut(ptr, N * core::mem::size_of::<i64>()) };
         secure_zero_memory(bytes);
     }
 }
@@ -67,7 +68,8 @@ impl<const N: usize> Zeroize for [i8; N] {
 impl<const N: usize> Zeroize for [u32; N] {
     fn zeroize(&mut self) {
         let ptr = self.as_mut_ptr() as *mut u8;
-        let bytes = unsafe { core::slice::from_raw_parts_mut(ptr, N * core::mem::size_of::<u32>()) };
+        let bytes =
+            unsafe { core::slice::from_raw_parts_mut(ptr, N * core::mem::size_of::<u32>()) };
         secure_zero_memory(bytes);
     }
 }

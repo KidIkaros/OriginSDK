@@ -11,7 +11,7 @@ keywords = ["cryptography", "post-quantum", "encryption", "signatures", "aead"]
 categories = ["cryptography"]
 repository = "https://github.com/KidIkaros/OriginSDK"
 homepage = "https://github.com/KidIkaros/OriginSDK"
-rust-version = "1.70"
+rust-version = "1.85"
 
 [dependencies]
 # External crypto crates
@@ -20,14 +20,22 @@ chacha20poly1305 = { version = "=0.10.1", features = ["getrandom"] }
 chacha20-blake3 = "0.9.11"  # ChaCha20-BLAKE3 AEAD (committing)
 argon2 = { version = "=0.5.3", features = ["password-hash"] }
 sha2 = "=0.10.8"
+sha3 = "0.11"
+blake3 = "1.8"              # BLAKE3 hash (standalone, for hybrid constructions)
+skein = "0.2"               # Skein hash family (Skein512, Skein1024)
 serpent = "0.5"
 cipher = { version = "0.4", features = ["block-padding"] }
+
+# Post-quantum signatures (optional)
+slh-dsa = { version = "0.2.0-rc.5", optional = true }
+ml-dsa = { version = "0.1.0", optional = true }
 
 # Compression
 flate2 = "1.0"
 
 # Utility crates — kept until their dependents are replaced
 rand = "=0.8.5"
+digest = "0.11"
 ed25519-dalek = { version = "2", features = ["rand_core"] }
 subtle = "2.6.1"
 
@@ -38,6 +46,8 @@ rayon = { version = "1.11", optional = true }
 default = ["parallel"]
 parallel = ["dep:rayon"]
 pqc-simd = []
+slh-dsa = ["dep:slh-dsa"]
+ml-dsa = ["dep:ml-dsa"]
 
 [dev-dependencies]
 tempfile = "3.10"
@@ -46,3 +56,4 @@ criterion = "0.5"
 [[bench]]
 name = "crypto_benchmarks"
 harness = false
+required-features = ["slh-dsa", "ml-dsa"]

@@ -14,8 +14,8 @@
 
 pub mod getrandom;
 pub mod hex;
-pub mod hmac;
 pub mod hkdf;
+pub mod hmac;
 pub mod rng;
 pub mod secp256k1;
 pub mod sha3;

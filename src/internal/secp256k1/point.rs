@@ -107,7 +107,7 @@ impl AffinePoint {
     }
 
     /// Decode from SEC1 format
-    /// 
+    ///
     /// Uses reconstruction instead of validation for compressed points:
     /// since y is derived from x via sqrt(x³ + 7), the curve equation
     /// is satisfied by construction.
@@ -145,7 +145,11 @@ impl AffinePoint {
 
                 // Reconstruct directly without redundant validation
                 CtOption::new(
-                    AffinePoint { x, y: y_final, infinity: false },
+                    AffinePoint {
+                        x,
+                        y: y_final,
+                        infinity: false,
+                    },
                     Choice::from_bool(true),
                 )
             }
@@ -172,9 +176,7 @@ impl AffinePoint {
     /// Encode to SEC1 compressed format
     pub fn to_encoded_point(&self, compress: bool) -> EncodedPoint {
         if self.infinity {
-            return EncodedPoint {
-                bytes: vec![0x00],
-            };
+            return EncodedPoint { bytes: vec![0x00] };
         }
 
         if compress {
@@ -268,8 +270,13 @@ impl ProjectivePoint {
 
         let v = u1.mul(&i);
 
-        let x3 = r.mul(&r).sub(&j).sub(&v.mul(&FieldElement::from_limbs([2, 0, 0, 0])));
-        let y3 = r.mul(&v.sub(&x3)).sub(&s1.mul(&j).mul(&FieldElement::from_limbs([2, 0, 0, 0])));
+        let x3 = r
+            .mul(&r)
+            .sub(&j)
+            .sub(&v.mul(&FieldElement::from_limbs([2, 0, 0, 0])));
+        let y3 = r
+            .mul(&v.sub(&x3))
+            .sub(&s1.mul(&j).mul(&FieldElement::from_limbs([2, 0, 0, 0])));
         let z3 = self.z.add(&other.z).mul(&h).sub(&z1z1).sub(&z2z2).mul(&h);
 
         Self {
@@ -290,13 +297,26 @@ impl ProjectivePoint {
         let yy = self.y.mul(&self.y);
         let yyyy = yy.mul(&yy);
 
-        let s = self.x.add(&yy).mul(&self.x.add(&yy)).sub(&xx).sub(&yyyy).mul(&FieldElement::from_limbs([2, 0, 0, 0]));
+        let s = self
+            .x
+            .add(&yy)
+            .mul(&self.x.add(&yy))
+            .sub(&xx)
+            .sub(&yyyy)
+            .mul(&FieldElement::from_limbs([2, 0, 0, 0]));
 
         let m = xx.mul(&FieldElement::from_limbs([3, 0, 0, 0]));
 
-        let x3 = m.mul(&m).sub(&s.mul(&FieldElement::from_limbs([2, 0, 0, 0])));
-        let y3 = m.mul(&s.sub(&x3)).sub(&yyyy.mul(&FieldElement::from_limbs([8, 0, 0, 0])));
-        let z3 = self.y.mul(&self.z).mul(&FieldElement::from_limbs([2, 0, 0, 0]));
+        let x3 = m
+            .mul(&m)
+            .sub(&s.mul(&FieldElement::from_limbs([2, 0, 0, 0])));
+        let y3 = m
+            .mul(&s.sub(&x3))
+            .sub(&yyyy.mul(&FieldElement::from_limbs([8, 0, 0, 0])));
+        let z3 = self
+            .y
+            .mul(&self.z)
+            .mul(&FieldElement::from_limbs([2, 0, 0, 0]));
 
         Self {
             x: x3,

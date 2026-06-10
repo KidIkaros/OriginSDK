@@ -117,7 +117,8 @@ impl VerifyingKey {
 
     /// Verify a signature on a message.
     pub fn verify(&self, message: &[u8], signature: &Signature) -> Result<()> {
-        let r_point = EdwardsPoint::from_bytes(&signature.r_enc).ok_or(CryptoError::AuthenticationFailed)?;
+        let r_point =
+            EdwardsPoint::from_bytes(&signature.r_enc).ok_or(CryptoError::AuthenticationFailed)?;
         Scalar::from_canonical_bytes(&signature.s_enc).ok_or(CryptoError::AuthenticationFailed)?;
 
         let a_point = EdwardsPoint::from_bytes(&self.bytes)
@@ -157,7 +158,9 @@ impl Signature {
     /// Deserialize a signature from bytes.
     pub fn from_bytes(bytes: &[u8]) -> Result<Self> {
         if bytes.len() != SIGNATURE_SIZE {
-            return Err(CryptoError::InvalidParameter("Invalid signature length".to_string()));
+            return Err(CryptoError::InvalidParameter(
+                "Invalid signature length".to_string(),
+            ));
         }
 
         let mut r_enc = [0u8; BYTES_SIZE];

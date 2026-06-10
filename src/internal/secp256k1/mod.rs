@@ -15,7 +15,7 @@ mod point;
 mod scalar;
 
 pub use field::FieldElement;
-pub use point::{AffinePoint, ProjectivePoint, EncodedPoint};
+pub use point::{AffinePoint, EncodedPoint, ProjectivePoint};
 pub use scalar::Scalar;
 
 /// secp256k1 curve order n

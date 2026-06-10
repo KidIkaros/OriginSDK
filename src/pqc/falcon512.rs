@@ -18,7 +18,7 @@ use crate::internal::zeroize::Zeroize;
 pub const MAX_SIGNATURE_LEN: usize = 666;
 
 /// Falcon-512 public key.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Falcon512PublicKey(pub Vec<u8>);
 
 /// Falcon-512 private key (zeroized on drop).
@@ -31,6 +31,12 @@ impl Clone for Falcon512PrivateKey {
         Self {
             sk: self.sk.clone(),
         }
+    }
+}
+
+impl std::fmt::Debug for Falcon512PrivateKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Falcon512PrivateKey [REDACTED]")
     }
 }
 
@@ -47,7 +53,7 @@ impl Drop for Falcon512PrivateKey {
 }
 
 /// Falcon-512 signature.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Falcon512Signature(pub Vec<u8>);
 
 /// Generate Falcon-1024 keypair deterministically from a 32-byte seed.

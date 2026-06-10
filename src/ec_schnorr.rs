@@ -6,9 +6,9 @@
 //! using the Schnorr identification protocol with Fiat-Shamir heuristic.
 
 use crate::error::{CryptoError, Result};
+use crate::internal::secp256k1::{AffinePoint, EncodedPoint, ProjectivePoint, Scalar};
+use crate::internal::subtle::{ct_option_to_option, ConstantTimeEq};
 use crate::primitives::sha3::sha3_256;
-use crate::internal::secp256k1::{AffinePoint, ProjectivePoint, Scalar, EncodedPoint};
-use crate::internal::subtle::{ConstantTimeEq, ct_option_to_option};
 use rand::RngCore;
 
 /// An EC-Schnorr proof of knowledge of a discrete logarithm.
@@ -51,11 +51,7 @@ impl From<SchnorrError> for CryptoError {
 }
 
 /// Create an EC-Schnorr proof of knowledge of the discrete log of `public_key`.
-pub fn prove(
-    secret_key: &[u8; 32],
-    public_key: &[u8],
-    message: &[u8],
-) -> Result<EcSchnorrProof> {
+pub fn prove(secret_key: &[u8; 32], public_key: &[u8], message: &[u8]) -> Result<EcSchnorrProof> {
     let x = ct_option_to_option(Scalar::from_repr(secret_key))
         .ok_or_else(|| CryptoError::InvalidParameter("Invalid secret key scalar".into()))?;
 
@@ -64,8 +60,7 @@ pub fn prove(
         let mut rng = rand::thread_rng();
         let mut buf = [0u8; 32];
         rng.fill_bytes(&mut buf);
-        ct_option_to_option(Scalar::from_repr(&buf))
-            .ok_or(SchnorrError::RngFailed)?
+        ct_option_to_option(Scalar::from_repr(&buf)).ok_or(SchnorrError::RngFailed)?
     };
 
     // R = r*G
@@ -162,8 +157,7 @@ fn compute_challenge(commitment: &[u8], public_key: &[u8], message: &[u8]) -> Sc
         rehash_input.extend_from_slice(b"ec-schnorr-rehash");
         rehash_input.extend_from_slice(&hash);
         let hash2 = sha3_256(&rehash_input);
-        ct_option_to_option(Scalar::from_repr(&hash2))
-            .unwrap_or(Scalar::ONE)
+        ct_option_to_option(Scalar::from_repr(&hash2)).unwrap_or(Scalar::ONE)
     })
 }
 

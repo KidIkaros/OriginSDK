@@ -40,8 +40,9 @@ impl HybridSigningKey {
     pub fn sign(&self, message: &[u8]) -> Result<HybridSignatureOutput, String> {
         // Ed25519 sign using dalek
         let ed_secret = ed25519_dalek::SigningKey::from_bytes(
-            self.ed25519_sk[..32].try_into()
-                .map_err(|_| "Invalid Ed25519 secret key length")?
+            self.ed25519_sk[..32]
+                .try_into()
+                .map_err(|_| "Invalid Ed25519 secret key length")?,
         );
         use ed25519_dalek::Signer;
         let ed_signature = ed_secret.sign(message);
@@ -67,8 +68,7 @@ impl HybridSigningKey {
 
     /// Get the public verifying key for this signing key.
     pub fn public_key(&self) -> Result<HybridVerifyingKey, String> {
-        let (ed25519_pk, falcon_pk) =
-            derive_verifying_keys(&self.ed25519_sk, &self.falcon_sk)?;
+        let (ed25519_pk, falcon_pk) = derive_verifying_keys(&self.ed25519_sk, &self.falcon_sk)?;
 
         Ok(HybridVerifyingKey {
             ed25519_pk,
@@ -80,6 +80,21 @@ impl HybridSigningKey {
     /// Get the domain this key was derived for.
     pub fn domain(&self) -> &str {
         &self.domain
+    }
+
+    /// Get the underlying 32-byte Ed25519 secret key seed.
+    pub fn ed25519_seed(&self) -> &[u8] {
+        &self.ed25519_sk
+    }
+
+    /// Convert into a [`crate::hybrid::HybridSigningKeyBundle`] for the canonical
+    /// Ed25519+Falcon-1024 hybrid construction. Useful for getting access to the
+    /// bundle's single-call `sign_hybrid()` API.
+    pub fn to_bundle(&self) -> Result<crate::hybrid::HybridSigningKeyBundle, String> {
+        let mut seed = [0u8; 32];
+        seed.copy_from_slice(&self.ed25519_sk[..32]);
+        crate::hybrid::HybridSigningKeyBundle::from_seed(&seed, &self.domain)
+            .map_err(|e| format!("Bundle derivation failed: {}", e))
     }
 }
 
@@ -126,8 +141,9 @@ impl HybridVerifyingKey {
         }
         // Validate that the Ed25519 bytes form a valid point
         ed25519_dalek::VerifyingKey::from_bytes(
-            ed25519_pk.try_into().map_err(|_| "Ed25519 pk conversion")?
-        ).map_err(|e| format!("Invalid Ed25519 public key: {}", e))?;
+            ed25519_pk.try_into().map_err(|_| "Ed25519 pk conversion")?,
+        )
+        .map_err(|e| format!("Invalid Ed25519 public key: {}", e))?;
 
         if falcon_pk.len() != 1793 {
             return Err(format!(
@@ -287,7 +303,10 @@ mod tests {
 
         // Different domain = different key
         let pk3 = key3.public_key().unwrap();
-        assert!(!pk1.ct_eq(&pk3), "Different domain should give different key");
+        assert!(
+            !pk1.ct_eq(&pk3),
+            "Different domain should give different key"
+        );
     }
 
     #[test]
@@ -350,7 +369,8 @@ mod tests {
             original.ed25519_pk(),
             original.falcon_pk(),
             original.domain(),
-        ).unwrap();
+        )
+        .unwrap();
 
         assert!(original.ct_eq(&reconstructed));
     }
@@ -366,7 +386,8 @@ mod tests {
             original.ed25519_pk(),
             original.falcon_pk(),
             original.domain(),
-        ).unwrap();
+        )
+        .unwrap();
 
         let msg = b"verify through reconstructed key";
         let sig = sk.sign(msg).unwrap();
@@ -389,5 +410,23 @@ mod tests {
 
         assert!(HybridVerifyingKey::from_raw_bytes(pk.ed25519_pk(), &[0u8; 1792], "t").is_err());
         assert!(HybridVerifyingKey::from_raw_bytes(pk.ed25519_pk(), &[0u8; 1794], "t").is_err());
+    }
+
+    #[test]
+    fn test_to_bundle_sign_verify() {
+        use crate::hybrid::Ed25519Falcon1024;
+
+        let seed = [42u8; 32];
+        let handle = SeedHandle::new(&seed, None);
+        let signing_key = HybridSigningKey::from_handle(&handle, "my-domain").unwrap();
+
+        // Convert to bundle and use its single-call API
+        let bundle = signing_key.to_bundle().unwrap();
+        assert_eq!(bundle.domain(), "my-domain");
+
+        let msg = b"hello from bundle";
+        let sig = bundle.sign_hybrid(msg);
+        Ed25519Falcon1024::verify(bundle.ed25519_pk(), bundle.falcon1024_pk(), msg, &sig)
+            .unwrap();
     }
 }

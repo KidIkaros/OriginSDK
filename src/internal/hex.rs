@@ -18,7 +18,11 @@ pub fn encode(data: &[u8]) -> String {
 
 /// Encode bytes as a lowercase hex string into a pre-allocated buffer.
 pub fn encode_to_slice(data: &[u8], out: &mut [u8]) {
-    assert_eq!(out.len(), data.len() * 2, "output buffer must be 2x input len");
+    assert_eq!(
+        out.len(),
+        data.len() * 2,
+        "output buffer must be 2x input len"
+    );
     for (i, &byte) in data.iter().enumerate() {
         out[i * 2] = HEX_CHARS_LOWER[(byte >> 4) as usize];
         out[i * 2 + 1] = HEX_CHARS_LOWER[(byte & 0x0f) as usize];
@@ -84,8 +88,8 @@ mod tests {
 
     #[test]
     fn decode_invalid_fails() {
-        assert!(decode("zzz").is_none());     // invalid chars
-        assert!(decode("abc").is_none());     // odd length
+        assert!(decode("zzz").is_none()); // invalid chars
+        assert!(decode("abc").is_none()); // odd length
     }
 
     #[test]

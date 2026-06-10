@@ -41,7 +41,9 @@ pub struct Scalar {
 
 impl Scalar {
     /// Zero scalar
-    pub const ZERO: Self = Self { limbs: [0, 0, 0, 0] };
+    pub const ZERO: Self = Self {
+        limbs: [0, 0, 0, 0],
+    };
 
     /// One scalar
     pub const ONE: Self = Self {
@@ -187,7 +189,11 @@ impl Scalar {
         }
 
         for i in 0..4 {
-            result[i] = if gte_n.is_true() { sub_result[i] } else { result[i] };
+            result[i] = if gte_n.is_true() {
+                sub_result[i]
+            } else {
+                result[i]
+            };
         }
 
         Self::from_limbs(result)
@@ -280,7 +286,6 @@ impl ConstantTimeEq for Scalar {
         Choice(result)
     }
 }
-
 
 /// Check if limbs represent value < n
 fn is_lt_n(limbs: &[u64; 4]) -> Choice {

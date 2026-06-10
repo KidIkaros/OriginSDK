@@ -7,14 +7,30 @@
 
 /// Keccak-f[1600] round constants
 const RC: [u64; 24] = [
-    0x0000000000000001, 0x0000000000008082, 0x800000000000808a,
-    0x8000000080008000, 0x000000000000808b, 0x0000000080000001,
-    0x8000000080008081, 0x8000000000008009, 0x000000000000008a,
-    0x0000000000000088, 0x0000000080008009, 0x000000008000000a,
-    0x000000008000808b, 0x800000000000008b, 0x8000000000008089,
-    0x8000000000008003, 0x8000000000008002, 0x8000000000000080,
-    0x000000000000800a, 0x800000008000000a, 0x8000000080008081,
-    0x8000000000008080, 0x0000000080000001, 0x8000000080008008,
+    0x0000000000000001,
+    0x0000000000008082,
+    0x800000000000808a,
+    0x8000000080008000,
+    0x000000000000808b,
+    0x0000000080000001,
+    0x8000000080008081,
+    0x8000000000008009,
+    0x000000000000008a,
+    0x0000000000000088,
+    0x0000000080008009,
+    0x000000008000000a,
+    0x000000008000808b,
+    0x800000000000008b,
+    0x8000000000008089,
+    0x8000000000008003,
+    0x8000000000008002,
+    0x8000000000000080,
+    0x000000000000800a,
+    0x800000008000000a,
+    0x8000000080008081,
+    0x8000000000008080,
+    0x0000000080000001,
+    0x8000000080008008,
 ];
 
 /// Rotate left for u64
@@ -34,18 +50,38 @@ fn keccakf1600(state: &mut [u64; 25]) {
         let c2 = state[2] ^ state[7] ^ state[12] ^ state[17] ^ state[22];
         let c3 = state[3] ^ state[8] ^ state[13] ^ state[18] ^ state[23];
         let c4 = state[4] ^ state[9] ^ state[14] ^ state[19] ^ state[24];
-        
+
         let t0 = c4 ^ rotl64(c1, 1);
         let t1 = c0 ^ rotl64(c2, 1);
         let t2 = c1 ^ rotl64(c3, 1);
         let t3 = c2 ^ rotl64(c4, 1);
         let t4 = c3 ^ rotl64(c0, 1);
-        
-        state[0] ^= t0; state[5] ^= t0; state[10] ^= t0; state[15] ^= t0; state[20] ^= t0;
-        state[1] ^= t1; state[6] ^= t1; state[11] ^= t1; state[16] ^= t1; state[21] ^= t1;
-        state[2] ^= t2; state[7] ^= t2; state[12] ^= t2; state[17] ^= t2; state[22] ^= t2;
-        state[3] ^= t3; state[8] ^= t3; state[13] ^= t3; state[18] ^= t3; state[23] ^= t3;
-        state[4] ^= t4; state[9] ^= t4; state[14] ^= t4; state[19] ^= t4; state[24] ^= t4;
+
+        state[0] ^= t0;
+        state[5] ^= t0;
+        state[10] ^= t0;
+        state[15] ^= t0;
+        state[20] ^= t0;
+        state[1] ^= t1;
+        state[6] ^= t1;
+        state[11] ^= t1;
+        state[16] ^= t1;
+        state[21] ^= t1;
+        state[2] ^= t2;
+        state[7] ^= t2;
+        state[12] ^= t2;
+        state[17] ^= t2;
+        state[22] ^= t2;
+        state[3] ^= t3;
+        state[8] ^= t3;
+        state[13] ^= t3;
+        state[18] ^= t3;
+        state[23] ^= t3;
+        state[4] ^= t4;
+        state[9] ^= t4;
+        state[14] ^= t4;
+        state[19] ^= t4;
+        state[24] ^= t4;
 
         // Rho Pi
         let mut b = [0u64; 25];
@@ -148,28 +184,28 @@ impl Sha3_256 {
     /// Update the hasher with data
     pub fn update(&mut self, data: &[u8]) {
         let mut offset = 0;
-        
+
         // If we have buffered data, try to fill the buffer
         if self.buf_len > 0 {
             let to_copy = std::cmp::min(136 - self.buf_len, data.len());
             self.buffer[self.buf_len..self.buf_len + to_copy].copy_from_slice(&data[..to_copy]);
             self.buf_len += to_copy;
             offset = to_copy;
-            
+
             if self.buf_len == 136 {
                 xor_bytes(&mut self.state, 0, &self.buffer);
                 keccakf1600(&mut self.state);
                 self.buf_len = 0;
             }
         }
-        
+
         // Process full blocks
         while offset + 136 <= data.len() {
             xor_bytes(&mut self.state, 0, &data[offset..offset + 136]);
             keccakf1600(&mut self.state);
             offset += 136;
         }
-        
+
         // Buffer remaining data
         let remaining = data.len() - offset;
         if remaining > 0 {
@@ -183,10 +219,10 @@ impl Sha3_256 {
         // SHA3 padding: 0b01100001 pattern (0x06 followed by zeros and 0x80 at end)
         self.buffer[self.buf_len] = 0x06;
         self.buffer[135] = 0x80;
-        
+
         xor_bytes(&mut self.state, 0, &self.buffer);
         keccakf1600(&mut self.state);
-        
+
         let mut output = [0u8; 32];
         extract_bytes(&self.state, &mut output);
         output
@@ -226,28 +262,28 @@ impl Sha3_512 {
     /// Update the hasher with data
     pub fn update(&mut self, data: &[u8]) {
         let mut offset = 0;
-        
+
         // If we have buffered data, try to fill the buffer
         if self.buf_len > 0 {
             let to_copy = std::cmp::min(72 - self.buf_len, data.len());
             self.buffer[self.buf_len..self.buf_len + to_copy].copy_from_slice(&data[..to_copy]);
             self.buf_len += to_copy;
             offset = to_copy;
-            
+
             if self.buf_len == 72 {
                 xor_bytes(&mut self.state, 0, &self.buffer);
                 keccakf1600(&mut self.state);
                 self.buf_len = 0;
             }
         }
-        
+
         // Process full blocks
         while offset + 72 <= data.len() {
             xor_bytes(&mut self.state, 0, &data[offset..offset + 72]);
             keccakf1600(&mut self.state);
             offset += 72;
         }
-        
+
         // Buffer remaining data
         let remaining = data.len() - offset;
         if remaining > 0 {
@@ -261,10 +297,10 @@ impl Sha3_512 {
         // SHA3 padding
         self.buffer[self.buf_len] = 0x06;
         self.buffer[71] = 0x80;
-        
+
         xor_bytes(&mut self.state, 0, &self.buffer);
         keccakf1600(&mut self.state);
-        
+
         let mut output = [0u8; 64];
         extract_bytes(&self.state, &mut output);
         output
@@ -292,7 +328,8 @@ mod tests {
     #[test]
     fn sha3_256_empty() {
         let result = Sha3_256::digest(b"");
-        let expected = hex_to_bytes32("a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a");
+        let expected =
+            hex_to_bytes32("a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a");
         assert_eq!(result, expected);
     }
 
@@ -300,7 +337,8 @@ mod tests {
     #[test]
     fn sha3_256_abc() {
         let result = Sha3_256::digest(b"abc");
-        let expected = hex_to_bytes32("3a985da74fe225b2045c172d6bd390bd855f086e3e9d525b46bfe24511431532");
+        let expected =
+            hex_to_bytes32("3a985da74fe225b2045c172d6bd390bd855f086e3e9d525b46bfe24511431532");
         assert_eq!(result, expected);
     }
 
@@ -318,7 +356,8 @@ mod tests {
         hasher.update(b"ab");
         hasher.update(b"c");
         let result = hasher.finalize();
-        let expected = hex_to_bytes32("3a985da74fe225b2045c172d6bd390bd855f086e3e9d525b46bfe24511431532");
+        let expected =
+            hex_to_bytes32("3a985da74fe225b2045c172d6bd390bd855f086e3e9d525b46bfe24511431532");
         assert_eq!(result, expected);
     }
 
@@ -334,7 +373,7 @@ mod tests {
     fn hex_to_bytes32(hex: &str) -> [u8; 32] {
         let mut out = [0u8; 32];
         for i in 0..32 {
-            out[i] = u8::from_str_radix(&hex[i*2..i*2+2], 16).unwrap();
+            out[i] = u8::from_str_radix(&hex[i * 2..i * 2 + 2], 16).unwrap();
         }
         out
     }
@@ -342,7 +381,7 @@ mod tests {
     fn hex_to_bytes64(hex: &str) -> [u8; 64] {
         let mut out = [0u8; 64];
         for i in 0..64 {
-            out[i] = u8::from_str_radix(&hex[i*2..i*2+2], 16).unwrap();
+            out[i] = u8::from_str_radix(&hex[i * 2..i * 2 + 2], 16).unwrap();
         }
         out
     }

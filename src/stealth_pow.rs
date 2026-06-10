@@ -170,8 +170,7 @@ pub fn verify(
 
 /// Compute the effective difficulty for a given address index.
 pub fn effective_difficulty(config: &StealthPowConfig, address_index: u64) -> u32 {
-    let effective = config.base_difficulty
-        + config.per_address_increment * address_index as u32;
+    let effective = config.base_difficulty + config.per_address_increment * address_index as u32;
     effective.min(config.max_difficulty)
 }
 
@@ -184,7 +183,8 @@ fn compute_hash(
     extra: &[u8; 16],
     counter: u64,
 ) -> [u8; 32] {
-    let mut input = Vec::with_capacity(14 + identity_pk.len() + destination_hint.len() + 32 + 16 + 8);
+    let mut input =
+        Vec::with_capacity(14 + identity_pk.len() + destination_hint.len() + 32 + 16 + 8);
     input.extend_from_slice(b"stealth-pow-v1");
     input.extend_from_slice(identity_pk);
     input.extend_from_slice(destination_hint);
@@ -291,7 +291,10 @@ mod tests {
         let (_, iters_12) = solve(&pk, hint, 12).unwrap();
         let (_, iters_16) = solve(&pk, hint, 16).unwrap();
         // Not guaranteed but very likely
-        assert!(iters_16 >= iters_12, "Higher difficulty should take >= iterations");
+        assert!(
+            iters_16 >= iters_12,
+            "Higher difficulty should take >= iterations"
+        );
     }
 
     #[test]

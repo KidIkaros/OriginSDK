@@ -144,7 +144,11 @@ impl Mmr {
 
         loop {
             // Check if we've reached the top
-            let level_len = self.levels.get(height as usize).map(|l| l.len()).unwrap_or(0);
+            let level_len = self
+                .levels
+                .get(height as usize)
+                .map(|l| l.len())
+                .unwrap_or(0);
             if level_len <= 1 {
                 break;
             }
@@ -361,7 +365,11 @@ mod tests {
         // Spot-check proofs at various indices
         for i in [0, 1, 2, 3, 500, 998, 999] {
             let proof = mmr.prove_membership(i).unwrap();
-            assert!(Mmr::verify_proof(&proof, &root), "Proof failed for leaf {}", i);
+            assert!(
+                Mmr::verify_proof(&proof, &root),
+                "Proof failed for leaf {}",
+                i
+            );
         }
     }
 
@@ -382,5 +390,4 @@ mod tests {
         assert!(mmr.prove_membership(1).is_err());
         assert!(mmr.prove_membership(100).is_err());
     }
-
 }

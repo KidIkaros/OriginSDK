@@ -116,11 +116,11 @@ mod tests {
         let key = b"test_key";
         let data = b"test_data";
         let result = hmac_sha3_256(key, data);
-        
+
         // Verify determinism
         let result2 = hmac_sha3_256(key, data);
         assert_eq!(result, result2);
-        
+
         // Different key should produce different result
         let key2 = b"other_key";
         let result3 = hmac_sha3_256(key2, data);
@@ -133,7 +133,7 @@ mod tests {
         let key = vec![0u8; 200];
         let data = b"test_data";
         let result = hmac_sha3_256(&key, data);
-        
+
         // Same result when using the hashed key
         let hashed_key = Sha3_256::digest(&key);
         let result2 = hmac_sha3_256(&hashed_key, data);
@@ -145,11 +145,11 @@ mod tests {
         let key = b"test_key";
         let chunks: &[&[u8]] = &[b"chunk1", b"chunk2", b"chunk3"];
         let result_multi = hmac_sha3_256_multi(key, chunks);
-        
+
         // Same as concatenating first
         let concatenated = b"chunk1chunk2chunk3";
         let result_concat = hmac_sha3_256(key, concatenated);
-        
+
         assert_eq!(result_multi, result_concat);
     }
 

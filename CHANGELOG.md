@@ -88,6 +88,32 @@ All notable changes to origin-crypto-sdk will be documented in this file.
 - 4 runnable examples verified
 - All 3 pre-existing `hybrid_rigorous` test failures now compile and pass
 
+## [0.4.1] — 2026-06-11
+
+### Added
+- **Module reorganization**: crate structure now matches the README module map exactly
+  - `aead::{symmetric, streaming}` — Serpent CBC + streaming encryption under AEAD
+  - `kdf::mac` — HMAC-SHA3-256 moved under KDF (keyed hash = KDF primitive)
+  - `drbg::otp` — One-time pad (HOTP/TOTP) moved under DRBG (RNG utility)
+  - `seed::gen` — Multi-hash seed generation moved under seed
+  - `stealth::{kdf, pow}` — Stealth KDF + PoW merged into single `stealth` module
+  - `signing::legacy_shim` — deprecated top-level `hybrid` shim moved under signing
+
+### Changed
+- **Internal utilities marked `#[doc(hidden)]`**: `entropy`, `mmr`, `error_correction`,
+  `siphash`, `compression`, `blob`, `primitives`, `otp` (now `drbg::otp`), `internal`
+  — still public API but hidden from docs.rs, use at own risk
+- **PQC type re-exports removed from crate root**: `Falcon1024PrivateKey`, `Falcon512PrivateKey`,
+  `FalconSignature`, `ed41417_raw` no longer at `origin_crypto_sdk::*`
+  - Use `pqc::falcon1024::FalconPrivateKey` etc. for advanced access
+  - Use `signing::postquantum::{Falcon1024Signer,Falcon512Signer}` for OOP API
+  - Eliminates duplicate Falcon exposure at crate root
+- **README module map updated** to show full nested structure
+
+### Fixed
+- All 228 lib + 41 integration/proptest/hybrid tests pass after reorganization
+- 4 examples build and run correctly
+
 ## [0.3.0] — 2026-05-28
 
 ### Added

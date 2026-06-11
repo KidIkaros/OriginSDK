@@ -26,7 +26,7 @@ let sig = bundle.sign_hybrid(b"sign this");
 |----------|-----------|-------------|
 | **Signatures** | Ed25519, Falcon-512/1024, SLH-DSA, ML-DSA, Ed448, Ed41417 | Hybrid (Ed25519 + Falcon-1024) |
 | **Encryption** | XChaCha20-Poly1305, ChaCha20-BLAKE3, Serpent CBC | ChaCha20-BLAKE3 (committing AEAD) |
-| **KDF** | Argon2id, HKDF-SHA3-256 | Argon2id for passwords, HKDF for derivation |
+| **KDF** | Argon2id, HKDF-SHA3-256, HMAC-SHA3-256 | Argon2id for passwords, HKDF for derivation |
 | **Hashing** | BLAKE3, SHA3-256, SHAKE128/256, Skein-512/1024 | BLAKE3 or SHA3-256 |
 | **PQC KEM** | NTRU Prime (sntrup761), hybrid X25519+NTRU+Ed41417 | Hybrid KEM |
 | **Utilities** | ChaCha20-DRBG, seed hierarchy, Reed-Solomon, OTP/TOTP, compression, entropy analysis | -- |
@@ -66,10 +66,14 @@ origin_crypto_sdk::
   signing::             -- Ed25519, Falcon, SLH-DSA, ML-DSA, hybrid
     hybrid::            -- HybridSigningKeyBundle (recommended)
     classical::         -- Ed25519 alone
-    postquantum::       -- Falcon-512/1024 alone
+    postquantum::       -- Falcon-512/1024 alone (OOP signers)
+    legacy_shim::       -- Deprecated: old `hybrid::*` re-exports
   aead::                -- XChaCha20-Poly1305
+    symmetric::         -- Serpent CBC (non-AEAD)
+    streaming::         -- Streaming encryption
   chacha20_blake3::     -- ChaCha20-BLAKE3 (committing AEAD)
   kdf::                 -- Argon2id, HKDF-SHA3-256
+    mac::               -- HMAC-SHA3-256 (keyed hash)
   pqc::                 -- Raw PQC primitives (advanced)
     falcon512::         -- Falcon-512
     falcon1024::        -- Falcon-1024
@@ -79,13 +83,42 @@ origin_crypto_sdk::
     slhdsa::            -- SLH-DSA (feature-gated)
     mldsa::             -- ML-DSA (feature-gated)
   drbg::                -- ChaCha20 DRBG (auto-reseed at 16 MB)
-  entropy::             -- Entropy quality analysis
+    otp::               -- One-time pad (HOTP/TOTP, RFC 4226/6238)
+  entropy::            -- Entropy quality analysis (internal)
   seed::                -- Hierarchical seed derivation
-  blob::                -- Encrypted seed at rest
-  mmr::                 -- Merkle Mountain Range
+    gen::               -- Multi-hash seed generation
+  blob::                -- Encrypted seed at rest (internal)
+  mmr::                 -- Merkle Mountain Range (internal)
+  stealth::             -- Stealth address primitives
+    kdf::               -- Stealth master/child key derivation
+    pow::               -- Hashcash PoW for enumeration rate-limiting
   ec_schnorr::          -- secp256k1 Schnorr (native, zero deps)
   prelude::             -- Common re-exports
+  test_utils::          -- Deterministic test helpers (feature = "test-utils")
+  types::               -- Zeroizing byte array newtypes (XNonce, CNonce, Seed, etc.)
+  error::               -- CryptoError, Result alias
+  signing_legacy::      -- Deprecated flat signing API (removed in 0.5)
+  internal::            -- Internals (hidden, not for external use)
 ```
+
+> **Note**: Modules marked `(internal)` are `#[doc(hidden)]` — they compile and work but don't appear in public docs. Use at your own risk.
+
+## Usage: Two Layers for Signing
+
+```rust
+// Layer 1: OOP signers (easy, recommended for single-primitive use)
+use origin_crypto_sdk::signing::postquantum::Falcon1024Signer;
+let signer = Falcon1024Signer::from_seed(&[0x42u8; 32]).expect("valid seed");
+signer.sign(b"hello").expect("sign failed");
+
+// Layer 2: Raw primitives (advanced, for custom composition)
+use origin_crypto_sdk::pqc::falcon1024::{FalconPrivateKey, FalconPublicKey, sign, verify};
+let (pk, sk) = falcon1024::generate_keypair_from_seed(&seed).expect("keygen");
+let sig = sign(b"hello", &sk).expect("sign failed");
+verify(b"hello", &sig, &pk).expect("verify failed");
+```
+
+The `signing::postquantum` OOP types are thin wrappers over `pqc::` — no duplicate implementations.
 
 ## Examples
 
@@ -116,9 +149,7 @@ OPL-1.1 — see [LICENSE](LICENSE).
 
 ## API Stability
 
-**Pre-1.0 notice**: This crate is at version 0.4.0. Per [Cargo's SemVer
-guidance](https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html#pre-1.0),
-anything below 1.0 may contain breaking changes in minor releases.
+**Pre-1.0 notice**: This crate is at version 0.4.0. Per [Cargo's SemVer guidance](https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html#pre-1.0), anything below 1.0 may contain breaking changes in minor releases.
 
 **Stable** (breaking changes will require a major version bump):
 - `CryptoError` variants and their `Display` output

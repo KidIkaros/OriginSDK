@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: OPL-1.1
+// SPDX-License-Identifier: Apache-2.0
 //
 // Hybrid signing: Ed25519 + Falcon-1024 from a single seed.
 // This is the recommended default for new applications.

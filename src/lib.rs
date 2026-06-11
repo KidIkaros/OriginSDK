@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: OPL-1.1
+// SPDX-License-Identifier: Apache-2.0
 #![cfg_attr(docsrs, warn(missing_docs))]
 
 //! Origin Crypto SDK — Post-quantum and classical cryptographic primitives.

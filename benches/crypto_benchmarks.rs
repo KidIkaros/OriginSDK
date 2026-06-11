@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: OPL-1.1
+// SPDX-License-Identifier: Apache-2.0
 
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 use ed25519_dalek::SigningKey as Ed25519Sk;

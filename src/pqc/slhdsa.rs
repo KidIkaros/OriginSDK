@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: OPL-1.1
+// SPDX-License-Identifier: Apache-2.0
 
 //! SLH-DSA (FIPS 205) wrapper for Origin SDK.
 //!

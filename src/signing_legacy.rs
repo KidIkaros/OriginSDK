@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: OPL-1.1
+// SPDX-License-Identifier: Apache-2.0
 
 //! **DEPRECATED**: Pre-0.4 flat `signing` API. Use `signing::hybrid`,
 //! `signing::classical`, and `signing::postquantum` instead.

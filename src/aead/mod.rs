@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: OPL-1.1
+// SPDX-License-Identifier: Apache-2.0
 
 //! Authenticated Encryption with Associated Data (AEAD)
 //!

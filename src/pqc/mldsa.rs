@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: OPL-1.1
+// SPDX-License-Identifier: Apache-2.0
 
 //! ML-DSA (FIPS 204) wrapper for Origin SDK — Dilithium2-equivalent (MlDsa44).
 //!

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: OPL-1.1
+// SPDX-License-Identifier: Apache-2.0
 
 //! Native ChaCha20 CSPRNG — replacement for `rand_chacha::ChaCha20Rng`.
 //!

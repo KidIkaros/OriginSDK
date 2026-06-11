@@ -2,7 +2,7 @@
 
 Standalone Rust cryptographic SDK with classical and post-quantum primitives. Hybrid signing by default.
 
-[![License: OPL-1.1](https://img.shields.io/badge/license-OPL--1.1-blue.svg)](LICENSE)
+[![License: Apache-2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![MSRV: 1.85](https://img.shields.io/badge/MSRV-1.85-orange.svg)](https://blog.rust-lang.org/2025/02/20/Rust-1.85.0.html)
 [![crates.io](https://img.shields.io/crates/v/origin-crypto-sdk.svg)](https://crates.io/crates/origin-crypto-sdk)
 
@@ -136,7 +136,7 @@ cargo run --example seed_tree
 
 ## License
 
-OPL-1.1 — see [LICENSE](LICENSE).
+Apache-2.0 — see [LICENSE](LICENSE).
 
 ## Links
 

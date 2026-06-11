@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: OPL-1.1
+// SPDX-License-Identifier: Apache-2.0
 
 //! ChaCha20-Poly1305 AEAD construction (native implementation)
 //!

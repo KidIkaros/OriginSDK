@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: OPL-1.1
+// SPDX-License-Identifier: Apache-2.0
 
 //! Fuzz target: Hybrid signature verify (Ed25519 + Falcon-1024)
 //!

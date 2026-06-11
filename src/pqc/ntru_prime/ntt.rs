@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: OPL-1.1
+// SPDX-License-Identifier: Apache-2.0
 
 //! Number Theoretic Transform (NTT) for O(P log P) polynomial multiplication
 //!

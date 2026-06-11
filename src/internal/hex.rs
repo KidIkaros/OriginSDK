@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: OPL-1.1
+// SPDX-License-Identifier: Apache-2.0
 
 //! Hexadecimal encoding and decoding — replacement for the `hex` crate.
 

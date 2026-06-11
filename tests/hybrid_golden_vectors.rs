@@ -12,7 +12,7 @@
 //! A single byte mismatch fails the test. This is the gold standard for verifying
 //! that an implementation matches the spec.
 
-use origin_crypto_sdk::hybrid::{skein1024, skein512};
+use origin_crypto_sdk::signing::legacy_shim::{skein1024, skein512};
 
 // =============================================================================
 // Helper: hex decoding
@@ -264,7 +264,7 @@ fn golden_hkdf_sha3_256_deterministic() {
 
 #[test]
 fn golden_derive_hybrid_keys_label_separation() {
-    use origin_crypto_sdk::hybrid::derive_hybrid_keys;
+    use origin_crypto_sdk::signing::legacy_shim::derive_hybrid_keys;
 
     let seed = [42u8; 32];
     let (ed1, ch1, h1) = derive_hybrid_keys(&seed, "domain", 32, 32, 32).unwrap();

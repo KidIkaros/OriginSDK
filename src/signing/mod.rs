@@ -50,6 +50,11 @@ pub mod classical;
 pub mod postquantum;
 pub mod hybrid;
 
+/// Legacy compatibility shim for code that used `origin_crypto_sdk::hybrid::*`.
+/// **Deprecated.** Use `signing::hybrid` directly instead.
+#[deprecated(note = "use signing::hybrid instead. This module will be removed in 0.5.")]
+pub mod legacy_shim;
+
 // ──────────────────────────────────────────────────────────────────────
 // Legacy re-exports
 //

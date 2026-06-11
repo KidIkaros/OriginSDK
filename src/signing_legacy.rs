@@ -104,13 +104,13 @@ impl HybridSigningKey {
         &self.ed25519_sk
     }
 
-    /// Convert into a [`crate::hybrid::HybridSigningKeyBundle`] for the canonical
+    /// Convert into a [`crate::signing::legacy_shim::HybridSigningKeyBundle`] for the canonical
     /// Ed25519+Falcon-1024 hybrid construction. Useful for getting access to the
     /// bundle's single-call `sign_hybrid()` API.
-    pub fn to_bundle(&self) -> Result<crate::hybrid::HybridSigningKeyBundle, String> {
+    pub fn to_bundle(&self) -> Result<crate::signing::legacy_shim::HybridSigningKeyBundle, String> {
         let mut seed = [0u8; 32];
         seed.copy_from_slice(&self.ed25519_sk[..32]);
-        crate::hybrid::HybridSigningKeyBundle::from_seed(&seed, &self.domain)
+        crate::signing::legacy_shim::HybridSigningKeyBundle::from_seed(&seed, &self.domain)
             .map_err(|e| format!("Bundle derivation failed: {}", e))
     }
 }
@@ -446,7 +446,7 @@ mod tests {
     #[allow(deprecated)]
     #[test]
     fn test_to_bundle_sign_verify() {
-        use crate::hybrid::Ed25519Falcon1024;
+        use crate::signing::legacy_shim::Ed25519Falcon1024;
 
         let seed = [42u8; 32];
         let handle = SeedHandle::new(&seed, None);

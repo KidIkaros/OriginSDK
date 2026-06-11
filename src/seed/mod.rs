@@ -7,6 +7,12 @@
 //! - mlock to prevent swapping to disk (Sovereign tier)
 //! - Deterministic key derivation via HKDF-SHA3-256
 //! - Fingerprint for identity commitment
+//!
+//! # Submodules
+//!
+//! - [`gen`] — Multi-hash seed generation with hash diversity.
+
+pub mod gen;
 
 use std::time::{Duration, Instant};
 

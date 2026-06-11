@@ -2,10 +2,16 @@
 
 //! Key Derivation Functions
 //!
-//! Provides Argon2id for password-based key derivation and HKDF for
-//! key derivation from master keys.
+//! Provides Argon2id for password-based key derivation, HKDF for
+//! key derivation from master keys, and HMAC for message authentication.
+//!
+//! # Submodules
+//!
+//! - [`hkdf`] — HKDF-SHA3-256
+//! - [`mac`] — HMAC-SHA3-256
 
 pub mod hkdf;
+pub mod mac;
 
 use crate::error::{CryptoError, Result};
 use argon2::{

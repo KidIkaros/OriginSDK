@@ -3,6 +3,14 @@
 //! Authenticated Encryption with Associated Data (AEAD)
 //!
 //! Provides XChaCha20-Poly1305 encryption with 256-bit keys and 192-bit nonces.
+//!
+//! # Submodules
+//!
+//! - [`symmetric`] — Non-AEAD symmetric encryption (Serpent CBC, paranoid mode)
+//! - [`streaming`] — Chunked encryption for files larger than memory
+
+pub mod streaming;
+pub mod symmetric;
 
 use crate::error::{CryptoError, Result};
 use crate::internal::getrandom;

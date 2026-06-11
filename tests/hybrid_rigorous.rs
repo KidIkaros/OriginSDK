@@ -12,7 +12,7 @@
 //! 7. **Side-channel timing** — basic timing variance checks
 
 use ed25519_dalek::SigningKey as Ed25519Sk;
-use origin_crypto_sdk::hybrid::{
+use origin_crypto_sdk::signing::legacy_shim::{
     derive_hybrid_keys, skein1024, skein512, Ed25519Blake3, Ed25519ChaCha20Blake3Sha3_256,
     Ed25519Falcon1024, Ed25519Falcon512, Ed25519Shake256, Ed25519Skein512, Ed448Falcon1024,
     Ed448Sha3_256, Ed448Shake256, Ed448Skein512, HybridSigningKeyBundle,

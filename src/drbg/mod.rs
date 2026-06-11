@@ -4,6 +4,12 @@
 //!
 //! All randomness in Origin flows through this DRBG so that
 //! PQC key generation (NTRU, Falcon) is fully deterministic from the master seed.
+//!
+//! # Submodules
+//!
+//! - [`otp`] — One-time pad utilities (information-theoretic encryption).
+
+pub mod otp;
 
 use rand::RngCore;
 

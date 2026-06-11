@@ -41,7 +41,7 @@ pub use crate::kdf::Argon2idBuilder;
 pub use crate::kdf::hkdf::{derive_subkeys, hkdf_sha3_256};
 
 // ── MAC ──
-pub use crate::mac::hmac_sha3_256;
+pub use crate::kdf::mac::hmac_sha3_256;
 
 // ── Hashes ──
 pub use crate::primitives::blake3;

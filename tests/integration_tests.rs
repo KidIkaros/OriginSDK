@@ -3,8 +3,8 @@
 //! Integration tests for origin-crypto-sdk
 
 use origin_crypto_sdk::{
-    aead, error_correction, kdf, pqc::falcon1024, pqc::falcon512, pqc::ntru_prime, symmetric,
-    CryptoError, Result,
+    aead, aead::symmetric, error_correction, kdf, pqc::falcon1024, pqc::falcon512,
+    pqc::ntru_prime, CryptoError, Result,
 };
 
 // =============================================================================

@@ -80,7 +80,7 @@
 #![allow(clippy::result_large_err)]
 
 // ──────────────────────────────────────────────────────────────────────
-// Public modules
+// Public modules (matching the README map exactly)
 // ──────────────────────────────────────────────────────────────────────
 
 /// Error types and `Result` alias.
@@ -110,15 +110,9 @@ pub mod prelude;
 // ── Symmetric encryption ──
 pub mod aead;
 pub mod chacha20_blake3;
-pub mod symmetric;
-pub mod streaming;
 
 // ── Hashing & KDF ──
 pub mod kdf;
-pub mod mac;
-pub mod compression;
-pub mod siphash;
-pub mod primitives;
 
 // ── Signatures ──
 /// Signing primitives: classical, post-quantum, and hybrid.
@@ -143,21 +137,43 @@ pub mod signing_legacy;
 // ── Randomness & DRBG ──
 pub mod drbg;
 
-// ── Entropy analysis & secret management (utility) ──
+// ── Utility modules (hidden from docs) ──
+/// Entropy analysis — internal utility.
+#[doc(hidden)]
 pub mod entropy;
-pub mod otp;
-pub mod seed;
-pub mod seed_gen;
-pub mod blob;
-pub mod mmr;
-pub mod stealth_kdf;
-pub mod stealth_pow;
 
-// ── Error correction ──
+/// Seed handling with TTL and memory security.
+pub mod seed;
+
+/// Merkle Mountain Range — internal utility.
+#[doc(hidden)]
+pub mod mmr;
+
+/// Stealth address primitives (KDF + PoW).
+pub mod stealth;
+
+/// Error correction codes — internal utility.
+#[doc(hidden)]
 pub mod error_correction;
 
-// ── Hybrid construction types (re-exports of [`signing::hybrid`]) ──
-pub mod hybrid;
+/// Low-level cryptographic primitives (hashes, ciphers, etc.).
+///
+/// **Internal use only.** Application code should use the higher-level
+/// modules ([`chacha20_blake3`], [`kdf`], etc.) instead.
+#[doc(hidden)]
+pub mod primitives;
+
+/// SipHash keyed hash — internal utility.
+#[doc(hidden)]
+pub mod siphash;
+
+/// Compression utility — internal.
+#[doc(hidden)]
+pub mod compression;
+
+/// Blob storage — internal utility.
+#[doc(hidden)]
+pub mod blob;
 
 // ──────────────────────────────────────────────────────────────────────
 // Internal modules (not part of public API; use at your own risk)
@@ -180,24 +196,13 @@ pub use kdf::Argon2id;
 pub use kdf::hkdf::{derive_subkeys, hkdf_sha3_256};
 
 // MAC
-pub use mac::hmac_sha3_256;
-
-// Hashes
-pub use primitives::blake3;
-pub use primitives::sha3;
-pub use primitives::MemoryTier;
+pub use kdf::mac::hmac_sha3_256;
 
 // DRBG
 pub use drbg::ChaCha20Drbg;
 
 // Seed handling
 pub use seed::{derive_child_seed, derive_signing_keys, derive_verifying_keys, SeedHandle};
-
-// SipHash
-pub use siphash::siphash_expand;
-
-// Compression
-pub use compression::{compress, decompress};
 
 // Signatures — re-exports (DEPRECATED, will be removed in 0.5)
 #[allow(deprecated)]

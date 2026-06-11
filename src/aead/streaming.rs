@@ -2,7 +2,7 @@
 
 //! Streaming encryption for large files
 
-use crate::aead::XChaCha20Poly1305;
+use super::XChaCha20Poly1305;
 use crate::error::{CryptoError, Result};
 use std::io::{Read, Write};
 

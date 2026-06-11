@@ -12,68 +12,56 @@
 //!     .expect("valid seed");
 //! let sig = bundle.sign_hybrid(b"hello");
 //! ```
+//!
+//! For low-level PQC primitives, import directly from their modules:
+//!
+//! ```rust,ignore
+//! use origin_crypto_sdk::pqc::falcon1024;
+//! use origin_crypto_sdk::pqc::ed448;
+//! use origin_crypto_sdk::pqc::curve41417::ed41417;
+//! ```
+//!
+//! For SLH-DSA and ML-DSA (feature-gated):
+//!
+//! ```rust,ignore
+//! use origin_crypto_sdk::pqc::slhdsa;
+//! use origin_crypto_sdk::pqc::mldsa;
+//! ```
 
-// Errors
+// ── Errors ──
 pub use crate::error::{CryptoError, Result};
 
-// Encryption
+// ── Encryption ──
 pub use crate::aead::XChaCha20Poly1305;
 pub use crate::chacha20_blake3::ChaCha20Blake3;
 
-// KDF
+// ── KDF ──
 pub use crate::kdf::Argon2id;
+pub use crate::kdf::Argon2idBuilder;
 pub use crate::kdf::hkdf::{derive_subkeys, hkdf_sha3_256};
 
-// MAC
+// ── MAC ──
 pub use crate::mac::hmac_sha3_256;
 
-// Hashes
+// ── Hashes ──
 pub use crate::primitives::blake3;
 pub use crate::primitives::sha3;
 pub use crate::primitives::{MemoryTier, Shake128, Shake256};
 
-// DRBG
+// ── DRBG ──
 pub use crate::drbg::ChaCha20Drbg;
 
-// Seed handling
+// ── Seed handling ──
 pub use crate::seed::{SeedHandle, derive_child_seed, derive_signing_keys, derive_verifying_keys};
 
-// SipHash
-pub use crate::siphash::siphash_expand;
-
-// Compression
+// ── Compression ──
 pub use crate::compression::{compress, decompress};
 
-// Signatures — re-exports
-pub use crate::signing::{HybridSignatureOutput, HybridSigningKey, HybridVerifyingKey};
-
-// Hybrid bundle (canonical PQ-hybrid signing)
-pub use crate::signing::hybrid::{falcon1024_keygen, HybridSigningKeyBundle};
+// ── Hybrid signing (recommended default) ──
+pub use crate::signing::hybrid::{HybridSigningKeyBundle, falcon1024_keygen};
 pub use crate::signing::hybrid::{skein1024, skein512};
 
-// PQC direct access — Falcon-1024
-pub use crate::pqc::falcon1024::{
-    self as falcon_1024, FalconPrivateKey as Falcon1024PrivateKey,
-    FalconPublicKey as Falcon1024PublicKey, FalconSignature as Falcon1024Signature,
-};
-
-// PQC direct access — Falcon-512 (smaller signatures, ~20x less secure)
-pub use crate::pqc::falcon512::{
-    self as falcon_512, Falcon512PrivateKey, Falcon512PublicKey, Falcon512Signature,
-};
-
-// PQC direct access — SLH-DSA (hash-based, FIPS 205, optional feature)
-#[cfg(feature = "slh-dsa")]
-pub use crate::pqc::slhdsa::{
-    generate_keypair_from_seed as slhdsa_keygen, sign as slhdsa_sign, verify as slhdsa_verify,
-    SlhDsaPrivateKey, SlhDsaPublicKey,
-};
-
-// PQC direct access — ML-DSA (lattice, FIPS 204, optional feature)
-#[cfg(feature = "ml-dsa")]
-pub use crate::pqc::mldsa::{MldsaPrivateKey, MldsaPublicKey};
-
-// Ed448 — RFC 8032 signature scheme (Goldilocks curve).
-pub use crate::pqc::ed448 as ed448;
-// Ed41417 — Daniel J. Bernstein's curve41417 signature scheme.
-pub use crate::pqc::curve41417::ed41417 as ed41417_raw;
+// ── Legacy hybrid re-exports (for callers upgrading from pre-0.3) ──
+// Deprecated in 0.4, removed in 0.5. Use HybridSigningKeyBundle instead.
+#[allow(deprecated)]
+pub use crate::signing::{HybridSignatureOutput, HybridSigningKey, HybridVerifyingKey};

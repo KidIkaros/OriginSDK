@@ -2,7 +2,7 @@
 
 //! Native SHA3-256 and SHA3-512 implementation — replacement for `sha3` crate.
 //!
-//! Implements Keccak-f[1600] with the SHA3 padding (10*1 pattern).
+//! Implements Keccak-f\[1600\] with the SHA3 padding (10*1 pattern).
 //! Reference: FIPS 202
 
 /// Keccak-f[1600] round constants

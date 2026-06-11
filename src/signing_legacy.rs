@@ -1,6 +1,23 @@
 // SPDX-License-Identifier: OPL-1.1
 
-//! Hybrid signing keys derived from seed + domain.
+//! **DEPRECATED**: Pre-0.4 flat `signing` API. Use `signing::hybrid`,
+//! `signing::classical`, and `signing::postquantum` instead.
+//!
+//! This module exists for backward compatibility with code that imported
+//! the flat `origin_crypto_sdk::signing::*` items in 0.1–0.3. It will
+//! be removed in 0.5. Migrate by changing:
+//!
+//! ```ignore
+//! // Old (0.3 and earlier):
+//! use origin_crypto_sdk::signing::{HybridSigningKey, HybridVerifyingKey, HybridSignatureOutput};
+//!
+//! // New (0.4+):
+//! use origin_crypto_sdk::signing::hybrid::HybridSigningKeyBundle;
+//! ```
+//!
+//! The new `HybridSigningKeyBundle` is the canonical hybrid signing API
+//! — it produces equivalent signatures but with a cleaner method-based
+//! interface (sign_hybrid, ed25519_pk, falcon1024_pk) instead of OOP.
 //!
 //! Provides an OOP interface over the functional `HybridSignature` API.
 //! Keys are derived deterministically from a seed handle and domain string
@@ -273,10 +290,12 @@ impl HybridSignatureOutput {
         })
     }
 
+    /// Get the Ed25519 signature bytes.
     pub fn ed25519_signature(&self) -> &[u8] {
         &self.ed25519_signature
     }
 
+    /// Get the Falcon signature bytes.
     pub fn falcon_signature(&self) -> &[u8] {
         &self.falcon_signature
     }
@@ -284,9 +303,12 @@ impl HybridSignatureOutput {
 
 #[cfg(test)]
 mod tests {
+    #![allow(deprecated)]
+
     use super::*;
     use crate::seed::SeedHandle;
 
+    #[allow(deprecated)]
     #[test]
     fn test_signing_key_derivation() {
         let seed = [42u8; 32];
@@ -309,6 +331,7 @@ mod tests {
         );
     }
 
+    #[allow(deprecated)]
     #[test]
     fn test_sign_verify_roundtrip() {
         let seed = [42u8; 32];
@@ -322,6 +345,7 @@ mod tests {
         assert!(verifying_key.verify(message, &signature));
     }
 
+    #[allow(deprecated)]
     #[test]
     fn test_signature_serialization() {
         let sig = HybridSignatureOutput {
@@ -334,6 +358,7 @@ mod tests {
         assert_eq!(restored.falcon_signature, sig.falcon_signature);
     }
 
+    #[allow(deprecated)]
     #[test]
     fn test_from_bytes_rejects_too_short() {
         // Less than 4 bytes — can't read the ed_len header
@@ -342,6 +367,7 @@ mod tests {
         assert!(HybridSignatureOutput::from_bytes(&[0x01, 0x02, 0x03]).is_err());
     }
 
+    #[allow(deprecated)]
     #[test]
     fn test_from_bytes_rejects_truncated() {
         // Header says ed_len=10 but only 4+2=6 bytes total
@@ -349,6 +375,7 @@ mod tests {
         assert!(HybridSignatureOutput::from_bytes(&bytes).is_err());
     }
 
+    #[allow(deprecated)]
     #[test]
     fn test_from_bytes_rejects_empty_ed_with_valid_header() {
         // Header says ed_len=0, then falcon data follows — this is valid
@@ -358,6 +385,7 @@ mod tests {
         assert_eq!(sig.falcon_signature, vec![0xaa, 0xbb]);
     }
 
+    #[allow(deprecated)]
     #[test]
     fn test_from_raw_bytes_roundtrip() {
         let seed = [99u8; 32];
@@ -375,6 +403,7 @@ mod tests {
         assert!(original.ct_eq(&reconstructed));
     }
 
+    #[allow(deprecated)]
     #[test]
     fn test_from_raw_bytes_sign_verify() {
         let seed = [77u8; 32];
@@ -394,12 +423,14 @@ mod tests {
         assert!(reconstructed.verify(msg, &sig));
     }
 
+    #[allow(deprecated)]
     #[test]
     fn test_from_raw_bytes_rejects_bad_ed25519_len() {
         assert!(HybridVerifyingKey::from_raw_bytes(&[0u8; 31], &[0u8; 1793], "d").is_err());
         assert!(HybridVerifyingKey::from_raw_bytes(&[0u8; 33], &[0u8; 1793], "d").is_err());
     }
 
+    #[allow(deprecated)]
     #[test]
     fn test_from_raw_bytes_rejects_bad_falcon_len() {
         // Need a valid Ed25519 point for the first arg
@@ -412,6 +443,7 @@ mod tests {
         assert!(HybridVerifyingKey::from_raw_bytes(pk.ed25519_pk(), &[0u8; 1794], "t").is_err());
     }
 
+    #[allow(deprecated)]
     #[test]
     fn test_to_bundle_sign_verify() {
         use crate::hybrid::Ed25519Falcon1024;

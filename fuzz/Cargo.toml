@@ -1,0 +1,27 @@
+[package]
+name = "origin-crypto-sdk-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2021"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+origin-crypto-sdk = { path = ".." }
+
+[dependencies.libfuzzer-sys]
+version = "0.4"
+default-features = false
+
+[[bin]]
+name = "fuzz_encrypt_decrypt"
+path = "fuzz_targets/fuzz_encrypt_decrypt.rs"
+
+[[bin]]
+name = "fuzz_hybrid_verify"
+path = "fuzz_targets/fuzz_hybrid_verify.rs"
+
+[[bin]]
+name = "fuzz_kdf"
+path = "fuzz_targets/fuzz_kdf.rs"

@@ -74,12 +74,11 @@
 //!   separation, so the same master seed can be reused across domains safely.
 
 use std::sync::Arc;
-use std::sync::OnceLock;
 
 use crate::error::{CryptoError, Result};
+use crate::internal::subtle::ConstantTimeEq;
 use crate::pqc::ed448::{
     Signature as Ed448Signature, SigningKey as Ed448SigningKey, VerifyingKey as Ed448VerifyingKey,
-    SECRET_KEY_SIZE as ED448_SECRET_KEY_SIZE,
 };
 use crate::pqc::falcon1024::{
     generate_keypair_from_seed as falcon_keygen, sign as falcon_sign, verify as falcon_verify,
@@ -107,71 +106,92 @@ use crate::kdf::hkdf::hkdf_sha3_256;
 /// Ed25519 + BLAKE3 hash combiner (non-KDF)
 #[derive(Clone, Debug)]
 pub struct Ed25519Blake3 {
+    /// The Ed25519 signature.
     pub ed25519_sig: Ed25519Signature,
+    /// The BLAKE3 hash of the message.
     pub blake3_hash: blake3::Hash,
 }
 
 /// Ed25519 + SHAKE256 combiner (non-KDF)
 #[derive(Clone, Debug)]
 pub struct Ed25519Shake256 {
+    /// The Ed25519 signature.
     pub ed25519_sig: Ed25519Signature,
+    /// The SHAKE256 output of the message.
     pub shake_output: Vec<u8>,
 }
 
 /// Ed25519 + Skein-512 hash combiner (non-KDF)
 #[derive(Clone, Debug)]
 pub struct Ed25519Skein512 {
+    /// The Ed25519 signature.
     pub ed25519_sig: Ed25519Signature,
+    /// The Skein-512 hash of the message.
     pub skein512_hash: [u8; 64],
 }
 
 /// Ed448 + SHAKE256 combiner (non-KDF)
 #[derive(Clone, Debug)]
 pub struct Ed448Shake256 {
+    /// The Ed448 signature.
     pub ed448_sig: Ed448Signature,
+    /// The SHAKE256 output of the message.
     pub shake_output: Vec<u8>,
 }
 
 /// Ed448 + Skein-512 hash combiner (non-KDF)
 #[derive(Clone, Debug)]
 pub struct Ed448Skein512 {
+    /// The Ed448 signature.
     pub ed448_sig: Ed448Signature,
+    /// The Skein-512 hash of the message.
     pub skein512_hash: [u8; 64],
 }
 
 /// Ed448 + SHA3-256 hash combiner (non-KDF)
 #[derive(Clone, Debug)]
 pub struct Ed448Sha3_256 {
+    /// The Ed448 signature.
     pub ed448_sig: Ed448Signature,
+    /// The SHA3-256 hash of the message.
     pub sha3_hash: [u8; 32],
 }
 
 /// Ed25519 + Falcon-1024 hybrid signature (both must verify)
 #[derive(Clone, Debug)]
 pub struct Ed25519Falcon1024 {
+    /// The Ed25519 signature.
     pub ed25519_sig: Ed25519Signature,
+    /// The Falcon-1024 signature.
     pub falcon_sig: FalconSignature,
 }
 
 /// Ed25519 + Falcon-512 hybrid signature (both must verify)
 #[derive(Clone, Debug)]
 pub struct Ed25519Falcon512 {
+    /// The Ed25519 signature.
     pub ed25519_sig: Ed25519Signature,
+    /// The Falcon-512 signature.
     pub falcon_sig: Falcon512Signature,
 }
 
 /// Ed448 + Falcon-1024 hybrid signature (both must verify)
 #[derive(Clone, Debug)]
 pub struct Ed448Falcon1024 {
+    /// The Ed448 signature.
     pub ed448_sig: Ed448Signature,
+    /// The Falcon-1024 signature.
     pub falcon_sig: FalconSignature,
 }
 
 /// Ed25519 + ChaCha20-Blake3 + SHA3-256 (KDF construction, derived from master seed)
 #[derive(Clone, Debug)]
 pub struct Ed25519ChaCha20Blake3Sha3_256 {
+    /// The Ed25519 signature over the derived key.
     pub ed25519_sig: Ed25519Signature,
+    /// The BLAKE3 keyed hash of the message.
     pub blake3_keyed: blake3::Hash,
+    /// The HMAC-SHA3-256 of the message.
     pub sha3_keyed: [u8; 32],
 }
 
@@ -271,7 +291,7 @@ impl Ed25519Blake3 {
             .verify(message, &sig.ed25519_sig)
             .map_err(|_| CryptoError::AuthenticationFailed)?;
         let expected_hash = blake3::hash(message);
-        if sig.blake3_hash != expected_hash {
+        if !bool::from(sig.blake3_hash.as_bytes().ct_eq(expected_hash.as_bytes())) {
             return Err(CryptoError::AuthenticationFailed);
         }
         Ok(())
@@ -299,7 +319,7 @@ impl Ed25519Shake256 {
             .verify(message, &sig.ed25519_sig)
             .map_err(|_| CryptoError::AuthenticationFailed)?;
         let expected = shake256_output(message, sig.shake_output.len());
-        if sig.shake_output != expected {
+        if !bool::from(sig.shake_output.ct_eq(&expected)) {
             return Err(CryptoError::AuthenticationFailed);
         }
         Ok(())
@@ -327,7 +347,7 @@ impl Ed25519Skein512 {
             .verify(message, &sig.ed25519_sig)
             .map_err(|_| CryptoError::AuthenticationFailed)?;
         let expected = skein512(message);
-        if sig.skein512_hash != expected {
+        if !bool::from(sig.skein512_hash.ct_eq(&expected)) {
             return Err(CryptoError::AuthenticationFailed);
         }
         Ok(())
@@ -355,7 +375,7 @@ impl Ed448Shake256 {
             .verify(message, &sig.ed448_sig)
             .map_err(|_| CryptoError::AuthenticationFailed)?;
         let expected = shake256_output(message, sig.shake_output.len());
-        if sig.shake_output != expected {
+        if !bool::from(sig.shake_output.ct_eq(&expected)) {
             return Err(CryptoError::AuthenticationFailed);
         }
         Ok(())
@@ -383,7 +403,7 @@ impl Ed448Skein512 {
             .verify(message, &sig.ed448_sig)
             .map_err(|_| CryptoError::AuthenticationFailed)?;
         let expected = skein512(message);
-        if sig.skein512_hash != expected {
+        if !bool::from(sig.skein512_hash.ct_eq(&expected)) {
             return Err(CryptoError::AuthenticationFailed);
         }
         Ok(())
@@ -411,7 +431,7 @@ impl Ed448Sha3_256 {
             .verify(message, &sig.ed448_sig)
             .map_err(|_| CryptoError::AuthenticationFailed)?;
         let expected = sha3_256(message);
-        if sig.sha3_hash != expected {
+        if !bool::from(sig.sha3_hash.ct_eq(&expected)) {
             return Err(CryptoError::AuthenticationFailed);
         }
         Ok(())
@@ -575,7 +595,11 @@ impl Ed25519ChaCha20Blake3Sha3_256 {
 
         let ed_arr: [u8; 32] = ed_key[..32]
             .try_into()
-            .map_err(|_| CryptoError::InvalidKey("Ed25519 key len".into()))?;
+            .map_err(|_| CryptoError::InvalidKeyLength {
+                algorithm: "Ed25519",
+                expected: 32,
+                got: ed_key.len(),
+            })?;
         let ed_sk = Ed25519SigningKey::from_bytes(&ed_arr);
         let ed25519_sig = ed_sk.sign(message);
 
@@ -598,7 +622,11 @@ impl Ed25519ChaCha20Blake3Sha3_256 {
 
         let ed_arr: [u8; 32] = ed_key[..32]
             .try_into()
-            .map_err(|_| CryptoError::InvalidKey("Ed25519 key len".into()))?;
+            .map_err(|_| CryptoError::InvalidKeyLength {
+                algorithm: "Ed25519",
+                expected: 32,
+                got: ed_key.len(),
+            })?;
         let ed_pk = Ed25519SigningKey::from_bytes(&ed_arr).verifying_key();
         ed_pk
             .verify(message, &sig.ed25519_sig)
@@ -607,12 +635,12 @@ impl Ed25519ChaCha20Blake3Sha3_256 {
         let mut chacha_key_arr = [0u8; blake3::KEY_LEN];
         chacha_key_arr.copy_from_slice(&chacha_key[..blake3::KEY_LEN]);
         let expected_blake3 = blake3::keyed_hash(&chacha_key_arr, message);
-        if sig.blake3_keyed != expected_blake3 {
+        if !bool::from(sig.blake3_keyed.as_bytes().ct_eq(expected_blake3.as_bytes())) {
             return Err(CryptoError::AuthenticationFailed);
         }
 
         let expected_sha3 = crate::internal::hmac::hmac_sha3_256(&hash_key, message);
-        if sig.sha3_keyed != expected_sha3 {
+        if !bool::from(sig.sha3_keyed.ct_eq(&expected_sha3)) {
             return Err(CryptoError::AuthenticationFailed);
         }
 
@@ -858,7 +886,7 @@ mod tests {
 
     #[test]
     fn test_ed448_sha3_256() {
-        let sk = Ed448SigningKey::from_bytes(&[42u8; ED448_SECRET_KEY_SIZE]).unwrap();
+        let sk = Ed448SigningKey::from_bytes(&[42u8; 57]).unwrap();
         let pk = sk.verifying_key();
         let msg = b"hello";
         let sig = Ed448Sha3_256::sign(&sk, msg);
@@ -867,7 +895,7 @@ mod tests {
 
     #[test]
     fn test_ed448_shake256() {
-        let sk = Ed448SigningKey::from_bytes(&[42u8; ED448_SECRET_KEY_SIZE]).unwrap();
+        let sk = Ed448SigningKey::from_bytes(&[42u8; 57]).unwrap();
         let pk = sk.verifying_key();
         let msg = b"hello";
         let sig = Ed448Shake256::sign(&sk, msg, 64);
@@ -876,7 +904,7 @@ mod tests {
 
     #[test]
     fn test_ed448_skein512() {
-        let sk = Ed448SigningKey::from_bytes(&[42u8; ED448_SECRET_KEY_SIZE]).unwrap();
+        let sk = Ed448SigningKey::from_bytes(&[42u8; 57]).unwrap();
         let pk = sk.verifying_key();
         let msg = b"hello";
         let sig = Ed448Skein512::sign(&sk, msg);
@@ -920,7 +948,7 @@ mod tests {
     fn test_ed448_falcon1024() {
         let seed = [42u8; 32];
         let (falcon_pk, falcon_sk) = falcon_keygen(&seed).unwrap();
-        let ed_sk = Ed448SigningKey::from_bytes(&[1u8; ED448_SECRET_KEY_SIZE]).unwrap();
+        let ed_sk = Ed448SigningKey::from_bytes(&[1u8; 57]).unwrap();
         let ed_pk = ed_sk.verifying_key();
         let msg = b"hello";
         let sig = Ed448Falcon1024::sign(&ed_sk, &falcon_sk, msg);

@@ -147,12 +147,19 @@ pub fn analyze(data: &[u8]) -> EntropyMetrics {
 
 /// Quality requirements for a given seed bit length.
 pub struct QualityRequirements {
+    /// Minimum Shannon entropy (bits of entropy per bit of input).
     pub min_shannon: f64,
+    /// Minimum min-entropy (worst-case entropy).
     pub min_min_entropy: f64,
+    /// Minimum collision entropy.
     pub min_collision: f64,
+    /// Minimum chi-squared p-value (uniformity test).
     pub min_chi_squared_p: f64,
+    /// Maximum absolute serial correlation between consecutive bits.
     pub max_serial_correlation: f64,
+    /// Maximum allowed deviation from uniform bit distribution (0.0 to 1.0).
     pub max_bit_bias_deviation: f64,
+    /// Maximum length of the longest run of identical bits.
     pub max_longest_run: usize,
 }
 

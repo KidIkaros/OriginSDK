@@ -4,18 +4,18 @@
 //!
 //! This module aggregates the high-security signature schemes used by the SDK:
 //!
-//! - [`ed448`] — Ed448 (Mike Hamburg, RFC 8032). 448-bit Goldilocks curve.
+//! - [ed448] — Ed448 (Mike Hamburg, RFC 8032). 448-bit Goldilocks curve.
 //!   Standardized in TLS 1.3 (RFC 8446) and DNSSEC (RFC 8080).
-//! - [`curve41417`] — Curve41417 (Daniel J. Bernstein). 414-bit prime.
+//! - [curve41417] — Curve41417 (Daniel J. Bernstein). 414-bit prime.
 //!   Used in X41417 and other protocols.
-//! - [`falcon1024`], [`falcon512`] — Falcon lattice signatures (FIPS 206).
-//! - [`ntru_prime`] — NTRU Prime KEM.
-//! - [`slhdsa`] (feature `slh-dsa`) — Stateless hash-based signatures (FIPS 205).
-//! - [`mldsa`] (feature `ml-dsa`) — ML-DSA lattice signatures (FIPS 204).
+//! - [falcon1024], [falcon512] — Falcon lattice signatures (FIPS 206).
+//! - [ntru_prime] — NTRU Prime KEM.
+//! - \[slhdsa\] (feature `slh-dsa`) — Stateless hash-based signatures (FIPS 205).
+//! - \[mldsa\] (feature `ml-dsa`) — ML-DSA lattice signatures (FIPS 204).
 //!
 //! # Ed448 vs Ed41417
 //!
-//! [`ed448`] and [`curve41417::ed41417`] are two DIFFERENT curves:
+//! [ed448] and [curve41417::ed41417] are two DIFFERENT curves:
 //!
 //! - Ed448 uses a 448-bit prime (Goldilocks), ~223 bits of security,
 //!   standardized for TLS 1.3 and DNSSEC.

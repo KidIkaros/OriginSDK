@@ -6,6 +6,7 @@
 //! security with 1312-byte public keys and 2420-byte signatures.
 
 use crate::error::{CryptoError, Result};
+use crate::internal::zeroize::Zeroize;
 
 use ml_dsa::signature::{Keypair, Signer};
 use ml_dsa::{MlDsa44, SigningKey, VerifyingKey};
@@ -27,15 +28,21 @@ pub struct MldsaPublicKey(pub(crate) Vec<u8>);
 #[derive(Clone)]
 pub struct MldsaPrivateKey(pub(crate) Vec<u8>);
 
+impl Drop for MldsaPrivateKey {
+    fn drop(&mut self) {
+        self.0.zeroize();
+    }
+}
+
 impl MldsaPublicKey {
     /// Create from raw bytes
     pub fn from_bytes(bytes: &[u8]) -> Result<Self> {
         if bytes.len() != sizes::PUBLIC_KEY {
-            return Err(CryptoError::InvalidKey(format!(
-                "ML-DSA public key must be {} bytes, got {}",
-                sizes::PUBLIC_KEY,
-                bytes.len()
-            )));
+            return Err(CryptoError::InvalidKeyLength {
+                algorithm: "ML-DSA",
+                expected: sizes::PUBLIC_KEY,
+                got: bytes.len(),
+            });
         }
         Ok(Self(bytes.to_vec()))
     }
@@ -55,11 +62,11 @@ impl MldsaPrivateKey {
     /// Create from raw bytes
     pub fn from_bytes(bytes: &[u8]) -> Result<Self> {
         if bytes.len() != sizes::PRIVATE_KEY {
-            return Err(CryptoError::InvalidKey(format!(
-                "ML-DSA private key must be {} bytes, got {}",
-                sizes::PRIVATE_KEY,
-                bytes.len()
-            )));
+            return Err(CryptoError::InvalidKeyLength {
+                algorithm: "ML-DSA",
+                expected: sizes::PRIVATE_KEY,
+                got: bytes.len(),
+            });
         }
         Ok(Self(bytes.to_vec()))
     }
@@ -98,7 +105,11 @@ pub fn sign(message: &[u8], private_key: &MldsaPrivateKey) -> Result<Vec<u8>> {
     let sk_bytes: [u8; sizes::PRIVATE_KEY] = private_key
         .as_bytes()
         .try_into()
-        .map_err(|_| CryptoError::InvalidKey("ML-DSA private key length mismatch".into()))?;
+        .map_err(|_| CryptoError::InvalidKeyLength {
+            algorithm: "ML-DSA",
+            expected: sizes::PRIVATE_KEY,
+            got: private_key.as_bytes().len(),
+        })?;
 
     let seed: ml_dsa::Seed = sk_bytes.into();
     let sk = SigningKey::<MlDsa44>::from_seed(&seed);
@@ -114,7 +125,11 @@ pub fn verify(message: &[u8], signature: &[u8], public_key: &MldsaPublicKey) -> 
     let pk_bytes: [u8; sizes::PUBLIC_KEY] = public_key
         .as_bytes()
         .try_into()
-        .map_err(|_| CryptoError::InvalidKey("ML-DSA public key length mismatch".into()))?;
+        .map_err(|_| CryptoError::InvalidKeyLength {
+            algorithm: "ML-DSA",
+            expected: sizes::PUBLIC_KEY,
+            got: public_key.as_bytes().len(),
+        })?;
 
     let enc_pk: ml_dsa::EncodedVerifyingKey<MlDsa44> = pk_bytes.into();
     let vk = VerifyingKey::<MlDsa44>::decode(&enc_pk);

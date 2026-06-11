@@ -10,7 +10,7 @@
 //!   combined-primitive signature constructions.
 //! - [`Ed25519Blake3`], [`Ed25519Shake256`], [`Ed25519Skein512`] —
 //!   Ed25519 with hash combiners (non-KDF constructions).
-//! - [`Ed448Blake3`], [`Ed448Shake256`], [`Ed448Skein512`], [`Ed448Sha3_256`] —
+//! - [`Ed448Shake256`], [`Ed448Skein512`], [`Ed448Sha3_256`] —
 //!   Ed448 with hash combiners.
 //! - [`Ed25519ChaCha20Blake3Sha3_256`] — Ed25519 + ChaCha20-BLAKE3 + SHA3-256
 //!   (KDF-based construction).

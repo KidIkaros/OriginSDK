@@ -12,14 +12,37 @@ categories = ["cryptography"]
 repository = "https://github.com/KidIkaros/OriginSDK"
 homepage = "https://github.com/KidIkaros/OriginSDK"
 rust-version = "1.85"
+exclude = ["benches/", "docs/", ".cogent-audit/", ".github/"]
+
+[lints.rust]
+# The crate uses `unsafe` in a few carefully audited places
+# (mlock/munlock for memory protection, getrandom syscall). Promote
+# to "deny" if you want to forbid all unsafe.
+unsafe_code = "warn"
+missing_debug_implementations = "warn"
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }
+# Allow these stylistic lints — too noisy for a security-focused crate
+module_name_repetitions = "allow"
+similar_names = "allow"
+must_use_candidate = "allow"
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+# These are bugs we want to catch
+correctness = { level = "warn", priority = 1 }
+suspicious = { level = "warn", priority = 1 }
+panic = "warn"
+unwrap_used = "warn"
+expect_used = "warn"
 
 [dependencies]
 # External crypto crates
-falcon-rust = "=0.1.2"
-chacha20poly1305 = { version = "=0.10.1", features = ["getrandom"] }
+falcon-rust = "=0.1.2"       # pinned: tested range, no known issues
+chacha20poly1305 = { version = "=0.10.1", features = ["getrandom"] }  # pinned: stable API, 0.11 has breaking changes
 chacha20-blake3 = "0.9.11"  # ChaCha20-BLAKE3 AEAD (committing)
-argon2 = { version = "=0.5.3", features = ["password-hash"] }
-sha2 = "=0.10.8"
+argon2 = { version = "=0.5.3", features = ["password-hash"] }  # pinned: matches password-hash traits used internally
+sha2 = "=0.10.8"             # pinned: compatible with our Digest trait usage
 sha3 = "0.11"
 blake3 = "1.8"              # BLAKE3 hash (standalone, for hybrid constructions)
 skein = "0.2"               # Skein hash family (Skein512, Skein1024)
@@ -57,13 +80,27 @@ rayon = { version = "1.11", optional = true }
 [features]
 default = ["parallel"]
 parallel = ["dep:rayon"]
-pqc-simd = []
-slh-dsa = ["dep:slh-dsa"]
-ml-dsa = ["dep:ml-dsa"]
+pqc-simd = []    # Placeholder: SIMD acceleration for NTRU Prime
+slh-dsa = ["dep:slh-dsa"]    # FIPS 205 hash-based signatures (SPHINCS+)
+ml-dsa = ["dep:ml-dsa"]      # FIPS 204 lattice signatures (Dilithium)
+test-utils = []    # Deterministic seeds, keys, and proptest strategies for downstream tests
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+[package.metadata]
+# Dependency pins are intentional — documented in SECURITY.md
+# falcon-rust 0.1.2: tested range, no known issues
+# chacha20poly1305 0.10.1: stable API, avoids breaking changes in 0.11
+# argon2 0.5.3: matches password-hash traits used internally
+# sha2 0.10.8: compatible with our Digest trait usage
+# rand 0.8.5: avoids getrandom 0.3 migration in 0.9
 
 [dev-dependencies]
 tempfile = "3.10"
 criterion = "0.5"
+proptest = "1.5"
 
 [[bench]]
 name = "crypto_benchmarks"

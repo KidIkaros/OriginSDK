@@ -46,11 +46,11 @@ impl FalconPublicKey {
     /// Create from raw bytes
     pub fn from_bytes(bytes: &[u8]) -> Result<Self> {
         if bytes.len() != sizes::PUBLIC_KEY {
-            return Err(CryptoError::InvalidKey(format!(
-                "Falcon public key must be {} bytes, got {}",
-                sizes::PUBLIC_KEY,
-                bytes.len()
-            )));
+            return Err(CryptoError::InvalidKeyLength {
+                algorithm: "Falcon-1024",
+                expected: sizes::PUBLIC_KEY,
+                got: bytes.len(),
+            });
         }
         Ok(Self(bytes.to_vec()))
     }
@@ -70,11 +70,11 @@ impl FalconPrivateKey {
     /// Create from raw bytes
     pub fn from_bytes(bytes: &[u8]) -> Result<Self> {
         if bytes.len() != sizes::PRIVATE_KEY {
-            return Err(CryptoError::InvalidKey(format!(
-                "Falcon private key must be {} bytes, got {}",
-                sizes::PRIVATE_KEY,
-                bytes.len()
-            )));
+            return Err(CryptoError::InvalidKeyLength {
+                algorithm: "Falcon-1024",
+                expected: sizes::PRIVATE_KEY,
+                got: bytes.len(),
+            });
         }
         Ok(Self(bytes.to_vec()))
     }
@@ -100,8 +100,8 @@ impl FalconSignature {
     /// Create from raw bytes
     pub fn from_bytes(bytes: &[u8]) -> Result<Self> {
         if bytes.len() > sizes::SIGNATURE_MAX {
-            return Err(CryptoError::InvalidKey(format!(
-                "Falcon signature too large: {} bytes (max {})",
+            return Err(CryptoError::InvalidParameter(format!(
+                "Falcon-1024 signature too large: {} bytes (max {})",
                 bytes.len(),
                 sizes::SIGNATURE_MAX
             )));

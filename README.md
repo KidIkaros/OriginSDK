@@ -1,138 +1,138 @@
 # Origin Crypto SDK
 
-Production-grade post-quantum and classical cryptographic primitives
-for the Origin ecosystem. Hybrid signing by default.
+Standalone Rust cryptographic SDK with classical and post-quantum primitives. Hybrid signing by default.
 
-Pure Rust. Native implementations where possible. All PQ constructions
-hybrid-paired with classical fallbacks for defense in depth.
-
-## Version 0.4.0 — what changed
-
-- **New module structure**: `signing::{classical, postquantum, hybrid}` —
-  direct access to each algorithm family instead of one monolithic
-  `hybrid` module
-- **Prelude module**: `use origin_crypto_sdk::prelude::*;` for one-line
-  access to the common types
-- **Ed448 alias**: `origin_crypto_sdk::ed448` exposes Curve41417 under
-  the standard Ed448 name
-- **Removed**: broken `HybridKem` stub, deprecated `signature.rs` shim,
-  W3C `validation.rs` leftovers
-- **Hidden**: `internal/` is now `#[doc(hidden)]`
-
-## Installation
-
-```toml
-[dependencies]
-origin-crypto-sdk = "0.4"
-```
+[![License: OPL-1.1](https://img.shields.io/badge/license-OPL--1.1-blue.svg)](LICENSE)
+[![MSRV: 1.85](https://img.shields.io/badge/MSRV-1.85-orange.svg)](https://blog.rust-lang.org/2025/02/20/Rust-1.85.0.html)
+[![crates.io](https://img.shields.io/crates/v/origin-crypto-sdk.svg)](https://crates.io/crates/origin-crypto-sdk)
 
 ## Quick Start
 
 ```rust
 use origin_crypto_sdk::prelude::*;
 
-// Recommended: hybrid Ed25519 + Falcon-1024 signing
+// Hybrid Ed25519 + Falcon-1024 signature (recommended default)
 let master_seed = [0x42u8; 32];
 let bundle = HybridSigningKeyBundle::from_seed(&master_seed, "my-app")
     .expect("valid seed");
-let msg = b"important document";
-let sig = bundle.sign_hybrid(msg);
-assert!(bundle.verify_hybrid(msg, &sig));
+
+let sig = bundle.sign_hybrid(b"sign this");
+// sig is an Ed25519 + Falcon-1024 hybrid signature — both must verify
 ```
 
-### Just Ed25519 (no PQ)
+## What's Inside
 
-```rust
-use origin_crypto_sdk::signing::classical::Ed25519Signer;
-
-let signer = Ed25519Signer::from_seed(&[0x42u8; 32]);
-let sig = signer.sign(b"hello");
-assert!(signer.verify(b"hello", &sig));
-```
-
-### Just Falcon-1024 (PQ only)
-
-```rust
-use origin_crypto_sdk::signing::postquantum::Falcon1024Signer;
-
-let signer = Falcon1024Signer::from_seed(&[0x42u8; 32])
-    .expect("valid seed");
-let sig = signer.sign(b"hello").expect("Falcon sign");
-assert!(signer.verify(b"hello", &sig));
-```
-
-### Committing AEAD encryption
-
-```rust
-use origin_crypto_sdk::chacha20_blake3::ChaCha20Blake3;
-use origin_crypto_sdk::kdf::Argon2id;
-
-let password = b"correct horse battery staple";
-let salt = [0u8; 16];
-let key = Argon2id::derive_key(password, &salt, false).unwrap();
-let nonce = ChaCha20Blake3::generate_nonce();
-let ct = ChaCha20Blake3::encrypt(&key, &nonce, b"secret message", b"my-app").unwrap();
-let pt = ChaCha20Blake3::decrypt(&key, &nonce, &ct, b"my-app").unwrap();
-assert_eq!(pt, b"secret message");
-```
-
-## Module Organization
-
-| Need | Module |
-|------|--------|
-| Hybrid signing (recommended) | `signing::hybrid` |
-| Pure Ed25519 | `signing::classical` |
-| Pure Falcon-512/1024, SLH-DSA, ML-DSA | `signing::postquantum` |
-| secp256k1 Schnorr | `ec_schnorr` |
-| Committing AEAD | `chacha20_blake3` |
-| Standard AEAD | `aead` |
-| Key derivation (Argon2id, HKDF) | `kdf` |
-| MAC | `mac` |
-| DRBG | `drbg` |
-| SipHash | `siphash` |
-| Compress | `compression` |
-| Elliptic-curve primitives | `pqc::curve41417` (Ed448) |
-| One-stop import | `prelude` |
-
-## Hybrid Constructions
-
-Every signature scheme in `signing::hybrid` pairs a classical curve with
-a post-quantum primitive. A break in any single primitive does not
-compromise the signature.
-
-| Construction | Classical | Post-quantum | Hash combiner |
-|---|---|---|---|
-| `Ed25519Falcon1024` | Ed25519 | Falcon-1024 | (sig) |
-| `Ed25519Falcon512` | Ed25519 | Falcon-512 | (sig) |
-| `Ed448Falcon1024` | Ed448 | Falcon-1024 | (sig) |
-| `Ed25519Blake3` | Ed25519 | — | BLAKE3 |
-| `Ed25519Shake256` | Ed25519 | — | SHAKE-256 |
-| `Ed25519Skein512` | Ed25519 | — | Skein-512 |
-| `Ed448Blake3` | Ed448 | — | BLAKE3 |
-| `Ed448Shake256` | Ed448 | — | SHAKE-256 |
-| `Ed448Skein512` | Ed448 | — | Skein-512 |
-| `Ed448Sha3_256` | Ed448 | — | SHA3-256 |
-| `Ed25519ChaCha20Blake3Sha3_256` | Ed25519 | ChaCha20-BLAKE3 KDF | SHA3-256 |
-
-## Security Defaults
-
-- **For signatures**: use the hybrid (Ed25519 + PQ) — see `signing::hybrid`.
-  Both must verify, so a vulnerability in one primitive does not break security.
-- **For encryption**: prefer `chacha20_blake3` (committing AEAD).
-  Avoid `XChaCha20-Poly1305` unless you specifically need the smaller tag
-  and accept the partitioning-oracle risk.
-- **For key derivation**: use Argon2id (memory-hard) for password-based KDF,
-  HKDF-SHA3-256 for HKDF-style derivation.
+| Category | Primitives | Recommended |
+|----------|-----------|-------------|
+| **Signatures** | Ed25519, Falcon-512/1024, SLH-DSA, ML-DSA, Ed448, Ed41417 | Hybrid (Ed25519 + Falcon-1024) |
+| **Encryption** | XChaCha20-Poly1305, ChaCha20-BLAKE3, Serpent CBC | ChaCha20-BLAKE3 (committing AEAD) |
+| **KDF** | Argon2id, HKDF-SHA3-256 | Argon2id for passwords, HKDF for derivation |
+| **Hashing** | BLAKE3, SHA3-256, SHAKE128/256, Skein-512/1024 | BLAKE3 or SHA3-256 |
+| **PQC KEM** | NTRU Prime (sntrup761), hybrid X25519+NTRU+Ed41417 | Hybrid KEM |
+| **Utilities** | ChaCha20-DRBG, seed hierarchy, Reed-Solomon, OTP/TOTP, compression, entropy analysis | -- |
 
 ## Features
 
-| Feature | Description |
-|---------|-------------|
-| `parallel` (default) | Rayon-based parallel processing |
-| `slh-dsa` | SLH-DSA (FIPS 205) hash-based signatures |
-| `ml-dsa` | ML-DSA (FIPS 204) lattice-based signatures |
-| `pqc-simd` | SIMD-accelerated PQC (placeholder) |
+| Feature | Enables | Default |
+|---------|---------|---------|
+| `parallel` | Rayon-based parallel ops | **yes** |
+| `slh-dsa` | SLH-DSA / SPHINCS+ (FIPS 205, hash-based signatures) | no |
+| `ml-dsa` | ML-DSA / Dilithium (FIPS 204, lattice signatures) | no |
+| `pqc-simd` | SIMD acceleration for NTRU Prime (placeholder) | no |
+
+```toml
+# Minimal (no parallel, no optional PQC)
+origin-crypto-sdk = { version = "0.4", default-features = false }
+
+# With FIPS 204 + FIPS 205 signatures
+origin-crypto-sdk = { version = "0.4", features = ["slh-dsa", "ml-dsa"] }
+```
+
+## Security Posture
+
+- **Hybrid-first**: signatures remain secure if *either* classical or PQ primitive breaks
+- **Committing AEAD by default**: ChaCha20-BLAKE3 prevents partitioning oracle attacks
+- **External + custom implementations**: see [SECURITY.md](SECURITY.md) for a full source table
+- Custom PQC implementations (NTRU Prime, Ed41417) are **not independently audited**
+- Constant-time verification on Ed25519, Falcon, Ed448 paths
+- Memory zeroing via `zeroize` where applicable
+
+**Do not use custom implementations in production without independent audit.**
+
+## Module Map
+
+```
+origin_crypto_sdk::
+  signing::             -- Ed25519, Falcon, SLH-DSA, ML-DSA, hybrid
+    hybrid::            -- HybridSigningKeyBundle (recommended)
+    classical::         -- Ed25519 alone
+    postquantum::       -- Falcon-512/1024 alone
+  aead::                -- XChaCha20-Poly1305
+  chacha20_blake3::     -- ChaCha20-BLAKE3 (committing AEAD)
+  kdf::                 -- Argon2id, HKDF-SHA3-256
+  pqc::                 -- Raw PQC primitives (advanced)
+    falcon512::         -- Falcon-512
+    falcon1024::        -- Falcon-1024
+    ed448::             -- Ed448 (Goldilocks, RFC 8032)
+    curve41417::        -- Curve41417 / Ed41417
+    ntru_prime::        -- NTRU Prime sntrup761
+    slhdsa::            -- SLH-DSA (feature-gated)
+    mldsa::             -- ML-DSA (feature-gated)
+  drbg::                -- ChaCha20 DRBG (auto-reseed at 16 MB)
+  entropy::             -- Entropy quality analysis
+  seed::                -- Hierarchical seed derivation
+  blob::                -- Encrypted seed at rest
+  mmr::                 -- Merkle Mountain Range
+  ec_schnorr::          -- secp256k1 Schnorr (native, zero deps)
+  prelude::             -- Common re-exports
+```
+
+## Examples
+
+```bash
+cargo run --example hybrid_sign
+cargo run --example encrypt_file
+cargo run --example kdf_derive
+cargo run --example seed_tree
+```
+
+## Requirements
+
+- **MSRV**: Rust 1.85
+- **Platform**: Linux, macOS, Windows (requires `getrandom`)
 
 ## License
 
-OPL-1.1
+OPL-1.1 — see [LICENSE](LICENSE).
+
+## Links
+
+- [Documentation](https://docs.rs/origin-crypto-sdk)
+- [Security Notes](SECURITY.md)
+- [Changelog](CHANGELOG.md)
+- [Migration Guide](MIGRATION.md) — for 0.3 → 0.4 and earlier transitions
+- [Maintenance Policy](docs/MAINTENANCE_POLICY.md)
+- [Repository](https://github.com/KidIkaros/OriginSDK)
+
+## API Stability
+
+**Pre-1.0 notice**: This crate is at version 0.4.0. Per [Cargo's SemVer
+guidance](https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html#pre-1.0),
+anything below 1.0 may contain breaking changes in minor releases.
+
+**Stable** (breaking changes will require a major version bump):
+- `CryptoError` variants and their `Display` output
+- `HybridSigningKeyBundle` API
+- `ChaCha20Blake3::encrypt` / `decrypt` signatures
+- `Argon2id::derive_key` signature
+
+**Unstable** (may change in minor releases):
+- The exact set of items in `prelude::*`
+- Low-level PQC module APIs (`pqc::falcon1024`, `pqc::ed448`, etc.)
+- `signing_legacy` — kept for one release cycle, will be removed
+- `test_utils` API — stabilizing in 0.5
+
+**Frozen** (will not change):
+- Wire formats of `HybridSignatureOutput` byte representations
+- AEAD ciphertext format (32-byte auth tag appended to ciphertext)
+- Domain separation labels for `HybridSigningKeyBundle::from_seed`

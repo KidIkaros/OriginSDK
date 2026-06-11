@@ -6,6 +6,7 @@
 //! This module wraps the RustCrypto `slh-dsa` crate using the `Shake128f` parameter set.
 
 use crate::error::{CryptoError, Result};
+use crate::internal::zeroize::Zeroize;
 
 use slh_dsa::signature::{Keypair, Signer, Verifier};
 use slh_dsa::{Shake128f, SigningKey, VerifyingKey};
@@ -26,6 +27,12 @@ pub struct SlhDsaPublicKey(pub(crate) Vec<u8>);
 /// SLH-DSA private key (serialized SigningKey bytes)
 #[derive(Clone)]
 pub struct SlhDsaPrivateKey(pub(crate) Vec<u8>);
+
+impl Drop for SlhDsaPrivateKey {
+    fn drop(&mut self) {
+        self.0.zeroize();
+    }
+}
 
 impl SlhDsaPublicKey {
     /// Create from raw bytes

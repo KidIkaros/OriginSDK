@@ -6,6 +6,19 @@
 //! an attacker from scanning the entire address space to find all stealth
 //! addresses belonging to an identity.
 //!
+//! # When to use
+//!
+//! Use this alongside [`stealth_kdf`](crate::stealth_kdf) to add a computational
+//! cost to stealth address generation. This is a defense-in-depth measure — it
+//! does not replace proper key hygiene.
+//!
+//! # Security
+//!
+//! - Difficulty is configurable (number of leading zero bits)
+//! - PoW is verified on recovery — forged addresses are rejected
+//! - Not a substitute for cryptographic strength of the underlying keys
+//!
+//! See also: [`stealth_kdf`](crate::stealth_kdf).
 //! # Algorithm
 //!
 //! Given an identity's public key and a destination hint, find a nonce `n`

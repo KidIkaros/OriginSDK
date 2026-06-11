@@ -23,10 +23,15 @@ pub struct EcSchnorrProof {
 /// Errors specific to EC-Schnorr operations.
 #[derive(Debug)]
 pub enum SchnorrError {
+    /// The commitment point is malformed or not on the curve.
     InvalidCommitment(String),
+    /// The response scalar is out of range.
     InvalidResponse(String),
+    /// The public key is malformed or not on the curve.
     InvalidPublicKey(String),
+    /// The signature failed to verify.
     VerificationFailed,
+    /// The CSPRNG failed to produce randomness.
     RngFailed,
 }
 

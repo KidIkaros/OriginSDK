@@ -9,6 +9,41 @@
 //! with AAD = salt.
 //!
 //! Uses native ChaCha20-Poly1305 implementation.
+//!
+//! # When to use
+//!
+//! Use this when you need to persist a master seed to disk or a database.
+//! The seed is encrypted with a user-supplied passphrase and can only be
+//! recovered with the same passphrase.
+//!
+//! For in-memory seed management with TTL and zeroization, use
+//! [`SeedHandle`](crate::seed::SeedHandle) from the
+//! [`seed`](crate::seed) module instead.
+//!
+//! # Example
+//!
+//! ```rust,no_run
+//! use origin_crypto_sdk::blob::{create_blob, recover_seed};
+//! use origin_crypto_sdk::primitives::MemoryTier;
+//!
+//! let seed = [0x42u8; 32];
+//! let passphrase = b"strong-passphrase";
+//!
+//! // Encrypt seed for storage
+//! let blob = create_blob(&seed, passphrase, MemoryTier::Standard).unwrap();
+//!
+//! // Recover seed from blob
+//! let recovered = recover_seed(&blob, passphrase, MemoryTier::Standard).unwrap();
+//! assert_eq!(seed, recovered);
+//! ```
+//!
+//! # Security
+//!
+//! - Argon2id memory-hard KDF prevents brute-force attacks on the passphrase
+//! - XChaCha20-Poly1305 provides authenticated encryption
+//! - Wrong passphrase returns an error (authentication tag check fails)
+//!
+//! See also: [`seed`](crate::seed), [`kdf`](crate::kdf), [`aead`](crate::aead).
 
 use crate::error::{CryptoError, Result};
 use crate::internal::zeroize::Zeroize;

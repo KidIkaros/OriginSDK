@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: OPL-1.1
+#![cfg_attr(docsrs, warn(missing_docs))]
 
 //! Origin Crypto SDK — Post-quantum and classical cryptographic primitives.
 //!
@@ -61,6 +62,19 @@
 //!   and accept the partitioning-oracle risk.
 //! - For **key derivation**: use Argon2id (memory-hard) for password-based KDF,
 //!   HKDF-SHA3-256 for HKDF-style derivation.
+//!
+//! # Cargo features
+//!
+//! | Feature   | Enables                                | Default |
+//! |-----------|----------------------------------------|---------|
+//! | `parallel`  | Rayon-based parallel processing      | **yes** |
+//! | `slh-dsa`   | SLH-DSA / SPHINCS+ signatures (FIPS 205) | no  |
+//! | `ml-dsa`    | ML-DSA / Dilithium signatures (FIPS 204)  | no  |
+//! | `pqc-simd`  | SIMD acceleration for NTRU Prime    | no      |
+//!
+//! Low-level PQC primitives are always available through their modules
+//! (`pqc::falcon1024`, `pqc::ed448`, etc.) — the features only gate the
+//! optional FIPS schemes that pull in extra dependencies.
 
 #![doc(html_root_url = "https://docs.rs/origin-crypto-sdk/0.4.0")]
 #![allow(clippy::result_large_err)]
@@ -70,8 +84,25 @@
 // ──────────────────────────────────────────────────────────────────────
 
 /// Error types and `Result` alias.
+pub mod types;
 pub mod error;
 pub use error::{CryptoError, Result};
+
+/// Test utilities for downstream users.
+///
+/// **Feature-gated** — enable with `features = ["test-utils"]`.
+///
+/// Provides deterministic seeds, keys, nonces, and byte generators so
+/// users can write tests against the SDK without hitting real randomness.
+///
+/// # Example
+///
+/// ```ignore
+/// use origin_crypto_sdk::test_utils::deterministic_seed;
+/// let seed = deterministic_seed(42);
+/// ```
+#[cfg(feature = "test-utils")]
+pub mod test_utils;
 
 /// Prelude — re-exports common types for `use origin_crypto_sdk::prelude::*`.
 pub mod prelude;
@@ -101,7 +132,12 @@ pub mod ec_schnorr;
 
 // Legacy flat `signing` API (pre-restructuring). Re-exported as
 // `origin_crypto_sdk::signing_legacy` for callers that imported the
-// old types directly.
+// old types directly. **Deprecated in 0.4, will be removed in 0.5**.
+// See `signing_legacy` module docs for migration instructions.
+#[deprecated(
+    since = "0.4.0",
+    note = "use signing::hybrid::HybridSigningKeyBundle instead. This module will be removed in 0.5."
+)]
 pub mod signing_legacy;
 
 // ── Randomness & DRBG ──
@@ -163,9 +199,24 @@ pub use siphash::siphash_expand;
 // Compression
 pub use compression::{compress, decompress};
 
-// Signatures — re-exports
+// Signatures — re-exports (DEPRECATED, will be removed in 0.5)
+#[allow(deprecated)]
+#[deprecated(
+    since = "0.4.0",
+    note = "use signing::hybrid::HybridSigningKeyBundle instead"
+)]
 pub use signing::HybridSignatureOutput;
+#[allow(deprecated)]
+#[deprecated(
+    since = "0.4.0",
+    note = "use signing::hybrid::HybridSigningKeyBundle instead"
+)]
 pub use signing::HybridSigningKey;
+#[allow(deprecated)]
+#[deprecated(
+    since = "0.4.0",
+    note = "use signing::hybrid::HybridSigningKeyBundle instead"
+)]
 pub use signing::HybridVerifyingKey;
 
 // Hybrid bundle (canonical PQ-hybrid signing)

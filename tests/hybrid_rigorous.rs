@@ -17,7 +17,7 @@ use origin_crypto_sdk::hybrid::{
     Ed25519Falcon1024, Ed25519Falcon512, Ed25519Shake256, Ed25519Skein512, Ed448Falcon1024,
     Ed448Sha3_256, Ed448Shake256, Ed448Skein512, HybridSigningKeyBundle,
 };
-use origin_crypto_sdk::pqc::curve41417::ed41417::SigningKey as Ed41417Sk;
+use origin_crypto_sdk::pqc::ed448::SigningKey as Ed448Sk;
 use origin_crypto_sdk::pqc::falcon1024;
 use origin_crypto_sdk::pqc::falcon512;
 
@@ -95,7 +95,7 @@ fn prop_ed25519_skein512_sign_verify_5_rounds() {
 #[test]
 fn prop_ed448_sha3_256_sign_verify_3_rounds() {
     let mut rng = TestRng::new(0x1234_5678);
-    let sk = Ed41417Sk::from_bytes_mod_order([42u8; 52]);
+    let sk = Ed448Sk::from_bytes(&[42u8; 57]).unwrap();
     let pk = sk.verifying_key();
 
     for _ in 0..3 {
@@ -108,7 +108,7 @@ fn prop_ed448_sha3_256_sign_verify_3_rounds() {
 #[test]
 fn prop_ed448_shake256_sign_verify_3_rounds() {
     let mut rng = TestRng::new(0x9876_5432);
-    let sk = Ed41417Sk::from_bytes_mod_order([42u8; 52]);
+    let sk = Ed448Sk::from_bytes(&[42u8; 57]).unwrap();
     let pk = sk.verifying_key();
 
     for _ in 0..3 {
@@ -122,7 +122,7 @@ fn prop_ed448_shake256_sign_verify_3_rounds() {
 #[test]
 fn prop_ed448_skein512_sign_verify_3_rounds() {
     let mut rng = TestRng::new(0xABCD_EF01);
-    let sk = Ed41417Sk::from_bytes_mod_order([42u8; 52]);
+    let sk = Ed448Sk::from_bytes(&[42u8; 57]).unwrap();
     let pk = sk.verifying_key();
 
     for _ in 0..3 {
@@ -169,7 +169,7 @@ fn prop_ed448_falcon1024_sign_verify_3_rounds() {
     let mut rng = TestRng::new(0x5A5A_5A5A);
     let seed = [42u8; 32];
     let (f_pk, f_sk) = falcon1024::generate_keypair_from_seed(&seed).unwrap();
-    let ed_sk = Ed41417Sk::from_bytes_mod_order([42u8; 52]);
+    let ed_sk = Ed448Sk::from_bytes(&[42u8; 57]).unwrap();
     let ed_pk = ed_sk.verifying_key();
 
     for _ in 0..3 {
@@ -493,7 +493,7 @@ fn cross_construction_ed25519_component_consistency() {
 /// Same key + same message should produce same Ed448 component across constructions
 #[test]
 fn cross_construction_ed448_component_consistency() {
-    let sk = Ed41417Sk::from_bytes_mod_order([42u8; 52]);
+    let sk = Ed448Sk::from_bytes(&[42u8; 57]).unwrap();
     let msg = b"test message";
 
     let sig1 = Ed448Sha3_256::sign(&sk, msg);

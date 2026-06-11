@@ -5,6 +5,22 @@
 //! Derives stealth address master keys from a SeedHandle using HKDF-SHA3-256.
 //! Each stealth address gets a unique set of viewing, spending, and ephemeral
 //! keys derived from the master keys at a specific index.
+//!
+//! # When to use
+//!
+//! Use this when building privacy-preserving payment or identity systems where
+//! recipients need unlinkable addresses derived from a single master key.
+//!
+//! For general-purpose key derivation, use [`hkdf_sha3_256`](crate::kdf::hkdf::hkdf_sha3_256)
+//! or [`derive_child_seed`](crate::seed::derive_child_seed) instead.
+//!
+//! # Security
+//!
+//! - All keys are derived via HKDF-SHA3-256 with domain separation
+//! - Different indices produce computationally independent keys
+//! - Viewing and spending keys are derived from separate domains
+//!
+//! See also: [`stealth_pow`](crate::stealth_pow), [`seed`](crate::seed).
 
 use crate::error::{CryptoError, Result};
 use crate::kdf::hkdf::hkdf_sha3_256;

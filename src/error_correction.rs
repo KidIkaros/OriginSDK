@@ -281,6 +281,7 @@ impl ReedSolomonCodec {
 pub struct DataReedSolomon;
 
 impl DataReedSolomon {
+    /// Create a new Reed-Solomon encoder/decoder.
     pub fn new() -> Self {
         Self
     }

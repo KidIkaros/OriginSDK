@@ -229,19 +229,14 @@ pub use signing::hybrid::HybridSigningKeyBundle;
 pub use signing::hybrid::falcon1024_keygen;
 pub use signing::hybrid::{skein1024, skein512};
 
-// PQC direct access
-pub use pqc::falcon1024::{
-    self as falcon_1024, FalconPrivateKey as Falcon1024PrivateKey,
-    FalconPublicKey as Falcon1024PublicKey, FalconSignature as Falcon1024Signature,
-};
-pub use pqc::falcon512::{
-    self as falcon_512, Falcon512PrivateKey, Falcon512PublicKey, Falcon512Signature,
-};
+// PQC direct access — use `pqc::{falcon1024, falcon512, ed448, ...}::module` for raw types.
+// Re-exports at crate root are intentionally omitted to keep the surface clean.
+// Advanced users access via `origin_crypto_sdk::pqc::falcon1024::FalconPrivateKey` etc.
 
 // Ed448 — RFC 8032 signature scheme on the 448-bit Goldilocks curve.
 // Exposed at `origin_crypto_sdk::pqc::ed448`.
 // Ed41417 — Daniel J. Bernstein's signature scheme on curve41417.
-pub use pqc::curve41417::ed41417 as ed41417_raw;
+// pub use pqc::curve41417::ed41417 as ed41417_raw;  // intentionally not re-exported
 
 // SLH-DSA direct access (feature-gated)
 #[cfg(feature = "slh-dsa")]

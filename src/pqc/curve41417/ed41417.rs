@@ -1,12 +1,20 @@
 // SPDX-License-Identifier: OPL-1.1
 
-//! Ed448 signature scheme (DGP-ED41417-NONCE-V1).
+//! Ed41417 signature scheme (DGP-ED41417-NONCE-V1).
 //!
-//! This module implements the Ed448 signature scheme on the curve41417
-//! prime-order subgroup. The curve is curve41417 (p = 2^414 - 17), but
-//! the public-facing name is **Ed448** — the signature scheme operates
-//! on the same elliptic-curve family as RFC 8032's Ed448-Goldilocks but
-//! on a different (larger, higher-security) base curve.
+//! This module implements an EdDSA-style signature scheme on the curve41417
+//! prime-order subgroup (p = 2^414 - 17). It follows the RFC 8032 design
+//! patterns but operates on the **larger** curve41417 curve for additional
+//! security margin (~207 bits vs ~223 bits for RFC 8032 Ed448).
+//!
+//! # Distinction from RFC 8032 Ed448
+//!
+//! **This is NOT RFC 8032 Ed448.** The two are different curves:
+//! - **RFC 8032 Ed448** (`pqc::ed448`): Goldilocks curve (Curve448), 448-bit prime
+//! - **Ed41417** (`pqc::curve41417::ed41417`): Bernstein's Curve41417, 414-bit prime
+//!
+//! Ed41417 has smaller keys/signatures (52-byte keys, 104-byte sigs) compared
+//! to RFC 8032 Ed448 (57-byte keys, 114-byte sigs) due to the cofactor structure.
 //!
 //! # Security
 //!
@@ -16,20 +24,9 @@
 //!
 //! # Implementation
 //!
-//! Follows the DGP (Decaf Group Protocol) framework with Ed448
+//! Follows the DGP (Decaf Group Protocol) framework with Ed41417
 //! domain separation: `DGP-ED41417-NONCE-V1` and
-//! `DGP-ED41417-CHALLENGE-V1`. The internal name `DGP-ED41417` is
-//! the curve-specific scheme identifier; the public type is named
-//! `Ed448` for consistency with the Ed25519 / Ed448 naming family.
-//!
-//! # Why not RFC 8032 Ed448?
-//!
-//! RFC 8032's Ed448 operates on the Goldilocks curve (Curve448). The
-//! Ed448 in this module uses the **larger** curve41417 to gain
-//! additional security margin at the cost of slightly larger keys
-//! (57-byte public keys vs 57-byte — same!) and signatures (112 bytes
-//! vs 114 bytes for RFC 8032 Ed448 — actually 2 bytes smaller, due
-//! to the cofactor structure).
+//! `DGP-ED41417-CHALLENGE-V1`.
 //!
 //! # Key and signature sizes
 //!
@@ -46,13 +43,13 @@ use crate::internal::zeroize::Zeroize;
 
 use super::{EdwardsPoint, Scalar, BYTES_SIZE, SCALAR_SIZE};
 
-/// Size in bytes of an Ed448 signature.
+/// Size in bytes of an Ed41417 signature.
 pub const SIGNATURE_SIZE: usize = BYTES_SIZE + SCALAR_SIZE;
 
 const DOM_NONCE: &[u8] = b"DGP-ED41417-NONCE-V1";
 const DOM_CHALLENGE: &[u8] = b"DGP-ED41417-CHALLENGE-V1";
 
-/// Ed448 signing key (on the curve41417 subgroup).
+/// Ed41417 signing key (on the curve41417 subgroup).
 #[derive(Clone)]
 pub struct SigningKey {
     scalar: Scalar,
@@ -102,7 +99,7 @@ impl SigningKey {
         self.scalar.to_bytes()
     }
 
-    /// Sign `message` and return an Ed448 signature.
+    /// Sign `message` and return an Ed41417 signature.
     pub fn sign(&self, message: &[u8]) -> Signature {
         let a_bytes = self.scalar.to_bytes();
 
@@ -124,7 +121,7 @@ impl SigningKey {
     }
 }
 
-/// Ed448 verifying key (on the curve41417 subgroup).
+/// Ed41417 verifying key (on the curve41417 subgroup).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct VerifyingKey {
     bytes: [u8; BYTES_SIZE],
@@ -134,7 +131,7 @@ impl VerifyingKey {
     /// Parse a verifying key from compressed Edwards point bytes.
     pub fn from_bytes(bytes: [u8; BYTES_SIZE]) -> Result<Self> {
         EdwardsPoint::from_bytes(&bytes)
-            .ok_or_else(|| CryptoError::InvalidKey("invalid Ed448 public key".to_string()))?;
+            .ok_or_else(|| CryptoError::InvalidKey("invalid Ed41417 public key".to_string()))?;
 
         Ok(Self { bytes })
     }
@@ -158,7 +155,7 @@ impl VerifyingKey {
         Scalar::from_canonical_bytes(&signature.s_enc).ok_or(CryptoError::AuthenticationFailed)?;
 
         let a_point = EdwardsPoint::from_bytes(&self.bytes)
-            .ok_or_else(|| CryptoError::InvalidKey("invalid Ed448 public key".to_string()))?;
+            .ok_or_else(|| CryptoError::InvalidKey("invalid Ed41417 public key".to_string()))?;
 
         let k = hash_to_scalar(DOM_CHALLENGE, &[&signature.r_enc, &self.bytes, message]);
         let k_bytes = k.to_bytes();
@@ -175,7 +172,7 @@ impl VerifyingKey {
     }
 }
 
-/// Ed448 signature (on the curve41417 subgroup).
+/// Ed41417 signature (on the curve41417 subgroup).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Signature {
     r_enc: [u8; BYTES_SIZE],

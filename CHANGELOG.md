@@ -2,6 +2,24 @@
 
 All notable changes to origin-crypto-sdk will be documented in this file.
 
+## [Unreleased]
+
+_Future work for 0.6.0+ lives here as it accumulates._
+
+## [0.5.3] — 2026-07-26
+
+### Added
+- **`docs/duress-pattern.md`** — Application-level guidance document for developers integrating `origin-crypto-sdk` into products that serve users facing legal compulsion or physical coercion. Covers:
+  - **Threat model**: adversaries A1 (legal compulsion at border), A2 (offline forensic analysis), A3 (physical / rubber-hose coercion)
+  - **Pattern P1**: Operational deniability — recommended default; sensitive state stays off the device the user carries (EFF SSD clean-traveler pattern)
+  - **Pattern P2**: Distinguishable decoy vault — three vaults, duress passphrase silently routes to decoy; **no destruction occurs**, so 18 U.S.C. §2232 risk is avoided. Runtime blueprint uses `create_blob`, `recover_seed`, `SeedHandle::with_tier`, and `MemoryTier::Sovereign` from the existing public API.
+  - **Pattern P3**: Plausible deniability — VeraCrypt-style hidden volume; operationally fragile (SSD TRIM, OS logs, file timestamps); recommended only with deniability training
+  - **Jurisdictional matrix**: US (18 U.S.C. §2232; Tunick matter, TechCrunch 2026-07-24), UK (Investigatory Powers Act 2016, successor to RIPA Part III), EU (member-state variance — LCEN art. 230-1, §100a StPO, etc.), Five Eyes (MLAT cross-border), authoritarian regimes
+- Cross-linked from `README.md` (Security Posture section), `src/lib.rs` crate-level documentation (`//!` `Threat modeling for application authors` section), and `SECURITY.md` (Threat-modeling section).
+
+### Notes
+- **Documentation-only addition. No API surface changes.** The SDK deliberately ships no duress or self-destruct primitive (see `docs/duress-pattern.md` §“Legal Context” for the §2232 reasoning).
+
 ## [0.5.1] — 2026-07-26
 
 ### Changed

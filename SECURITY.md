@@ -51,6 +51,27 @@ The Origin Crypto SDK contains both external (battle-tested) and custom implemen
 3. Native implementations are provided for environments requiring zero external crypto dependencies
 4. For post-quantum components (NTRU Prime, Falcon, Ed41417), there are no battle-tested alternatives
 
+## Threat Modeling for Application Authors
+
+If your application serves users facing legal compulsion or physical coercion,
+the SDK ships **no duress or self-destruct primitive** by deliberate design.
+
+Active-wipe features have been charged under 18 U.S.C. §2232 ("destruction of
+property to prevent seizure") following border incidents where users entered
+a duress PIN that triggered a device wipe (see the Tunick matter, TechCrunch
+2026-07-24). The SDK cannot expose a general "destroy" API without inviting
+application developers to wire it to UI affordances that expose end users
+to potential destruction-of-evidence prosecution.
+
+See [`docs/duress-pattern.md`](docs/duress-pattern.md) for app-level guidance
+on:
+
+- Pattern P1: Operational deniability (clean-traveler device)
+- Pattern P2: Distinguishable decoy-vault routing (i.e., no destruction occurs)
+- Pattern P3: Plausible deniability (VeraCrypt-style; operationally fragile)
+- Jurisdictional risk matrix (US, UK, EU, Five Eyes, authoritarian regimes)
+- Working pseudocode using only the SDK's existing public API
+
 ## Reporting Vulnerabilities
 
 If you discover a security vulnerability, please report it privately to the repository maintainers. Do not open a public issue.

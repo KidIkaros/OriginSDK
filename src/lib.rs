@@ -76,6 +76,19 @@
 //! (`pqc::falcon1024`, `pqc::ed448`, etc.) — the features only gate the
 //! optional FIPS schemes that pull in extra dependencies.
 
+//! # Threat modeling for application authors
+//!
+//! For applications that wrap this SDK and serve users facing legal
+//! compulsion or physical coercion (journalists, dissidents, civil-society
+//! organizers), see the application-level guidance in
+//! <https://github.com/KidIkaros/OriginSDK/blob/HEAD/docs/duress-pattern.md>.
+//! **The SDK deliberately ships no duress or self-destruct primitive**;
+//! applications compose existing primitives (`create_blob`, `recover_seed`,
+//! `SeedHandle::with_tier`, `MemoryTier::Standard`/`Sovereign`) following
+//! the patterns documented there.
+//!
+//! See also `SECURITY.md` for the implementation source table.
+
 #![doc(html_root_url = "https://docs.rs/origin-crypto-sdk/0.4.0")]
 #![allow(clippy::result_large_err)]
 

@@ -84,6 +84,23 @@ origin-crypto-sdk = { version = "0.4", features = ["slh-dsa", "ml-dsa"] }
 
 **Do not use custom implementations in production without independent audit.**
 
+## Threat Modeling & Duress Patterns
+
+If your application serves users facing legal compulsion or physical coercion
+(journalists, activists, dissidents), the SDK ships **no duress or self-destruct
+primitive** by deliberate design. Active-wipe / self-destruct features have
+been prosecuted under 18 U.S.C. §2232 ("destruction of property to prevent
+seizure"); see the Tunick matter (TechCrunch 2026-07-24).
+
+For application-level guidance on:
+
+- **Pattern P1**: Operational deniability — keep sensitive state off the device the user carries (EFF SSD clean-traveler pattern)
+- **Pattern P2**: Distinguishable decoy vault — three vaults, duress passphrase silently routes to decoy (no destruction occurs; §2232 risk avoided)
+- **Pattern P3**: Indistinguishable plausible deniability — VeraCrypt-style hidden volume; operationally fragile
+- **Jurisdictional matrix**: US, UK (Investigatory Powers Act 2016), EU (member-state variance), authoritarian regimes
+
+…see [`docs/duress-pattern.md`](docs/duress-pattern.md).
+
 ## Module Map
 
 ```
@@ -176,7 +193,7 @@ Apache-2.0 — see [LICENSE](LICENSE).
 
 ## API Stability
 
-**Pre-1.0 notice**: This crate is at version 0.5.1. Per [Cargo's SemVer guidance](https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html#pre-1.0), anything below 1.0 may contain breaking changes in minor releases.
+**Pre-1.0 notice**: This crate is at version 0.5.3. Per [Cargo's SemVer guidance](https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html#pre-1.0), anything below 1.0 may contain breaking changes in minor releases.
 
 **Stable** (breaking changes will require a major version bump):
 - `CryptoError` variants and their `Display` output

@@ -156,11 +156,16 @@ impl Argon2idBuilder {
     /// Returns [`CryptoError::Kdf`] if Argon2id parameters are invalid
     /// or hashing fails.
     pub fn derive(self, password: &[u8], salt: &[u8; 16]) -> Result<Vec<u8>> {
-        let params = Params::new(self.memory_kib, self.iterations, self.parallelism, Some(self.output_len))
-            .map_err(|e| CryptoError::Kdf(e.to_string()))?;
+        let params = Params::new(
+            self.memory_kib,
+            self.iterations,
+            self.parallelism,
+            Some(self.output_len),
+        )
+        .map_err(|e| CryptoError::Kdf(e.to_string()))?;
         let argon2 = Argon2::new(Algorithm::Argon2id, Version::V0x13, params);
-        let salt_string = SaltString::encode_b64(salt)
-            .map_err(|e| CryptoError::Kdf(e.to_string()))?;
+        let salt_string =
+            SaltString::encode_b64(salt).map_err(|e| CryptoError::Kdf(e.to_string()))?;
         let password_hash = argon2
             .hash_password(password, &salt_string)
             .map_err(|e| CryptoError::Kdf(e.to_string()))?;
@@ -213,9 +218,7 @@ mod tests {
 
         // Default builder should produce the same result as derive_key(false)
         let preset_key = Argon2id::derive_key(password, &salt, false).unwrap();
-        let builder_key = Argon2idBuilder::new()
-            .derive(password, &salt)
-            .unwrap();
+        let builder_key = Argon2idBuilder::new().derive(password, &salt).unwrap();
 
         assert_eq!(preset_key.as_slice(), &builder_key[..32]);
     }

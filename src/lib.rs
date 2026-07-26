@@ -83,9 +83,9 @@
 // Public modules (matching the README map exactly)
 // ──────────────────────────────────────────────────────────────────────
 
+pub mod error;
 /// Error types and `Result` alias.
 pub mod types;
-pub mod error;
 pub use error::{CryptoError, Result};
 
 /// Test utilities for downstream users.
@@ -115,27 +115,34 @@ pub mod chacha20_blake3;
 pub mod kdf;
 
 // ── Signatures ──
+pub mod ec_schnorr;
+pub mod pqc;
 /// Signing primitives: classical, post-quantum, and hybrid.
 ///
 /// **Recommended**: use [`signing::hybrid::HybridSigningKeyBundle`] for
 /// new applications. It pairs Ed25519 with a post-quantum primitive so
 /// the signature remains unforgeable even if one primitive is broken.
 pub mod signing;
-pub mod pqc;
-pub mod ec_schnorr;
 
 // Legacy flat `signing` API (pre-restructuring). Re-exported as
 // `origin_crypto_sdk::signing_legacy` for callers that imported the
-// old types directly. **Deprecated in 0.4, will be removed in 0.5**.
+// old types directly. **Deprecated; removal deferred to 0.6**.
 // See `signing_legacy` module docs for migration instructions.
 #[deprecated(
-    since = "0.4.0",
-    note = "use signing::hybrid::HybridSigningKeyBundle instead. This module will be removed in 0.5."
+    since = "0.5.1",
+    note = "Removal deferred to 0.6. Use signing::hybrid::HybridSigningKeyBundle instead. See MIGRATION.md."
 )]
 pub mod signing_legacy;
 
 // ── Randomness & DRBG ──
 pub mod drbg;
+
+// ── Recovery phrases ──
+///
+/// BIP-39-shaped Unicode recovery phrases. NOT BIP-39-compatible —
+/// uses a curated Unicode codepoint wordlist and SHA-3-256 (not
+/// SHA-256). For interop with other wallets, use the `bip39` crate.
+pub mod recovery;
 
 // ── Utility modules (hidden from docs) ──
 /// Entropy analysis — internal utility.
@@ -192,8 +199,8 @@ pub use error::{CryptoError as Error, Result as StdResult};
 pub use aead::XChaCha20Poly1305;
 
 // KDF
-pub use kdf::Argon2id;
 pub use kdf::hkdf::{derive_subkeys, hkdf_sha3_256};
+pub use kdf::Argon2id;
 
 // MAC
 pub use kdf::mac::hmac_sha3_256;
@@ -207,26 +214,26 @@ pub use seed::{derive_child_seed, derive_signing_keys, derive_verifying_keys, Se
 // Signatures — re-exports (DEPRECATED, will be removed in 0.5)
 #[allow(deprecated)]
 #[deprecated(
-    since = "0.4.0",
-    note = "use signing::hybrid::HybridSigningKeyBundle instead"
+    since = "0.5.1",
+    note = "Removal deferred to 0.6. Use signing::hybrid::HybridSigningKeyBundle instead. See MIGRATION.md."
 )]
 pub use signing::HybridSignatureOutput;
 #[allow(deprecated)]
 #[deprecated(
-    since = "0.4.0",
-    note = "use signing::hybrid::HybridSigningKeyBundle instead"
+    since = "0.5.1",
+    note = "Removal deferred to 0.6. Use signing::hybrid::HybridSigningKeyBundle instead. See MIGRATION.md."
 )]
 pub use signing::HybridSigningKey;
 #[allow(deprecated)]
 #[deprecated(
-    since = "0.4.0",
-    note = "use signing::hybrid::HybridSigningKeyBundle instead"
+    since = "0.5.1",
+    note = "Removal deferred to 0.6. Use signing::hybrid::HybridSigningKeyBundle instead. See MIGRATION.md."
 )]
 pub use signing::HybridVerifyingKey;
 
 // Hybrid bundle (canonical PQ-hybrid signing)
-pub use signing::hybrid::HybridSigningKeyBundle;
 pub use signing::hybrid::falcon1024_keygen;
+pub use signing::hybrid::HybridSigningKeyBundle;
 pub use signing::hybrid::{skein1024, skein512};
 
 // PQC direct access — use `pqc::{falcon1024, falcon512, ed448, ...}::module` for raw types.
@@ -240,7 +247,9 @@ pub use signing::hybrid::{skein1024, skein512};
 
 // SLH-DSA direct access (feature-gated)
 #[cfg(feature = "slh-dsa")]
-pub use pqc::slhdsa::{sign as slhdsa_sign, verify as slhdsa_verify, SlhDsaPrivateKey, SlhDsaPublicKey};
+pub use pqc::slhdsa::{
+    sign as slhdsa_sign, verify as slhdsa_verify, SlhDsaPrivateKey, SlhDsaPublicKey,
+};
 
 // ML-DSA direct access (feature-gated)
 #[cfg(feature = "ml-dsa")]

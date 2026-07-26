@@ -54,11 +54,7 @@ impl Ed25519Signer {
     }
 
     /// Verify a signature against an arbitrary public key.
-    pub fn verify_with_pubkey(
-        pubkey: &[u8; 32],
-        message: &[u8],
-        signature: &[u8; 64],
-    ) -> bool {
+    pub fn verify_with_pubkey(pubkey: &[u8; 32], message: &[u8], signature: &[u8; 64]) -> bool {
         let Ok(vk) = VerifyingKey::from_bytes(pubkey) else {
             return false;
         };

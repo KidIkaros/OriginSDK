@@ -41,9 +41,9 @@
 //! - **Ed41417** (Daniel J. Bernstein, 2014) — operates over a 414-bit
 //!   prime, used in specific protocols like X41417.
 
+use ed448_goldilocks::Signature as InnerSignature;
 use ed448_goldilocks::SigningKey as InnerSigningKey;
 use ed448_goldilocks::VerifyingKey as InnerVerifyingKey;
-use ed448_goldilocks::Signature as InnerSignature;
 
 use crate::error::{CryptoError, Result};
 
@@ -61,6 +61,7 @@ pub const SIGNATURE_SIZE: usize = 114;
 /// Wraps a 57-byte private key. The high bit of the last byte is
 /// ignored per RFC 8032 (the "clamping" step is part of signing, not
 /// the key storage).
+#[derive(Clone)]
 pub struct SigningKey(InnerSigningKey);
 
 impl SigningKey {

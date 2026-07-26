@@ -30,6 +30,31 @@ let sig = bundle.sign_hybrid(b"sign this");
 | **Hashing** | BLAKE3, SHA3-256, SHAKE128/256, Skein-512/1024 | BLAKE3 or SHA3-256 |
 | **PQC KEM** | NTRU Prime (sntrup761), hybrid X25519+NTRU+Ed41417 | Hybrid KEM |
 | **Utilities** | ChaCha20-DRBG, seed hierarchy, Reed-Solomon, OTP/TOTP, compression, entropy analysis | -- |
+| **Recovery** | Unicode-codepoint recovery phrases (12 / 24-word, SHA-3-256 checksum) | Unicode cipher — NOT BIP-39 compatible |
+
+## Recovery Phrases
+
+The `recovery::unicode_cipher` module provides a BIP-39-shaped recovery phrase codec using Unicode codepoints instead of an English wordlist.
+
+- **NOT BIP-39 compatible**: uses a curated Unicode codepoint wordlist and SHA-3-256 (not SHA-256). Phrases generated here cannot be recovered by other BIP-39 wallets — recovery requires this module.
+- **Strict NFKC safety**: the decoder rejects ZWJ, Variation Selectors, Combining Marks, BIDI marks, default-ignorable characters, and multi-codepoint NFKC decompositions. No silent canonicalization.
+- **12 or 24 words**: 12-word = 128-bit entropy + 4-bit SHA-3-256 checksum; 24-word = 256-bit entropy + 8-bit checksum.
+- **Custom alphabets**: power-of-2 sized (16, 32, ..., 4096), with a 128-bit safety floor.
+
+```rust
+use origin_crypto_sdk::recovery::unicode_cipher::{
+    encode_phrase, decode_phrase, PhraseLength, UnicodeWordlist,
+};
+
+let entropy = [0x42u8; 32]; // 256-bit for 24-word phrase
+let phrase = encode_phrase(&entropy, &UnicodeWordlist::default(), PhraseLength::Words24)
+    .expect("valid entropy");
+let recovered = decode_phrase(&phrase, &UnicodeWordlist::default())
+    .expect("valid phrase");
+assert_eq!(recovered, entropy);
+```
+
+See the [module docs](https://docs.rs/origin-crypto-sdk/latest/origin_crypto_sdk/recovery/unicode_cipher/index.html) for the full API surface.
 
 ## Features
 
@@ -90,14 +115,16 @@ origin_crypto_sdk::
   blob::                -- Encrypted seed at rest (internal)
   mmr::                 -- Merkle Mountain Range (internal)
   stealth::             -- Stealth address primitives
-    kdf::               -- Stealth master/child key derivation
-    pow::               -- Hashcash PoW for enumeration rate-limiting
+    kdf::                -- Stealth master/child key derivation
+    pow::                -- Hashcash PoW for enumeration rate-limiting
+recovery::           -- Unicode recovery phrase codec (NOT BIP-39 compatible)
+    unicode_cipher::  -- Encode/decode Unicode-phrase backups
   ec_schnorr::          -- secp256k1 Schnorr (native, zero deps)
   prelude::             -- Common re-exports
   test_utils::          -- Deterministic test helpers (feature = "test-utils")
   types::               -- Zeroizing byte array newtypes (XNonce, CNonce, Seed, etc.)
   error::               -- CryptoError, Result alias
-  signing_legacy::      -- Deprecated flat signing API (removed in 0.5)
+  signing_legacy::      -- Deprecated flat signing API (removal deferred to 0.6)
   internal::            -- Internals (hidden, not for external use)
 ```
 
@@ -149,7 +176,7 @@ Apache-2.0 — see [LICENSE](LICENSE).
 
 ## API Stability
 
-**Pre-1.0 notice**: This crate is at version 0.4.0. Per [Cargo's SemVer guidance](https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html#pre-1.0), anything below 1.0 may contain breaking changes in minor releases.
+**Pre-1.0 notice**: This crate is at version 0.5.1. Per [Cargo's SemVer guidance](https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html#pre-1.0), anything below 1.0 may contain breaking changes in minor releases.
 
 **Stable** (breaking changes will require a major version bump):
 - `CryptoError` variants and their `Display` output
@@ -160,7 +187,7 @@ Apache-2.0 — see [LICENSE](LICENSE).
 **Unstable** (may change in minor releases):
 - The exact set of items in `prelude::*`
 - Low-level PQC module APIs (`pqc::falcon1024`, `pqc::ed448`, etc.)
-- `signing_legacy` — kept for one release cycle, will be removed
+- `signing_legacy` — kept for one final release cycle, will be removed in 0.6
 - `test_utils` API — stabilizing in 0.5
 
 **Frozen** (will not change):

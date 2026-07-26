@@ -515,11 +515,7 @@ impl Ed25519Falcon512 {
 
 impl Ed448Falcon1024 {
     /// Sign with both Ed448 and Falcon-1024 keys
-    pub fn sign(
-        ed448_sk: &Ed448SigningKey,
-        falcon_sk: &FalconPrivateKey,
-        message: &[u8],
-    ) -> Self {
+    pub fn sign(ed448_sk: &Ed448SigningKey, falcon_sk: &FalconPrivateKey, message: &[u8]) -> Self {
         let ed448_sig = ed448_sk.sign(message);
         let falcon_sig = falcon_sign(message, falcon_sk).expect("Falcon signing failed");
         Self {
@@ -593,13 +589,14 @@ impl Ed25519ChaCha20Blake3Sha3_256 {
     pub fn sign(master_seed: &[u8], domain: &str, message: &[u8]) -> Result<Self> {
         let (ed_key, chacha_key, hash_key) = derive_hybrid_keys(master_seed, domain, 32, 32, 32)?;
 
-        let ed_arr: [u8; 32] = ed_key[..32]
-            .try_into()
-            .map_err(|_| CryptoError::InvalidKeyLength {
-                algorithm: "Ed25519",
-                expected: 32,
-                got: ed_key.len(),
-            })?;
+        let ed_arr: [u8; 32] =
+            ed_key[..32]
+                .try_into()
+                .map_err(|_| CryptoError::InvalidKeyLength {
+                    algorithm: "Ed25519",
+                    expected: 32,
+                    got: ed_key.len(),
+                })?;
         let ed_sk = Ed25519SigningKey::from_bytes(&ed_arr);
         let ed25519_sig = ed_sk.sign(message);
 
@@ -620,13 +617,14 @@ impl Ed25519ChaCha20Blake3Sha3_256 {
     pub fn verify(master_seed: &[u8], domain: &str, message: &[u8], sig: &Self) -> Result<()> {
         let (ed_key, chacha_key, hash_key) = derive_hybrid_keys(master_seed, domain, 32, 32, 32)?;
 
-        let ed_arr: [u8; 32] = ed_key[..32]
-            .try_into()
-            .map_err(|_| CryptoError::InvalidKeyLength {
-                algorithm: "Ed25519",
-                expected: 32,
-                got: ed_key.len(),
-            })?;
+        let ed_arr: [u8; 32] =
+            ed_key[..32]
+                .try_into()
+                .map_err(|_| CryptoError::InvalidKeyLength {
+                    algorithm: "Ed25519",
+                    expected: 32,
+                    got: ed_key.len(),
+                })?;
         let ed_pk = Ed25519SigningKey::from_bytes(&ed_arr).verifying_key();
         ed_pk
             .verify(message, &sig.ed25519_sig)
@@ -635,7 +633,11 @@ impl Ed25519ChaCha20Blake3Sha3_256 {
         let mut chacha_key_arr = [0u8; blake3::KEY_LEN];
         chacha_key_arr.copy_from_slice(&chacha_key[..blake3::KEY_LEN]);
         let expected_blake3 = blake3::keyed_hash(&chacha_key_arr, message);
-        if !bool::from(sig.blake3_keyed.as_bytes().ct_eq(expected_blake3.as_bytes())) {
+        if !bool::from(
+            sig.blake3_keyed
+                .as_bytes()
+                .ct_eq(expected_blake3.as_bytes()),
+        ) {
             return Err(CryptoError::AuthenticationFailed);
         }
 
@@ -656,6 +658,7 @@ impl Ed25519ChaCha20Blake3Sha3_256 {
 /// (Ed25519 + Falcon-1024). Derives both keypairs from a seed handle and
 /// domain string via HKDF-SHA3-256.
 #[allow(dead_code)] // falcon512/ed448 fields are reserved for future expansion
+#[derive(Clone)]
 pub struct HybridSigningKeyBundle {
     ed25519: (Ed25519SigningKey, Ed25519VerifyingKey),
     falcon1024: (FalconPrivateKey, FalconPublicKey),

@@ -48,9 +48,13 @@ impl Falcon1024Signer {
     /// Note: Falcon-1024 keygen is expensive (~100ms on first call;
     /// ~10ms on cached re-derivation).
     pub fn from_seed(seed: &[u8; 32]) -> Result<Self, crate::error::CryptoError> {
-        let (pk, sk) = crate::pqc::falcon1024::generate_keypair_from_seed(seed)
-            .map_err(|e| crate::error::CryptoError::InvalidKey(format!("Falcon-1024 keygen: {e}")))?;
-        Ok(Self { key: sk, public_key: pk })
+        let (pk, sk) = crate::pqc::falcon1024::generate_keypair_from_seed(seed).map_err(|e| {
+            crate::error::CryptoError::InvalidKey(format!("Falcon-1024 keygen: {e}"))
+        })?;
+        Ok(Self {
+            key: sk,
+            public_key: pk,
+        })
     }
 
     /// Create from an existing private/public key pair.
@@ -58,7 +62,10 @@ impl Falcon1024Signer {
         sk: crate::pqc::falcon1024::FalconPrivateKey,
         pk: crate::pqc::falcon1024::FalconPublicKey,
     ) -> Self {
-        Self { key: sk, public_key: pk }
+        Self {
+            key: sk,
+            public_key: pk,
+        }
     }
 
     /// Sign a message. Returns a ~1280-byte Falcon-1024 signature.

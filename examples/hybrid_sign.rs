@@ -30,7 +30,12 @@ fn main() {
     println!("Message:    {}", String::from_utf8_lossy(message));
     let ed_len = signature.ed25519_sig.to_bytes().len();
     let fq_len = signature.falcon_sig.as_bytes().len();
-    println!("Sig length: {} bytes (Ed25519: {}, Falcon: {})", ed_len + fq_len, ed_len, fq_len);
+    println!(
+        "Sig length: {} bytes (Ed25519: {}, Falcon: {})",
+        ed_len + fq_len,
+        ed_len,
+        fq_len
+    );
 
     // 3. Verify the signature using the public keys
     let ed_pk = bundle.ed25519_pk();

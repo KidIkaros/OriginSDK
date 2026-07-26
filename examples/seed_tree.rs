@@ -70,18 +70,15 @@ fn main() {
     let (signing_key, falcon_packed) =
         derive_signing_keys(&child_signing, "signing-v1").expect("key derivation failed");
 
-    println!(
-        "\nDerived Ed25519 signing key: {} bytes",
-        signing_key.len()
-    );
+    println!("\nDerived Ed25519 signing key: {} bytes", signing_key.len());
     println!(
         "Derived Falcon packed (SK+PK): {} bytes",
         falcon_packed.len()
     );
 
     // 6. Extract verifying keys from the signing keys
-    let (ed25519_pk, falcon_pk) =
-        derive_verifying_keys(&signing_key, &falcon_packed).expect("verifying key extraction failed");
+    let (ed25519_pk, falcon_pk) = derive_verifying_keys(&signing_key, &falcon_packed)
+        .expect("verifying key extraction failed");
     println!("\nEd25519 verifying key: {} bytes", ed25519_pk.len());
     println!("Falcon verifying key: {} bytes", falcon_pk.len());
 

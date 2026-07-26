@@ -31,11 +31,14 @@ fn main() {
     let plaintext = b"Sensitive data that must remain confidential";
     let aad = b"file-version:1|algorithm:chacha20-blake3";
 
-    let ciphertext = ChaCha20Blake3::encrypt(&key, nonce.as_bytes(), plaintext, aad)
-        .expect("encryption failed");
+    let ciphertext =
+        ChaCha20Blake3::encrypt(&key, nonce.as_bytes(), plaintext, aad).expect("encryption failed");
 
     println!("\nPlaintext:  {} bytes", plaintext.len());
-    println!("Ciphertext: {} bytes (includes 32-byte auth tag)", ciphertext.len());
+    println!(
+        "Ciphertext: {} bytes (includes 32-byte auth tag)",
+        ciphertext.len()
+    );
 
     // 3. Decrypt — must provide the same AAD
     let decrypted = ChaCha20Blake3::decrypt(&key, nonce.as_bytes(), &ciphertext, aad)

@@ -88,3 +88,26 @@ utilities, fuzz targets, CI on every push, and complete documentation.
 - Structured error variants (additive — old String variants still work)
 - Documentation improvements (additive)
 - CI workflow (additive)
+
+# Release 0.5.1
+
+**Release date:** 2026-07-26
+
+This release stabilizes the crate topology changes that originated in 0.4.1 and introduces the new `recovery::unicode_cipher` module.
+
+## Highlights
+
+- **Unicode recovery phrases**: new `recovery::unicode_cipher` module for BIP-39-shaped phrase codecs using Unicode codepoints and SHA-3-256. Phrases are deliberately **NOT BIP-39-compatible** — see the [module docs](https://docs.rs/origin-crypto-sdk/latest/origin_crypto_sdk/recovery/unicode_cipher/index.html).
+- **Crate root cleanup (0.4.1 carryover)**: low-level PQC types (`Falcon1024PrivateKey`, `Falcon512PrivateKey`, `FalconSignature`, `ed41417_raw`) are no longer re-exported at the crate root. Access via `pqc::falcon1024::*` etc.
+- **`origin-crypto` CLI binary fix**: the standalone CLI was failing to compile with `E0432` (unresolved `crate::internal` import in the bin target) and `E0382` (borrow-after-move in `cmd_decrypt`) errors that blocked `cargo publish`. Both fixes land in 0.5.1.
+- **`signing_legacy` removal deferred to 0.6**: it remains in 0.5.1, with `#[deprecated(since = "0.5.1")]`. Originally promised in 0.4 to be removed by 0.5.
+
+## Breaking changes
+
+None. See [MIGRATION.md](MIGRATION.md) for the 0.4 → 0.5.1 transition notes.
+
+## Dependencies
+
+- New pinned dependency: `unicode-normalization = "=0.1.25"` (NFKC canonical-form validation for the recovery module).
+
+See [CHANGELOG.md](CHANGELOG.md) for detailed patch notes.

@@ -130,6 +130,55 @@ The 0.3 `HybridKem` stub that returned zeros is **removed in 0.4**.
 Use the `signing::hybrid::Ed25519Falcon1024` or the KEM API in
 `pqc::ntru_prime` instead.
 
+## 0.4 → 0.5.1
+
+This transition rolls up the 0.4.1 module reorganization with the 0.5.1 adoption of the new `recovery::unicode_cipher` module. Most code that imports via the prelude continues to compile unchanged; the following patterns matter for upgraders.
+
+### 1. Internal utilities hidden from docs
+
+Modules that lived at the crate root in 0.4.0 are now `#[doc(hidden)]` in 0.5.1 — they still compile and are accessible, but no longer appear in the public docs.rs surface:
+
+- `entropy` — entropy quality analysis
+- `mmr` — Merkle Mountain Range
+- `error_correction` — Reed-Solomon
+- `siphash` — SipHash keyed hash
+- `compression` — zlib wrapper
+- `blob` — encrypted blob storage
+- `primitives` — low-level hashes/ciphers
+- `internal` — internal utilities
+
+If you depend on any of these directly, the import path is unchanged; they simply do not show up in `cargo doc`.
+
+### 2. PQC types moved out of crate root
+
+Low-level PQC types that were re-exported at the crate root in 0.4.0 are no longer there in 0.5.1. Access them via their module:
+
+**Before** (0.4):
+```rust
+use origin_crypto_sdk::Falcon1024PrivateKey;
+use origin_crypto_sdk::Falcon512PrivateKey;
+use origin_crypto_sdk::FalconSignature;
+```
+
+**After** (0.5.1):
+```rust
+use origin_crypto_sdk::pqc::falcon1024::FalconPrivateKey;
+use origin_crypto_sdk::pqc::falcon512::FalconPrivateKey;
+use origin_crypto_sdk::pqc::falcon1024::FalconSignature;
+```
+
+The signing OOP API (`signing::postquantum::*`) and `signing::hybrid::HybridSigningKeyBundle` are unchanged.
+
+### 3. signing_legacy removal deferred to 0.6
+
+The `signing_legacy` module and the three crate-root re-exports (`HybridSignatureOutput`, `HybridSigningKey`, `HybridVerifyingKey`) were originally deprecated in 0.4.0 with a promise of removal in 0.5. That removal is now deferred to 0.6 — they remain available in 0.5.1, and `#[deprecated(since = "0.5.1")]` is now attached. New code should keep using `signing::hybrid::HybridSigningKeyBundle`.
+
+## Non-breaking additions
+
+- **`recovery::unicode_cipher` (new module)** — a BIP-39-shaped recovery phrase codec using Unicode codepoints instead of an English wordlist. See the [module docs](https://docs.rs/origin-crypto-sdk/latest/origin_crypto_sdk/recovery/unicode_cipher/index.html) for the full quick-start. Phrases are **deliberately NOT BIP-39 compatible** — the wordlist is curated Unicode and the checksum is SHA-3-256 (not SHA-256).
+- **`origin-crypto` CLI binary fix**: the standalone CLI no longer fails to compile during `cargo publish` — fixed an unresolved `crate::internal::getrandom` import (bin target has its own `crate::` root) and a borrow-after-move in `cmd_decrypt`.
+- **`unicode-normalization = "=0.1.25"`** newly required dependency for the recovery module's NFKC canonical-form validation.
+
 ## 0.2 → 0.3
 
 ### 1. Signing module restructured

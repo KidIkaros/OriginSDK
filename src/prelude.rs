@@ -36,9 +36,9 @@ pub use crate::aead::XChaCha20Poly1305;
 pub use crate::chacha20_blake3::ChaCha20Blake3;
 
 // ── KDF ──
+pub use crate::kdf::hkdf::{derive_subkeys, hkdf_sha3_256};
 pub use crate::kdf::Argon2id;
 pub use crate::kdf::Argon2idBuilder;
-pub use crate::kdf::hkdf::{derive_subkeys, hkdf_sha3_256};
 
 // ── MAC ──
 pub use crate::kdf::mac::hmac_sha3_256;
@@ -52,13 +52,13 @@ pub use crate::primitives::{MemoryTier, Shake128, Shake256};
 pub use crate::drbg::ChaCha20Drbg;
 
 // ── Seed handling ──
-pub use crate::seed::{SeedHandle, derive_child_seed, derive_signing_keys, derive_verifying_keys};
+pub use crate::seed::{derive_child_seed, derive_signing_keys, derive_verifying_keys, SeedHandle};
 
 // ── Compression ──
 pub use crate::compression::{compress, decompress};
 
 // ── Hybrid signing (recommended default) ──
-pub use crate::signing::hybrid::{HybridSigningKeyBundle, falcon1024_keygen};
+pub use crate::signing::hybrid::{falcon1024_keygen, HybridSigningKeyBundle};
 pub use crate::signing::hybrid::{skein1024, skein512};
 
 // ── Legacy hybrid re-exports (for callers upgrading from pre-0.3) ──

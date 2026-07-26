@@ -47,8 +47,8 @@
 //! an explicit match. For 99% of use cases this is the right tradeoff.
 
 pub mod classical;
-pub mod postquantum;
 pub mod hybrid;
+pub mod postquantum;
 
 /// Legacy compatibility shim for code that used `origin_crypto_sdk::hybrid::*`.
 /// **Deprecated.** Use `signing::hybrid` directly instead.

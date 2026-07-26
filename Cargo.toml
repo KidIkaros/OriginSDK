@@ -2,7 +2,7 @@
 
 [package]
 name = "origin-crypto-sdk"
-version = "0.4.0"
+version = "0.5.1"
 edition = "2021"
 authors = ["Origin Contributors"]
 description = "Standalone cryptographic SDK with classical (Ed25519) and post-quantum (Falcon, SLH-DSA, ML-DSA, NTRU Prime, Curve41417) primitives. Hybrid signing by default."
@@ -77,6 +77,15 @@ getrandom = "0.2"
 # Parallel processing (optional)
 rayon = { version = "1.11", optional = true }
 
+# CLI binary dependencies
+clap = { version = "4.5", features = ["derive", "env", "std"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+ring = "0.17"
+
+# Recovery phrase support (unicode_cipher)
+unicode-normalization = "=0.1.25"   # pinned: NFKC canonical-form checks; matches the SDK's pin-and-document policy for all input-validation deps
+
 [features]
 default = ["parallel"]
 parallel = ["dep:rayon"]
@@ -96,6 +105,7 @@ rustdoc-args = ["--cfg", "docsrs"]
 # argon2 0.5.3: matches password-hash traits used internally
 # sha2 0.10.8: compatible with our Digest trait usage
 # rand 0.8.5: avoids getrandom 0.3 migration in 0.9
+# unicode-normalization 0.1.25: NFKC checks for unicode_cipher input validation; pinned to match SDK pin-and-document policy
 
 [dev-dependencies]
 tempfile = "3.10"

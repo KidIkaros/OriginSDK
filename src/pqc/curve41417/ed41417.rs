@@ -117,7 +117,10 @@ impl SigningKey {
         let s = &r + &(&k * &self.scalar);
         let s_bytes = s.to_bytes();
 
-        Signature { r_enc, s_enc: s_bytes }
+        Signature {
+            r_enc,
+            s_enc: s_bytes,
+        }
     }
 }
 

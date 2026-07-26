@@ -115,8 +115,7 @@ impl XNonce {
     /// Generate a random nonce.
     pub fn random() -> Self {
         let mut bytes = [0u8; Self::LEN];
-        crate::internal::getrandom::fill(&mut bytes)
-            .expect("failed to generate random nonce");
+        crate::internal::getrandom::fill(&mut bytes).expect("failed to generate random nonce");
         Self(bytes)
     }
 
@@ -174,8 +173,7 @@ impl CNonce {
     /// Generate a random nonce.
     pub fn random() -> Self {
         let mut bytes = [0u8; Self::LEN];
-        crate::internal::getrandom::fill(&mut bytes)
-            .expect("failed to generate random nonce");
+        crate::internal::getrandom::fill(&mut bytes).expect("failed to generate random nonce");
         Self(bytes)
     }
 
@@ -228,7 +226,14 @@ mod tests {
     fn test_seed_from_slice_wrong_len() {
         let short = [0u8; 16];
         let err = Seed::from_slice(&short).unwrap_err();
-        assert!(matches!(err, CryptoError::InvalidKeyLength { expected: 32, got: 16, .. }));
+        assert!(matches!(
+            err,
+            CryptoError::InvalidKeyLength {
+                expected: 32,
+                got: 16,
+                ..
+            }
+        ));
     }
 
     #[test]
@@ -249,7 +254,14 @@ mod tests {
     fn test_cnonce_from_slice_wrong_len() {
         let short = [0u8; 8];
         let err = CNonce::from_slice(&short).unwrap_err();
-        assert!(matches!(err, CryptoError::InvalidNonceLength { expected: 12, got: 8, .. }));
+        assert!(matches!(
+            err,
+            CryptoError::InvalidNonceLength {
+                expected: 12,
+                got: 8,
+                ..
+            }
+        ));
     }
 
     #[test]

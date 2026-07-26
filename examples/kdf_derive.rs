@@ -15,11 +15,11 @@ fn main() {
     let password = b"hunter2-is-not-a-good-password";
     let salt = [0xABu8; 16]; // In production: generate a random salt
 
-    let key_normal = Argon2id::derive_key(password, &salt, false)
-        .expect("Argon2id derivation failed");
+    let key_normal =
+        Argon2id::derive_key(password, &salt, false).expect("Argon2id derivation failed");
 
-    let key_paranoid = Argon2id::derive_key(password, &salt, true)
-        .expect("Argon2id derivation failed");
+    let key_paranoid =
+        Argon2id::derive_key(password, &salt, true).expect("Argon2id derivation failed");
 
     println!("Argon2id (normal):   {} bytes derived", key_normal.len());
     println!("Argon2id (paranoid): {} bytes derived", key_paranoid.len());
@@ -41,11 +41,16 @@ fn main() {
 
     // Derive authentication key (different domain)
     let mut auth_key = [0u8; 32];
-    hkdf_sha3_256(&master_key, None, b"origin-auth-key-v1", &mut auth_key)
-        .expect("HKDF failed");
+    hkdf_sha3_256(&master_key, None, b"origin-auth-key-v1", &mut auth_key).expect("HKDF failed");
 
-    println!("\nHKDF enc key:  {:02x}{:02x}..{:02x}{:02x}", enc_key[0], enc_key[1], enc_key[30], enc_key[31]);
-    println!("HKDF auth key: {:02x}{:02x}..{:02x}{:02x}", auth_key[0], auth_key[1], auth_key[30], auth_key[31]);
+    println!(
+        "\nHKDF enc key:  {:02x}{:02x}..{:02x}{:02x}",
+        enc_key[0], enc_key[1], enc_key[30], enc_key[31]
+    );
+    println!(
+        "HKDF auth key: {:02x}{:02x}..{:02x}{:02x}",
+        auth_key[0], auth_key[1], auth_key[30], auth_key[31]
+    );
 
     // Different domains → different keys
     assert_ne!(enc_key, auth_key);
@@ -53,10 +58,12 @@ fn main() {
 
     // ── derive_subkeys: convenience wrapper ──
     let salt_hkdf = [0xCCu8; 32];
-    let (sub_enc, sub_auth) = derive_subkeys(&master_key, &salt_hkdf)
-        .expect("derive_subkeys failed");
+    let (sub_enc, sub_auth) =
+        derive_subkeys(&master_key, &salt_hkdf).expect("derive_subkeys failed");
 
     assert_ne!(sub_enc, sub_auth);
-    println!("\nderive_subkeys: enc={:02x}{:02x}.. auth={:02x}{:02x}..",
-             sub_enc[0], sub_enc[1], sub_auth[0], sub_auth[1]);
+    println!(
+        "\nderive_subkeys: enc={:02x}{:02x}.. auth={:02x}{:02x}..",
+        sub_enc[0], sub_enc[1], sub_auth[0], sub_auth[1]
+    );
 }

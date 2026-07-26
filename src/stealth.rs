@@ -237,7 +237,6 @@ pub mod kdf {
             assert!(keys.viewing_secret.iter().any(|&b| b != 0));
         }
     }
-
 }
 
 pub mod pow {
@@ -399,7 +398,8 @@ pub mod pow {
 
     /// Compute the effective difficulty for a given address index.
     pub fn effective_difficulty(config: &StealthPowConfig, address_index: u64) -> u32 {
-        let effective = config.base_difficulty + config.per_address_increment * address_index as u32;
+        let effective =
+            config.base_difficulty + config.per_address_increment * address_index as u32;
         effective.min(config.max_difficulty)
     }
 
@@ -553,5 +553,4 @@ pub mod pow {
             assert_ne!(proof1.nonce, proof2.nonce);
         }
     }
-
 }

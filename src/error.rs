@@ -31,7 +31,6 @@ use std::fmt;
 #[derive(Debug)]
 pub enum CryptoError {
     // ── Key / nonce errors (structured) ──
-
     /// Key bytes are the wrong length for the algorithm.
     ///
     /// Example: passed 16 bytes to a function expecting a 32-byte key.
@@ -61,7 +60,6 @@ pub enum CryptoError {
     },
 
     // ── Verification failures ──
-
     /// Authentication tag or signature verification failed.
     ///
     /// This is the normal "wrong key / tampered data" error. No further
@@ -69,7 +67,6 @@ pub enum CryptoError {
     AuthenticationFailed,
 
     // ── Operation failures (string detail) ──
-
     /// Encryption failed.
     Encryption(String),
 
@@ -96,6 +93,51 @@ pub enum CryptoError {
 
     /// Underlying I/O error.
     Io(std::io::Error),
+
+    // ── Recovery phrase (unicode_cipher) errors ──
+    /// Recovery phrase truncated-SHA-3-256 checksum did not match the
+    /// encoded entropy.
+    ChecksumMismatch {
+        /// Expected checksum bits (`SHA3-256(entropy)[..n_bits]`).
+        expected: u32,
+        /// Checksum bits decoded from the phrase tail.
+        got: u32,
+    },
+
+    /// Recovery phrase contained a codepoint whose NFKC canonical form
+    /// differs from the input. We strictly reject — silent canonicalization
+    /// would enable malleability attacks.
+    InvalidNormalization {
+        /// The offending codepoint.
+        codepoint: char,
+        /// Why NFKC canonicalization failed.
+        reason: &'static str,
+    },
+
+    /// Recovery phrase contained a codepoint from a forbidden class
+    /// (ZWJ, Variation Selector, combining mark, BIDI mark,
+    /// default-ignorable, or control).
+    RejectedCodepointClass {
+        /// The offending codepoint.
+        codepoint: char,
+        /// The forbidden class: "ZWJ" | "VARIATION_SELECTOR"
+        /// | "COMBINING_MARK" | "BIDI_MARK" | "DEFAULT_IGNORABLE"
+        /// | "CONTROL".
+        class: &'static str,
+    },
+
+    /// Custom-alphabet phrase would encode fewer than the safety floor
+    /// of entropy bits.
+    InsufficientEntropy {
+        /// Entropy bits the requested phrase would encode.
+        got_bits: f64,
+        /// Minimum entropy bits required (currently 128).
+        required_min: f64,
+    },
+
+    /// A recovery-phrase operation failed in a way not captured by the
+    /// structured variants above. Reserved for future subclasses.
+    RecoveryPhrase(String),
 }
 
 impl fmt::Display for CryptoError {
@@ -131,6 +173,26 @@ impl fmt::Display for CryptoError {
             CryptoError::Serialization(msg) => write!(f, "Serialization error: {msg}"),
             CryptoError::Compression(msg) => write!(f, "Compression error: {msg}"),
             CryptoError::Io(err) => write!(f, "I/O error: {err}"),
+            CryptoError::ChecksumMismatch { expected, got } => write!(
+                f,
+                "Recovery phrase checksum mismatch (expected 0x{expected:0width$x}, got 0x{got:0width$x})",
+                width = 8
+            ),
+            CryptoError::InvalidNormalization { codepoint, reason } => write!(
+                f,
+                "Recovery phrase rejected codepoint U+{:04X}: {reason}",
+                *codepoint as u32
+            ),
+            CryptoError::RejectedCodepointClass { codepoint, class } => write!(
+                f,
+                "Recovery phrase rejected codepoint U+{:04X}: forbidden class {class}",
+                *codepoint as u32
+            ),
+            CryptoError::InsufficientEntropy { got_bits, required_min } => write!(
+                f,
+                "Custom alphabet phrase yields {got_bits:.1} bits of entropy, below the {required_min:.1}-bit floor"
+            ),
+            CryptoError::RecoveryPhrase(msg) => write!(f, "Recovery phrase error: {msg}"),
         }
     }
 }
@@ -181,10 +243,33 @@ impl Clone for CryptoError {
             CryptoError::InvalidParameter(msg) => CryptoError::InvalidParameter(msg.clone()),
             CryptoError::Serialization(msg) => CryptoError::Serialization(msg.clone()),
             CryptoError::Compression(msg) => CryptoError::Compression(msg.clone()),
-            CryptoError::Io(err) => CryptoError::Io(std::io::Error::new(
-                err.kind(),
-                err.to_string(),
-            )),
+            CryptoError::Io(err) => {
+                CryptoError::Io(std::io::Error::new(err.kind(), err.to_string()))
+            }
+            CryptoError::ChecksumMismatch { expected, got } => CryptoError::ChecksumMismatch {
+                expected: *expected,
+                got: *got,
+            },
+            CryptoError::InvalidNormalization { codepoint, reason } => {
+                CryptoError::InvalidNormalization {
+                    codepoint: *codepoint,
+                    reason,
+                }
+            }
+            CryptoError::RejectedCodepointClass { codepoint, class } => {
+                CryptoError::RejectedCodepointClass {
+                    codepoint: *codepoint,
+                    class,
+                }
+            }
+            CryptoError::InsufficientEntropy {
+                got_bits,
+                required_min,
+            } => CryptoError::InsufficientEntropy {
+                got_bits: *got_bits,
+                required_min: *required_min,
+            },
+            CryptoError::RecoveryPhrase(msg) => CryptoError::RecoveryPhrase(msg.clone()),
         }
     }
 }

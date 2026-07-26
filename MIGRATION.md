@@ -85,19 +85,63 @@ detected (with `file:line:rule-id` for each finding), `2` on argument
 errors. Default scan is `*.rs` only; pass `--include-toml` or
 `--include-md` to widen.
 
-### 0.6.1 — Additive: OCRA support (planned)
+### 0.6.1 — Additive: OCRA core (RFC 6287)
 
-Adds RFC 6287 (OATH Challenge-Response Algorithm) as a typed module
-under `drbg::ocra`:
+Adds the core **explicit-field** OCRA algorithm at `origin_crypto_sdk::ocra`.
+The OCRA module lives at the **crate root** (peer to `signing`, `aead`,
+`drbg`, `recovery`) — it is not under `drbg::ocra` as the 0.6.0
+`MIGRATION.md` placeholder indicated; the new architecture treats OCRA
+as a first-class authentication API rather than a DRBG helper.
 
-- `pub enum OcraSuite { HotpSha1_6, HotpSha256_8, HotpSha512_10, ... }`
-- `pub fn compute(suite: OcraSuite, key: &[u8], challenge: &[u8],
-  counter: Option<u64>, timestamp: Option<u64>) -> u32`
-- `pub fn verify(...) -> Result<(), CryptoError>`
+**Type surface:**
 
-The typed-enum approach avoids the attack surface of parsing untrusted
-suite-strings at runtime. Drop-in plug-replace for `drbg::otp::{hotp, totp}`
-callers that need challenge-response with PIN or transaction-data binding.
+- **`pub struct OcraRequest<'a>`** — fields: `counter: u64` (C, encoded as
+  8-byte big-endian), `challenge: &'a [u8]` (Q; SHA-1-hashed internally per
+  RFC 6287 §6.1), `password: Option<&'a [u8]>` (P; SHA-1-hashed internally
+  per §6.2), `session: &'a [u8]` (S; raw bytes), `timestamp: Option<u64>`
+  (T, 8-byte big-endian).
+- **`pub struct OcraResponse { value: u32, digits: u32 }`** with
+  `format_code()` (zero-padded) and `verify(&expected) -> bool` constant-time
+  comparison via `subtle::ConstantTimeEq` (RFC 6287 §10 compliance).
+- **`pub fn ocra(key: &[u8], req: &OcraRequest, digits: u32, algo: HashAlgorithm) -> Result<OcraResponse>`** — the
+  RFC 6287 §7.1 formula `Truncate(HMAC(K, C || Q || P || S || T))`.
+
+Reuses the existing `HashAlgorithm` enum from `drbg::otp`. **No new
+dependencies.**
+
+**Suite-string parsing is deferred to 0.6.2.** Use the explicit field
+set above; if you need the rich `OCRA-1:HOTP-SHA1-6:QN08`-style
+string handling, the upcoming 0.6.2 release adds `OcraSuite::parse(...)`
+and friends.
+
+**Quick example:**
+
+```rust
+use origin_crypto_sdk::drbg::otp::HashAlgorithm;
+use origin_crypto_sdk::ocra::{ocra, OcraRequest};
+
+let key = b"12345678901234567890";
+let req = OcraRequest {
+    counter: 0,
+    challenge: b"00000000",      // QN08 numeric — 8 ASCII '0' bytes
+    password: None,
+    session: b"",
+    timestamp: None,
+};
+let resp = ocra(key, &req, 6, HashAlgorithm::Sha1).unwrap();
+assert!(resp.verify(&resp));
+```
+
+**Test count:** `cargo test --lib` 247 → 258 (+11 new OCRA tests inline
+in `src/ocra.rs`). Includes the **canonical RFC 6287 Appendix A.1 Test
+#1** vector: Suite `OCRA-1:HOTP-SHA1-6:QN08`, key ASCII `12345678901234567890`,
+counter=0, Q = numeric zeros × 8 (ASCII `"00000000"`) → expected `196958`
+(verified by independent Python recomputation against the RFC §7.1 byte-trace).
+
+**Note:** Five error cases are surfaced via existing `CryptoError`
+variants (`InvalidKeyLength` for short keys < 16 bytes; `InvalidParameter`
+for digit counts outside 4..=10). No new `CryptoError::Ocra(_)` variant
+was added — keeping the error enum stable across 0.6.x.
 
 ### 0.6.2 — Additive: ChaCha variant + sanitization framework (planned)
 

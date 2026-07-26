@@ -60,3 +60,6 @@ pub use crate::compression::{compress, decompress};
 // ── Hybrid signing (recommended default) ──
 pub use crate::signing::hybrid::{falcon1024_keygen, HybridSigningKeyBundle};
 pub use crate::signing::hybrid::{skein1024, skein512};
+
+// ── OCRA (RFC 6287) ──
+pub use crate::ocra::{ocra, OcraRequest, OcraResponse};

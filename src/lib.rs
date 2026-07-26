@@ -140,6 +140,14 @@ pub mod signing;
 // ── Randomness & DRBG ──
 pub mod drbg;
 
+// ── OCRA (RFC 6287: OATH Challenge-Response Algorithms) ──
+/// RFC 6287 OCRA core — challenge → response.
+///
+/// Implements RFC 6287 §7.1 with explicitly-named fields. No
+/// Suite-string parsing (deferred to 0.6.2). Uses
+/// [`crate::drbg::otp::HashAlgorithm`] for the underlying HMAC family.
+pub mod ocra;
+
 // ── Recovery phrases ──
 ///
 /// BIP-39-shaped Unicode recovery phrases. NOT BIP-39-compatible —

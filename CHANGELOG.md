@@ -6,6 +6,21 @@ All notable changes to origin-crypto-sdk will be documented in this file.
 
 _Future work for 0.7.0+ lives here as it accumulates._
 
+## [0.6.1] — 2026-07-26
+
+### Added
+- **`ocra` (RFC 6287: OATH Challenge-Response Algorithms)** — new public module implementing the **core** challenge→response algorithm. No Suite-string parsing (deferred to 0.6.2) and no QR mode (deferred to 0.6.2).
+  - `pub struct OcraRequest<'a>` — explicit field set: `counter: u64` (C, 8-byte big-endian), `challenge: &'a [u8]` (Q; **SHA-1-hashed internally per §6.1**), `password: Option<&'a [u8]>` (P; **SHA-1-hashed internally per §6.2**), `session: &'a [u8]` (S; raw), `timestamp: Option<u64>` (T, 8-byte big-endian).
+  - `pub struct OcraResponse { value: u32, digits: u32 }` with `format_code()` (zero-padded) and `verify(&expected) -> bool` **constant-time** comparison via `subtle::ConstantTimeEq` (RFC 6287 §10).
+  - `pub fn ocra(key: &[u8], req: &OcraRequest, digits: u32, algo: HashAlgorithm) -> Result<OcraResponse>` — RFC 6287 §7.1 formula `Truncate(HMAC(K, C || Q || P || S || T))` with RFC 4226 §5.3 dynamic truncation.
+  - Custom `Debug` impls on `OcraRequest` and `OcraResponse` redacting secret-derived content (challenge/password bytes hidden, response value hidden). `OcraResponse` is `#[derive(Clone, Copy, PartialEq, Eq)]`.
+  - Reuses the existing `drbg::otp::{compute_hmac, format_code, HashAlgorithm}` — **no new dependencies**.
+- **`drbg::otp::compute_hmac`** is now `pub(crate)` (was `fn`) so the new `ocra` module can share the HMAC computation without duplication.
+
+### Notes
+- **Additive release.** No public API removed or renamed from 0.6.0. Downstream code that imports `HybridSigningKeyBundle`, `XChaCha20Poly1305`, `ChaCha20Drbg`, `Argon2id`, etc. all continues to compile unchanged.
+- `cargo test --lib` count: 247 → 258 (+11 OCRA tests inline in `src/ocra.rs`). Includes the **canonical RFC 6287 Appendix A.1 Test #1** vector: Suite `OCRA-1:HOTP-SHA1-6:QN08`, key ASCII `12345678901234567890`, counter=0, Q = numeric zeros × 8 (ASCII `"00000000"`) → expected `196958` (verified independently by a Python recomputation against the RFC §7.1 byte-trace). If the test vector ever fails on your machine, the standard has drifted or your HMAC impl has — investigate against the RFC text before patching.
+
 ## [0.6.0] — 2026-XX-XX
 
 ### Removed (BREAKING)

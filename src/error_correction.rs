@@ -11,6 +11,7 @@ use rayon::prelude::*;
 /// Galois Field GF(2^8) arithmetic for Reed-Solomon
 /// Using the primitive polynomial x^8 + x^4 + x^3 + x + 1 (0x11D)
 /// Represented as 0x1B after removing the x^8 term
+#[derive(Debug)]
 struct GaloisField;
 
 impl GaloisField {
@@ -59,6 +60,7 @@ impl GaloisField {
 }
 
 /// Reed-Solomon error correction with proper Galois field arithmetic
+#[derive(Debug)]
 pub struct ReedSolomonCodec {
     data_shards: usize,
     parity_shards: usize,
@@ -278,6 +280,7 @@ impl ReedSolomonCodec {
 }
 
 /// 128+8 Reed-Solomon encoding for data (128 byte blocks + 8 parity bytes)
+#[derive(Debug)]
 pub struct DataReedSolomon;
 
 impl DataReedSolomon {

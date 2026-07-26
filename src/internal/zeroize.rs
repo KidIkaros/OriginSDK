@@ -121,3 +121,12 @@ impl<T: Zeroize + Clone> Clone for Zeroizing<T> {
         Self(self.0.clone())
     }
 }
+
+impl<T: Zeroize> std::fmt::Debug for Zeroizing<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // No field-name label — `Zeroizing(<redacted>)` shape only.
+        // Prevents any metadata leak via the wrapped value's path through Debug.
+        // Generic over T: Zeroize so we do not require T: Debug.
+        write!(f, "Zeroizing(<redacted>)")
+    }
+}

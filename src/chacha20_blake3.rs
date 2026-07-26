@@ -16,6 +16,7 @@ use chacha20_blake3::{ChaCha20Blake3 as ChaCha20Blake3Impl, Error as ChaCha20Bla
 /// Security: 256-bit confidentiality + 256-bit integrity
 /// Committing: YES (unlike Poly1305-based schemes)
 /// Nonce: 192-bit (24 bytes) — safe for random generation
+#[derive(Debug)]
 pub struct ChaCha20Blake3;
 
 /// Key size constant

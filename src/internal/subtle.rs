@@ -7,7 +7,7 @@
 
 /// A boolean choice that is implemented as a u8 to avoid branch misprediction.
 /// 0 = false, 1 = true (all other values are invalid).
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct Choice(pub u8);
 
 impl Choice {
@@ -189,5 +189,17 @@ pub fn ct_option_to_option<T>(ct: CtOption<T>) -> Option<T> {
         Some(ct.value)
     } else {
         None
+    }
+}
+
+impl<T> std::fmt::Debug for CtOption<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // Constant-time presence check honors CtOption's design intent.
+        // Inner value is always redacted; never printed via Debug.
+        if bool::from(self.is_some) {
+            write!(f, "CtOption::Some(<redacted>)")
+        } else {
+            write!(f, "CtOption::None")
+        }
     }
 }

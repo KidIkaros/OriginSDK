@@ -34,6 +34,7 @@ pub type Ciphertext = [u8; CT_SIZE];
 pub type SharedSecret = [u8; K_SIZE];
 
 /// NTRU Prime KEM implementation
+#[derive(Debug)]
 pub struct NtruPrime;
 
 impl NtruPrime {

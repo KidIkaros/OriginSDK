@@ -104,3 +104,15 @@ impl SeedableRng for ChaCha20Rng {
         Self::from_seed(seed)
     }
 }
+
+impl std::fmt::Debug for ChaCha20Rng {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // Redact `key`, `nonce` (derived from seed), and `block` (current keystream).
+        // Surface `counter` and `block_pos` for flow control debugging — both are
+        // bookkeeping and do not leak secret material.
+        f.debug_struct("ChaCha20Rng")
+            .field("counter", &self.counter)
+            .field("block_pos", &self.block_pos)
+            .finish_non_exhaustive()
+    }
+}

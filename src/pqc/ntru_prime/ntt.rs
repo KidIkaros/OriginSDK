@@ -10,7 +10,7 @@
 //! standard NTT for general polynomial multiplication and optimized variants
 //! specifically for NTRU Prime operations.
 
-use crate::kem::ntru_prime::constants::{P, Q};
+use super::constants::{P, Q};
 
 /// NTT parameters for sntrup761
 pub const N: usize = P; // Polynomial degree: 761

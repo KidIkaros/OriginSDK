@@ -62,6 +62,17 @@ impl Zeroize for SigningKey {
     }
 }
 
+impl std::fmt::Debug for SigningKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // Redact `scalar` (secret). Surface `verifying_key` as the public key
+        // (delegates to VerifyingKey's existing Debug; public keys are not secret).
+        f.debug_struct("SigningKey")
+            .field("scalar", &"<redacted>")
+            .field("verifying_key", &self.verifying_key)
+            .finish()
+    }
+}
+
 impl Drop for SigningKey {
     fn drop(&mut self) {
         self.zeroize();

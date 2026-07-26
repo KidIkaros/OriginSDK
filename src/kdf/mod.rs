@@ -20,6 +20,7 @@ use argon2::{
 };
 
 /// Argon2id key derivation
+#[derive(Debug)]
 pub struct Argon2id;
 
 impl Argon2id {
@@ -80,6 +81,7 @@ impl Argon2id {
 ///     .derive(b"password", &[0u8; 16])
 ///     .unwrap();
 /// ```
+#[derive(Debug)]
 pub struct Argon2idBuilder {
     memory_kib: u32,
     iterations: u32,

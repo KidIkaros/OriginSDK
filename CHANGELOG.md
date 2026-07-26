@@ -4,6 +4,9 @@ All notable changes to origin-crypto-sdk will be documented in this file.
 
 ## [Unreleased]
 
+### Planned for 0.6.2
+- **Karatsuba NTT fast-path under `pqc-simd` is held pending a math fix.** The orphan `pqc::ntru_prime::ntt` source file has a structurally invalid NTT implementation for the NTRU Prime ring $\mathbb{Z}_{Q}$ with `Q = 4591`: `Q − 1 = 4590 = 2 × 2295` contains only a single factor of 2, so primitive $2^k$-th roots of unity for `N ≥ 4` don't exist over this field, breaking the convolution theorem. Until this is fixed, `mod ntt;` is not declared, the `pqc-simd` cfg-gated Karatsuba branch inside `rq::mult` is removed, and `ntru-poly-mul-karatsuba` is not in the public surface. Note: the function named `ntru_poly_mul_karatsuba` is misleadingly named — it was implemented as an NTT multiplication internally rather than pure split-and-conquer Karatsuba, so it inherits the same Z_4591 2-adic limitation rather than working around it. 0.6.2 will land the corrected implementation (true split-and-conquer Karatsuba, or a working ring-extension-trick NTT, or simply deleting the broken NTT).
+
 _Future work for 0.7.0+ lives here as it accumulates._
 
 ## [0.6.1] — 2026-07-26
@@ -19,7 +22,7 @@ _Future work for 0.7.0+ lives here as it accumulates._
 
 ### Notes
 - **Additive release.** No public API removed or renamed from 0.6.0. Downstream code that imports `HybridSigningKeyBundle`, `XChaCha20Poly1305`, `ChaCha20Drbg`, `Argon2id`, etc. all continues to compile unchanged.
-- `cargo test --lib` count: 247 → 258 (+11 OCRA tests inline in `src/ocra.rs`). Includes the **canonical RFC 6287 Appendix A.1 Test #1** vector: Suite `OCRA-1:HOTP-SHA1-6:QN08`, key ASCII `12345678901234567890`, counter=0, Q = numeric zeros × 8 (ASCII `"00000000"`) → expected `196958` (verified independently by a Python recomputation against the RFC §7.1 byte-trace). If the test vector ever fails on your machine, the standard has drifted or your HMAC impl has — investigate against the RFC text before patching.
+- `cargo test --lib` count: 247 → 258 (+11 OCRA tests inline in `src/ocra.rs`). Note: the orphan `test_poly_mul_ntt_simple` in `src/pqc/ntru_prime/ntt.rs` was never in the baseline count (the file was always unreachable), so it neither adds nor subtracts from this delta. Includes the **canonical RFC 6287 Appendix A.1 Test #1** vector: Suite `OCRA-1:HOTP-SHA1-6:QN08`, key ASCII `12345678901234567890`, counter=0, Q = numeric zeros × 8 (ASCII `"00000000"`) → expected `196958` (  verified independently by a Python recomputation against the RFC §7.1 byte-trace). If the test vector ever fails on your machine, the standard has drifted or your HMAC impl has — investigate against the RFC text before patching.
 
 ## [0.6.0] — 2026-XX-XX
 

@@ -740,11 +740,45 @@ impl HybridSigningKeyBundle {
             if let Some(bundle) = cache.get(&key) {
                 return Ok(bundle.clone());
             }
+
+#[allow(non_local_definitions)]
+impl std::fmt::Debug for HybridSigningKeyBundle {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // Surface `domain` (semi-public — used as a routing label, not a secret).
+        // All key-bearing fields redact via `<redacted>`. The `Option` presence
+        // for `falcon512` / `ed448` is preserved as `None` vs `Some(<redacted>)` —
+        // these are reserved-family expansions and their presence is not a leak.
+        f.debug_struct("HybridSigningKeyBundle")
+            .field("domain", &self.domain)
+            .field("ed25519", &"<redacted>")
+            .field("falcon1024", &"<redacted>")
+            .field(
+                "falcon512",
+                &if self.falcon512.is_some() {
+                    "Some(<redacted>)"
+                } else {
+                    "None"
+                },
+            )
+            .field(
+                "ed448",
+                &if self.ed448.is_some() {
+                    "Some(<redacted>)"
+                } else {
+                    "None"
+                },
+            )
+            .finish()
+    }
+}
             let bundle = Arc::new(Self::from_seed(master_seed, domain)?);
             cache.insert(key, bundle.clone());
             Ok(bundle)
         })
     }
+
+
+
 }
 
 /// Process-wide cache for [`HybridSigningKeyBundle`], keyed by (seed, domain).

@@ -36,6 +36,16 @@
 // Falcon-1024
 // ──────────────────────────────────────────────────────────────────────
 
+impl std::fmt::Debug for Falcon1024Signer {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // Redact `key` (FalconPrivateKey). Surface `public_key` for identity
+        // debugging — public keys are not secret.
+        f.debug_struct("Falcon1024Signer")
+            .field("public_key", &"<present, 1793 bytes>")
+            .finish_non_exhaustive()
+    }
+}
+
 /// Falcon-1024 signer (lattice-based, ~NIST level 5).
 pub struct Falcon1024Signer {
     key: crate::pqc::falcon1024::FalconPrivateKey,
@@ -108,6 +118,16 @@ impl Falcon1024Signer {
 ///
 /// Smaller signatures (~666 bytes) but ~128-bit security. For new
 /// applications, prefer [`Falcon1024Signer`] which has ~256-bit security.
+impl std::fmt::Debug for Falcon512Signer {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // Redact `sk` (Falcon512PrivateKey). Surface `pk` for identity
+        // debugging — public keys are not secret.
+        f.debug_struct("Falcon512Signer")
+            .field("pk", &"<present, public bytes>")
+            .finish_non_exhaustive()
+    }
+}
+
 pub struct Falcon512Signer {
     sk: crate::pqc::falcon512::Falcon512PrivateKey,
     pk: crate::pqc::falcon512::Falcon512PublicKey,

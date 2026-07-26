@@ -186,11 +186,6 @@ unsafe fn round3_avx2(h: &mut [i16; P]) {
     const OFFSET: i32 = 2295;
     const THREE: i32 = 3;
 
-    let round_factor_vec = _mm256_set1_epi32(ROUND_FACTOR);
-    let offset_vec = _mm256_set1_epi32(OFFSET);
-    let three_vec = _mm256_set1_epi32(THREE);
-    let add_32k = _mm256_set1_epi32(32768);
-
     // Process 8 values at a time (16 i16)
     for i in (0..P).step_by(16) {
         let end = (i + 16).min(P);
@@ -213,22 +208,14 @@ fn round3_scalar(h: &mut [i16; P]) {
     }
 }
 
-/// Polynomial multiplication in Rq
+/// Polynomial multiplication in Rq.
+///
+/// Scalar implementation only. NTT fast-path deferred to 0.6.2
+/// (see CHANGELOG [Unreleased]): Z_4591 has Q-1 = 2 × 2295, only
+/// one factor of 2, so primitive 2^k-th roots for k ≥ 2 don't
+/// exist — the convolution theorem needed for Cooley-Tukey NTT fails.
 pub fn mult(h: &mut [i16; P], f: [i16; P], g: [i8; P]) {
-    #[cfg(feature = "pqc-simd")]
-    {
-        // Use optimized Karatsuba/NTT implementation
-        let g_i16: Vec<i16> = g.iter().map(|&x| x as i16).collect();
-        let result = ntt::ntru_poly_mul_karatsuba(&f, &g_i16);
-        h.copy_from_slice(&result[..P]);
-        return;
-    }
-
-    #[cfg(not(feature = "pqc-simd"))]
-    {
-        // Standard scalar implementation
-        mult_scalar(h, f, g);
-    }
+    mult_scalar(h, f, g);
 }
 
 /// Scalar polynomial multiplication (fallback)

@@ -219,7 +219,7 @@ impl OcraResponse {
 ///   Note that this is a **minimum**, not an exact length — keys of 17,
 ///   32, or 64 bytes all pass; the error fires only for keys below 16.
 /// - [`CryptoError::InvalidParameter`] if `digits` is outside
-///   [`OCRA_MIN_DIGITS`..=`OCRA_MAX_DIGITS`].
+///   supported digit range `4`..=`10` per RFC 6287 §7.2.
 /// - [`CryptoError::InvalidParameter`] if the HMAC computation returns
 ///   fewer than 4 bytes (only possible with a malformed HMAC, which won't
 ///   happen in practice).

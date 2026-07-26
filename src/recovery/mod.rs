@@ -10,7 +10,7 @@
 //! wordlist.
 //!
 //! See:
-//! - [`unicode_cipher`] — encode / decode / custom-alphabet APIs.
+//! - [`recovery::unicode_cipher`] — encode / decode / custom-alphabet APIs.
 //!
 //! # Non-BIP-39 compatibility
 //!

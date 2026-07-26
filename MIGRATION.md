@@ -179,6 +179,17 @@ The `signing_legacy` module and the three crate-root re-exports (`HybridSignatur
 - **`origin-crypto` CLI binary fix**: the standalone CLI no longer fails to compile during `cargo publish` — fixed an unresolved `crate::internal::getrandom` import (bin target has its own `crate::` root) and a borrow-after-move in `cmd_decrypt`.
 - **`unicode-normalization = "=0.1.25"`** newly required dependency for the recovery module's NFKC canonical-form validation.
 
+## 0.5.1 → 0.5.2
+
+This is a doc-only patch release. **No API changes.** No code changes are required for upgraders.
+
+If you were seeing red `?` doc-test indicators in the 0.5.1 docs.rs output for any of the modules below, they are resolved in 0.5.2:
+
+- `drbg::otp` — module-level Quick-start example was using the pre-0.4.1 path `origin_crypto_sdk::otp::{hotp, totp}` (and missing the `HashAlgorithm` import).
+- `seed::gen` — module-level Quick-start example was using the pre-0.4.1 path `origin_crypto_sdk::seed_gen::{self, SeedVariant}`.
+- `signing::hybrid` — both Quick-Start examples (the Falcon+Ed25519 hybrid and the KDF construction `Ed25519ChaCha20Blake3Sha3_256`) were using the pre-0.4.1 path `origin_crypto_sdk::hybrid::...`.
+- (lib root) the "single primitive" example was failing because both `Ed25519Signer::from_seed(...)` and `Falcon1024Signer::from_seed(...)` return `Result<Self>`; the example treated `Result` as `Signer` and tried to call `.sign(...)` on it.
+
 ## 0.2 → 0.3
 
 ### 1. Signing module restructured

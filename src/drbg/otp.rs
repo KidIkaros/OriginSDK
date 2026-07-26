@@ -8,7 +8,7 @@
 //! # Quick start
 //!
 //! ```
-//! use origin_crypto_sdk::otp::{hotp, totp};
+//! use origin_crypto_sdk::drbg::otp::{hotp, totp, HashAlgorithm};
 //!
 //! let secret = b"my-secret-key-1234";
 //!

@@ -39,7 +39,7 @@
 //! ## Quick Start
 //!
 //! ```rust
-//! use origin_crypto_sdk::hybrid::{Ed25519Falcon1024, falcon1024_keygen};
+//! use origin_crypto_sdk::signing::hybrid::{Ed25519Falcon1024, falcon1024_keygen};
 //! use ed25519_dalek::SigningKey;
 //!
 //! // Generate Falcon keypair
@@ -55,7 +55,7 @@
 //! ```
 //!
 //! ```rust
-//! use origin_crypto_sdk::hybrid::Ed25519ChaCha20Blake3Sha3_256;
+//! use origin_crypto_sdk::signing::hybrid::Ed25519ChaCha20Blake3Sha3_256;
 //!
 //! // KDF construction: keys derived deterministically from master seed
 //! let master_seed = [42u8; 32];

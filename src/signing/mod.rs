@@ -11,7 +11,7 @@
 //!
 //! | Need | Use |
 //! |------|-----|
-//! | Recommended for new code | [`hybrid::HybridSigningKeyBundle`] |
+//! | Recommended for new code | [`signing::hybrid::HybridSigningKeyBundle`] |
 //! | Pure Ed25519 (no PQ) | [`signing::classical::Ed25519Signer`] |
 //! | Pure Falcon-1024 (PQ only) | [`signing::postquantum::Falcon1024Signer`] |
 //! | Pure SLH-DSA (hash-based) | \[`pqc::slhdsa`\] |
@@ -21,7 +21,7 @@
 //!
 //! - [`signing::classical`] — Ed25519 (32-byte keys, 64-byte signatures)
 //! - [`signing::postquantum`] — Falcon-512/1024, SLH-DSA, ML-DSA
-//! - [`hybrid`] — Ed25519 + PQ constructions (canonical signing API)
+//! - [`signing::hybrid`] — Ed25519 + PQ constructions (canonical signing API)
 //!
 //! # Design: static methods, not traits
 //!
@@ -31,8 +31,10 @@
 //!
 //! ```no_run
 //! use origin_crypto_sdk::signing::classical::Ed25519Signer;
-//! let sig = Ed25519Signer::sign(&[1u8; 32], b"message");
-//! Ed25519Signer::verify(&[1u8; 32], b"message", &sig);
+//!
+//! let signer = Ed25519Signer::from_seed(&[1u8; 32]);
+//! let sig = signer.sign(b"message");
+//! assert!(signer.verify(b"message", &sig));
 //! ```
 //!
 //! This has two benefits:

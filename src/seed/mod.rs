@@ -10,7 +10,7 @@
 //!
 //! # Submodules
 //!
-//! - [`gen`] — Multi-hash seed generation with hash diversity.
+//! - [`seed::gen`] — Multi-hash seed generation with hash diversity.
 
 pub mod gen;
 

@@ -19,11 +19,11 @@
 //! # Quick start
 //!
 //! ```
-//! use origin_crypto_sdk::seed_gen::{self, SeedVariant};
+//! use origin_crypto_sdk::seed::gen::{generate, SeedVariant};
 //!
-//! let (seed, salt) = seed_gen::generate(SeedVariant::Blake2bShake256);
-//! assert_eq!(seed.len(), 32);
-//! assert_eq!(salt.len(), 16);
+//! let result = generate(SeedVariant::Blake2bShake256);
+//! assert_eq!(result.seed.len(), 32);
+//! assert_eq!(result.salt.len(), 16);
 //! ```
 
 use crate::internal::getrandom;

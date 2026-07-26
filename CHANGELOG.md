@@ -111,6 +111,23 @@ All notable changes to origin-crypto-sdk will be documented in this file.
 - 4 runnable examples verified
 - All 3 pre-existing `hybrid_rigorous` test failures now compile and pass
 
+## [0.5.2] — 2026-07-26
+
+### Fixed
+- **Doc-tests**: resolved 5 pre-existing `///` rust doc-test path bugs that referenced paths from before the 0.4.1 module reorganization. Previously broken:
+  - `src/drbg/otp.rs` Quick-start: `use origin_crypto_sdk::otp::{hotp, totp};` → `use origin_crypto_sdk::drbg::otp::{hotp, totp, HashAlgorithm};` (HashAlgorithm was also missing from the import)
+  - `src/seed/gen.rs` Quick-start: `use origin_crypto_sdk::seed_gen::{self, SeedVariant};` → `use origin_crypto_sdk::seed::gen::{self, SeedVariant};`
+  - `src/signing/hybrid.rs` Quick Start (x2): `use origin_crypto_sdk::hybrid::...` → `use origin_crypto_sdk::signing::hybrid::...`
+  - `src/lib.rs` Single-primitive example: added `.expect("valid seed")` after the `Ed25519Signer::from_seed(...)` and `Falcon1024Signer::from_seed(...)` calls — both `from_seed` functions return `Result<Self>`, so the doc-test chains `from_seed(...).sign(...)` were silently treating the Result as the Signer.
+- **Intra-doc-link warnings**: 4 unresolved rustdoc `[`name`]` links in module-level docs fixed by adding full module paths:
+  - `src/signing/mod.rs`: `[`hybrid`]` → `[`signing::hybrid`]`
+  - `src/recovery/mod.rs`: `[`unicode_cipher`]` → `[`recovery::unicode_cipher`]`
+  - `src/seed/mod.rs`: `[`gen`]` → `[`seed::gen`]`
+  - `src/stealth.rs`: `[`pow`]` → `[`stealth::pow`]`
+
+### Notes
+This is a **doc-only patch release**. No runtime surface changes; no API changes; no deprecations. The 5 `cargo test --doc` failures and 4 unresolved intra-doc-link warnings that existed in 0.5.1 are resolved.
+
 ## [0.4.1] — 2026-06-11
 
 ### Added

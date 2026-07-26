@@ -111,3 +111,18 @@ None. See [MIGRATION.md](MIGRATION.md) for the 0.4 → 0.5.1 transition notes.
 - New pinned dependency: `unicode-normalization = "=0.1.25"` (NFKC canonical-form validation for the recovery module).
 
 See [CHANGELOG.md](CHANGELOG.md) for detailed patch notes.
+
+# Release 0.5.2
+
+**Release date:** 2026-07-26
+
+This is a doc-only patch release. It resolves all 5 `cargo test --doc` failures and 4 unresolved intra-doc-link warnings that existed in 0.5.1.
+
+## Highlights
+
+- **Doc-tests**: 5 pre-existing doc-test imports of paths that were relocated during the 0.4.1 module reorg fixed: `otp` → `drbg::otp`, `seed_gen` → `seed::gen`, `hybrid::*` → `signing::hybrid::*`. Plus a `.expect("valid seed")` chain fix in the lib-root single-primitive example (both `*Signer::from_seed(...)` return `Result<Self>`).
+- **Intra-doc-links**: 4 bare `[`name`]` rustdoc links converted to full-path forms.
+- **No runtime changes**: identical binary behaviour to 0.5.1.
+
+See [CHANGELOG.md](CHANGELOG.md) for the exact patch list.
+

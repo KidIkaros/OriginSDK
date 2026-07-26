@@ -5,7 +5,7 @@
 //! # Submodules
 //!
 //! - [`kdf`] — Key derivation (master keys + per-index subkeys)
-//! - [`pow`] — Hashcash-based proof-of-work to rate-limit enumeration
+//! - [`stealth::pow`] — Hashcash-based proof-of-work to rate-limit enumeration
 
 pub mod kdf {
     use crate::error::{CryptoError, Result};

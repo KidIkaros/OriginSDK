@@ -31,12 +31,12 @@
 //! use origin_crypto_sdk::signing::postquantum::Falcon1024Signer;
 //!
 //! // Just Ed25519
-//! let ed = Ed25519Signer::from_seed(&[1u8; 32]);
+//! let ed = Ed25519Signer::from_seed(&[1u8; 32]);  // from_seed returns Self
 //! let sig = ed.sign(b"hello");
 //! assert!(ed.verify(b"hello", &sig));
 //!
 //! // Just Falcon-1024
-//! let falcon = Falcon1024Signer::from_seed(&[1u8; 32]);
+//! let falcon = Falcon1024Signer::from_seed(&[1u8; 32]).expect("valid seed");
 //! let sig = falcon.sign(b"hello").expect("Falcon sign");
 //! assert!(falcon.verify(b"hello", &sig));
 //! ```

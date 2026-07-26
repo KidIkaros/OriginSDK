@@ -30,7 +30,7 @@
 //! let passphrase = b"strong-passphrase";
 //!
 //! // Encrypt seed for storage
-//! let blob = create_blob(&seed, passphrase, MemoryTier::Standard).unwrap();
+//! let blob = create_blob(passphrase, MemoryTier::Standard, Some(&seed)).unwrap();
 //!
 //! // Recover seed from blob
 //! let recovered = recover_seed(&blob, passphrase, MemoryTier::Standard).unwrap();

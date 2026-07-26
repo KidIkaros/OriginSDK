@@ -46,7 +46,7 @@ fn hex_to_128(hex: &str) -> [u8; 128] {
 /// Reference: af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262
 #[test]
 fn golden_blake3_empty() {
-    let h = origin_crypto_sdk::primitives::blake3::hash(b"");
+    let h = origin_crypto_sdk::blake3::hash(b"");
     let bytes = h.as_bytes();
     let expected = hex_to_32("af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262");
     assert_eq!(bytes, &expected);
@@ -56,7 +56,7 @@ fn golden_blake3_empty() {
 /// Reference: 17762fddd969a453925d65717ac3eea21320b66b54342fde15128d6caf21215f
 #[test]
 fn golden_blake3_a() {
-    let h = origin_crypto_sdk::primitives::blake3::hash(b"a");
+    let h = origin_crypto_sdk::blake3::hash(b"a");
     let bytes = h.as_bytes();
     let expected = hex_to_32("17762fddd969a453925d65717ac3eea21320b66b54342fde15128d6caf21215f");
     assert_eq!(bytes, &expected);
@@ -66,7 +66,7 @@ fn golden_blake3_a() {
 /// Reference: 2dc99999a6aaef3f20349d2ed4057a2b54419545dabb809e6381de1bad8337e2
 #[test]
 fn golden_blake3_ab() {
-    let h = origin_crypto_sdk::primitives::blake3::hash(b"ab");
+    let h = origin_crypto_sdk::blake3::hash(b"ab");
     let bytes = h.as_bytes();
     let expected = hex_to_32("2dc99999a6aaef3f20349d2ed4057a2b54419545dabb809e6381de1bad8337e2");
     assert_eq!(bytes, &expected);
@@ -76,7 +76,7 @@ fn golden_blake3_ab() {
 /// Reference: 6437b3ac38465133ffb63b75273a8db548c558465d79db03fd359c6cd5bd9d85
 #[test]
 fn golden_blake3_abc() {
-    let h = origin_crypto_sdk::primitives::blake3::hash(b"abc");
+    let h = origin_crypto_sdk::blake3::hash(b"abc");
     let bytes = h.as_bytes();
     let expected = hex_to_32("6437b3ac38465133ffb63b75273a8db548c558465d79db03fd359c6cd5bd9d85");
     assert_eq!(bytes, &expected);
@@ -86,7 +86,7 @@ fn golden_blake3_abc() {
 /// Reference: 83a2de1ee6f4e6ab686889248f4ec0cf4cc5709446a682ffd1cbb4d6165181e2
 #[test]
 fn golden_blake3_ietf() {
-    let h = origin_crypto_sdk::primitives::blake3::hash(b"IETF");
+    let h = origin_crypto_sdk::blake3::hash(b"IETF");
     let bytes = h.as_bytes();
     let expected = hex_to_32("83a2de1ee6f4e6ab686889248f4ec0cf4cc5709446a682ffd1cbb4d6165181e2");
     assert_eq!(bytes, &expected);
@@ -100,7 +100,7 @@ fn golden_blake3_ietf() {
 /// Reference: a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a
 #[test]
 fn golden_sha3_256_empty() {
-    let h = origin_crypto_sdk::primitives::sha3_256(b"");
+    let h = origin_crypto_sdk::sha3_256(b"");
     let expected = hex_to_32("a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a");
     assert_eq!(h, expected);
 }
@@ -109,7 +109,7 @@ fn golden_sha3_256_empty() {
 /// Reference: 3a985da74fe225b2045c172d6bd390bd855f086e3e9d525b46bfe24511431532
 #[test]
 fn golden_sha3_256_abc() {
-    let h = origin_crypto_sdk::primitives::sha3_256(b"abc");
+    let h = origin_crypto_sdk::sha3_256(b"abc");
     let expected = hex_to_32("3a985da74fe225b2045c172d6bd390bd855f086e3e9d525b46bfe24511431532");
     assert_eq!(h, expected);
 }
@@ -118,7 +118,7 @@ fn golden_sha3_256_abc() {
 /// Reference: a69f73cca23a9ac5c8b567dc185a756e97c982164fe25859e0d1dcc1475c80a615b2123af1f5f94c11e3e9402c3ac558f500199d95b6d3e301758586281dcd26
 #[test]
 fn golden_sha3_512_empty() {
-    let h = origin_crypto_sdk::primitives::sha3_512(b"");
+    let h = origin_crypto_sdk::sha3_512(b"");
     let expected = hex_to_64("a69f73cca23a9ac5c8b567dc185a756e97c982164fe25859e0d1dcc1475c80a615b2123af1f5f94c11e3e9402c3ac558f500199d95b6d3e301758586281dcd26");
     assert_eq!(h, expected);
 }

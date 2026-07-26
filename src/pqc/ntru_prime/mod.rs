@@ -12,8 +12,12 @@
 
 pub mod constants;
 mod r3;
-mod rq;
+pub mod rq;
 mod zx;
+#[cfg(feature = "test-utils")]
+pub mod ntt;
+#[cfg(not(feature = "test-utils"))]
+mod ntt;
 
 use crate::error::{CryptoError, Result};
 use crate::primitives::sha3 as native_sha3;

@@ -158,14 +158,14 @@ pub mod recovery;
 // ── Utility modules (hidden from docs) ──
 /// Entropy analysis — internal utility.
 #[doc(hidden)]
-pub mod entropy;
+pub(crate) mod entropy;
 
 /// Seed handling with TTL and memory security.
 pub mod seed;
 
 /// Merkle Mountain Range — internal utility.
 #[doc(hidden)]
-pub mod mmr;
+pub(crate) mod mmr;
 
 /// Stealth address primitives (KDF + PoW).
 pub mod stealth;
@@ -179,25 +179,33 @@ pub mod error_correction;
 /// **Internal use only.** Application code should use the higher-level
 /// modules ([`chacha20_blake3`], [`kdf`], etc.) instead.
 #[doc(hidden)]
-pub mod primitives;
+pub(crate) mod primitives;
 
 /// SipHash keyed hash — internal utility.
 #[doc(hidden)]
-pub mod siphash;
+pub(crate) mod siphash;
 
 /// Compression utility — internal.
 #[doc(hidden)]
-pub mod compression;
+pub(crate) mod compression;
 
 /// Blob storage — internal utility.
 #[doc(hidden)]
-pub mod blob;
+pub(crate) mod blob;
 
 // ──────────────────────────────────────────────────────────────────────
 // Internal modules (not part of public API; use at your own risk)
 // ──────────────────────────────────────────────────────────────────────
 #[doc(hidden)]
 pub mod internal;
+
+// ── Hash function re-exports (primitives is pub(crate); these are the public surface) ──
+/// SHA3-256 hash.
+pub use primitives::sha3_256;
+/// SHA3-512 hash.
+pub use primitives::sha3_512;
+/// BLAKE3 hash module — fast, parallelizable.
+pub use primitives::blake3;
 
 // ──────────────────────────────────────────────────────────────────────
 // Re-exports at crate root for convenience

@@ -141,7 +141,6 @@ recovery::           -- Unicode recovery phrase codec (NOT BIP-39 compatible)
   test_utils::          -- Deterministic test helpers (feature = "test-utils")
   types::               -- Zeroizing byte array newtypes (XNonce, CNonce, Seed, etc.)
   error::               -- CryptoError, Result alias
-  signing_legacy::      -- Deprecated flat signing API (removal deferred to 0.6)
   internal::            -- Internals (hidden, not for external use)
 ```
 
@@ -193,7 +192,7 @@ Apache-2.0 — see [LICENSE](LICENSE).
 
 ## API Stability
 
-**Pre-1.0 notice**: This crate is at version 0.5.3. Per [Cargo's SemVer guidance](https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html#pre-1.0), anything below 1.0 may contain breaking changes in minor releases.
+**Pre-1.0 notice**: This crate is at version 0.6.0. Per [Cargo's SemVer guidance](https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html#pre-1.0), anything below 1.0 may contain breaking changes in minor releases.
 
 **Stable** (breaking changes will require a major version bump):
 - `CryptoError` variants and their `Display` output
@@ -204,7 +203,6 @@ Apache-2.0 — see [LICENSE](LICENSE).
 **Unstable** (may change in minor releases):
 - The exact set of items in `prelude::*`
 - Low-level PQC module APIs (`pqc::falcon1024`, `pqc::ed448`, etc.)
-- `signing_legacy` — kept for one final release cycle, will be removed in 0.6
 - `test_utils` API — stabilizing in 0.5
 
 **Frozen** (will not change):

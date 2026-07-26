@@ -137,16 +137,6 @@ pub mod pqc;
 /// the signature remains unforgeable even if one primitive is broken.
 pub mod signing;
 
-// Legacy flat `signing` API (pre-restructuring). Re-exported as
-// `origin_crypto_sdk::signing_legacy` for callers that imported the
-// old types directly. **Deprecated; removal deferred to 0.6**.
-// See `signing_legacy` module docs for migration instructions.
-#[deprecated(
-    since = "0.5.1",
-    note = "Removal deferred to 0.6. Use signing::hybrid::HybridSigningKeyBundle instead. See MIGRATION.md."
-)]
-pub mod signing_legacy;
-
 // ── Randomness & DRBG ──
 pub mod drbg;
 
@@ -223,26 +213,6 @@ pub use drbg::ChaCha20Drbg;
 
 // Seed handling
 pub use seed::{derive_child_seed, derive_signing_keys, derive_verifying_keys, SeedHandle};
-
-// Signatures — re-exports (DEPRECATED, will be removed in 0.5)
-#[allow(deprecated)]
-#[deprecated(
-    since = "0.5.1",
-    note = "Removal deferred to 0.6. Use signing::hybrid::HybridSigningKeyBundle instead. See MIGRATION.md."
-)]
-pub use signing::HybridSignatureOutput;
-#[allow(deprecated)]
-#[deprecated(
-    since = "0.5.1",
-    note = "Removal deferred to 0.6. Use signing::hybrid::HybridSigningKeyBundle instead. See MIGRATION.md."
-)]
-pub use signing::HybridSigningKey;
-#[allow(deprecated)]
-#[deprecated(
-    since = "0.5.1",
-    note = "Removal deferred to 0.6. Use signing::hybrid::HybridSigningKeyBundle instead. See MIGRATION.md."
-)]
-pub use signing::HybridVerifyingKey;
 
 // Hybrid bundle (canonical PQ-hybrid signing)
 pub use signing::hybrid::falcon1024_keygen;

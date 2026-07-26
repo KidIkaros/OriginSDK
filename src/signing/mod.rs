@@ -54,7 +54,7 @@ pub mod postquantum;
 
 /// Legacy compatibility shim for code that used `origin_crypto_sdk::hybrid::*`.
 /// **Deprecated.** Use `signing::hybrid` directly instead.
-#[deprecated(note = "use signing::hybrid instead. This module will be removed in 0.5.")]
+#[deprecated(note = "use signing::hybrid instead.")]
 pub mod legacy_shim;
 
 // ──────────────────────────────────────────────────────────────────────
@@ -66,8 +66,8 @@ pub mod legacy_shim;
 // did `use origin_crypto_sdk::signing::{HybridSigningKey, ...};`.
 // ──────────────────────────────────────────────────────────────────────
 
-// `HybridSigningKey` (the OOP wrapper around HybridSigningKeyBundle) was
-// the main public type from the old `signing.rs`. It's now in the
-// `signing_legacy` top-level module.
-#[allow(deprecated)]
-pub use crate::signing_legacy::{HybridSignatureOutput, HybridSigningKey, HybridVerifyingKey};
+// (Removed in 0.6.0: the pre-0.4 flat-namespace `HybridSigningKey` /
+// `HybridVerifyingKey` / `HybridSignatureOutput` re-exports previously
+// surfaced here via `pub use crate::signing_legacy::{...}`. With
+// `signing_legacy` removed in 0.6.0, those types are gone entirely.
+// Use `signing::hybrid::HybridSigningKeyBundle` for all new code.)

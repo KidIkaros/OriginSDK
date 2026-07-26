@@ -60,8 +60,3 @@ pub use crate::compression::{compress, decompress};
 // ── Hybrid signing (recommended default) ──
 pub use crate::signing::hybrid::{falcon1024_keygen, HybridSigningKeyBundle};
 pub use crate::signing::hybrid::{skein1024, skein512};
-
-// ── Legacy hybrid re-exports (for callers upgrading from pre-0.3) ──
-// Deprecated in 0.4, removed in 0.5. Use HybridSigningKeyBundle instead.
-#[allow(deprecated)]
-pub use crate::signing::{HybridSignatureOutput, HybridSigningKey, HybridVerifyingKey};

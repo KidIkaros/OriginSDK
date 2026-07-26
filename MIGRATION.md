@@ -2,6 +2,126 @@
 
 This document helps you move between major versions of `origin-crypto-sdk`.
 
+## 0.5.x → 0.6
+
+This minor cycle ships as three releases. The lead release (0.6.0) is a
+**breaking event**; the next two (0.6.1, 0.6.2) are additive.
+
+### 0.6.0 — Breaking: `signing_legacy` removal
+
+Honoring a public deprecation promise made at `0.4.0` and reaffirmed at
+`0.5.1`, the `signing_legacy` module and the three deprecated crate-root
+re-exports are removed in `0.6.0`.
+
+#### 1. `pub mod signing_legacy` removed
+
+The `signing_legacy` module (which re-exported the flat pre-0.4 `signing::*`
+API as an OOP-style surface) is **deleted**. Code that imported from it
+will fail to compile against `0.6.0`.
+
+**Before** (`0.5.x`):
+
+```rust
+use origin_crypto_sdk::signing_legacy::{
+    HybridSigningKey, HybridVerifyingKey, HybridSignatureOutput,
+};
+
+let key = HybridSigningKey::from_handle(&seed_handle, "domain")?;
+let sig = key.sign(b"msg")?;
+let pk  = key.public_key()?;
+assert!(pk.verify(b"msg", &sig));
+```
+
+**After** (`0.6+`):
+
+```rust
+use origin_crypto_sdk::signing::hybrid::HybridSigningKeyBundle;
+
+let bundle = HybridSigningKeyBundle::from_seed(&seed_bytes, "domain")?;
+let sig = bundle.sign_hybrid(b"msg");
+// Verifying key accessors live on the bundle:
+let ed_pk = bundle.ed25519_pk();
+let falcon_pk = bundle.falcon1024_pk();
+```
+
+The OOP `from_handle(&SeedHandle, &str)` helper is gone — derive bytes
+first, then call `from_seed(&[u8; 32], &str)`. Wire encoding for
+signatures is unchanged (`ed25519_sig_len ++ ed25519_sig ++ falcon_sig`),
+so previously-stored `HybridSignatureOutput` payloads can still be
+verified via the `signed`/`verifying` APIs on the new bundle.
+
+#### 2. Crate-root re-exports removed
+
+**Before** (`0.5.x`):
+
+```rust
+use origin_crypto_sdk::{
+    HybridSigningKey, HybridVerifyingKey, HybridSignatureOutput,
+};
+```
+
+**After** (`0.6+`):
+
+```rust
+use origin_crypto_sdk::signing::hybrid::HybridSigningKeyBundle;
+```
+
+Same canonical surface; only the import path changes. The `signing::hybrid`
+reexport was already present at the crate root in `0.5.x`; this round
+removes the **parallel** re-exports that duplicated the same types.
+
+#### 3. Audit helper
+
+`origin-crypto-sdk 0.6.0` ships `scripts/audit_signing_legacy.sh` so
+downstream consumers can self-scan their own repos for uses of the
+removed symbols:
+
+```bash
+bash /path/to/origin-crypto-sdk/scripts/audit_signing_legacy.sh /path/to/your-repo
+```
+
+Exits `0` if no deprecated usage is found, `1` if any matches are
+detected (with `file:line:rule-id` for each finding), `2` on argument
+errors. Default scan is `*.rs` only; pass `--include-toml` or
+`--include-md` to widen.
+
+### 0.6.1 — Additive: OCRA support (planned)
+
+Adds RFC 6287 (OATH Challenge-Response Algorithm) as a typed module
+under `drbg::ocra`:
+
+- `pub enum OcraSuite { HotpSha1_6, HotpSha256_8, HotpSha512_10, ... }`
+- `pub fn compute(suite: OcraSuite, key: &[u8], challenge: &[u8],
+  counter: Option<u64>, timestamp: Option<u64>) -> u32`
+- `pub fn verify(...) -> Result<(), CryptoError>`
+
+The typed-enum approach avoids the attack surface of parsing untrusted
+suite-strings at runtime. Drop-in plug-replace for `drbg::otp::{hotp, totp}`
+callers that need challenge-response with PIN or transaction-data binding.
+
+### 0.6.2 — Additive: ChaCha variant + sanitization framework (planned)
+
+Two additive primitives for symmetric-quantum-defense + data-sanitization
+compliance:
+
+- **`chacha20_40`** — ChaCha with **40 rounds** (vs. the standard 20),
+  surfaced as a separate primitive on top of the existing
+  `chacha20_blake3` AEAD. The 40-round variant doubles symmetric-side
+  Grover-defense without doubling the key (suitable when AEAD nonce
+  structure is unchanged). Reuses the existing BLAKE3 commitment tag.
+- **`sanitization::SanitizationLevel::{Clear, Purge, Destroy}`** — a
+  NIST SP 800-88 framework on top of the existing
+  `internal::secure_zero_memory` primitive. Categorizes the three
+  sanitization levels so application authors can label their
+  data-handling paths explicitly. Documentation-heavy; no behavior
+  change for non-explicit callers.
+
+These ship together because both are forward-looking compliance/
+post-quantum-readiness primitives — they don't otherwise interact, but
+the 0.6.2 release keeps the minor-version cycle coherent.
+
+---
+
 ## 0.3 → 0.4
 
 The 0.4 release focused on API clarity, error handling, and security hardening.

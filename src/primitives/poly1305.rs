@@ -269,6 +269,18 @@ pub fn poly1305_mac(msg: &[u8], key: &[u8; POLY1305_KEY_SIZE]) -> [u8; POLY1305_
     poly.finalize()
 }
 
+impl std::fmt::Debug for Poly1305 {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // Redact `r` (clamped key material), `s_` (5*r), `h` (accumulator),
+        // `pad` (key s portion), and `buf` (partial-block plaintext).
+        // Surface `buf_pos` and `finalized` for flow control debugging.
+        f.debug_struct("Poly1305")
+            .field("buf_pos", &self.buf_pos)
+            .field("finalized", &self.finalized)
+            .finish_non_exhaustive()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

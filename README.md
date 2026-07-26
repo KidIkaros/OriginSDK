@@ -126,6 +126,7 @@ origin_crypto_sdk::
     mldsa::             -- ML-DSA (feature-gated)
   drbg::                -- ChaCha20 DRBG (auto-reseed at 16 MB)
     otp::               -- One-time pad (HOTP/TOTP, RFC 4226/6238)
+  ocra::                -- OCRA challenge-response (RFC 6287 core)
   entropy::            -- Entropy quality analysis (internal)
   seed::                -- Hierarchical seed derivation
     gen::               -- Multi-hash seed generation
@@ -192,7 +193,7 @@ Apache-2.0 — see [LICENSE](LICENSE).
 
 ## API Stability
 
-**Pre-1.0 notice**: This crate is at version 0.6.0. Per [Cargo's SemVer guidance](https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html#pre-1.0), anything below 1.0 may contain breaking changes in minor releases.
+**Pre-1.0 notice**: This crate is at version 0.6.1. Per [Cargo's SemVer guidance](https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html#pre-1.0), anything below 1.0 may contain breaking changes in minor releases.
 
 **Stable** (breaking changes will require a major version bump):
 - `CryptoError` variants and their `Display` output

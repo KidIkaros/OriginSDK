@@ -6,7 +6,42 @@ All notable changes to origin-crypto-sdk will be documented in this file.
 
 _Future work for 0.7.0+ lives here as it accumulates._
 
-## [0.6.0] — 2026-XX-XX
+## [0.6.2] — 2026-07-26
+
+### Fixed
+- **Pivoted NTRU Prime fast-path from NTT to Karatsuba.** The orphan `src/pqc/ntru_prime/ntt.rs` has been purged of the broken NTT primitives (invalid for $\mathbb{Z}_{4591}$ because only $2^1$ divides $Q-1$, so primitive $2^k$-th roots of unity for $k \ge 2$ don't exist) and now contains a working true split-and-conquer Karatsuba multiplication ($O(P^{1.585})$) that avoids roots of unity entirely. The module is re-linked (`mod ntt;` declared) and `rq::mult` calls `ntru_poly_mul_karatsuba` under `#[cfg(feature = "pqc-simd")]`.
+
+### Performance
+- **NTRU Prime encapsulate 8.5× faster** under `pqc-simd` (Karatsuba polynomial multiplication replaces O(P²) convolution). Decapsulate 2.5× faster, keygen 1.6× faster.
+- **Karatsuba threshold tuned** to 64 (empirically optimal for P=761). Tested at 96 and 128 — both slower due to larger O(P²) base-case dominance.
+- **round3_avx2 rewritten with real SIMD**: replaced a dead `use std::arch::x86_64::*;` import (present since the module was introduced) with actual SSE intrinsics processing 4 coefficients per iteration. ~12% speedup over scalar (157 ns vs 179 ns).
+- **Performance baseline saved** at `benches/baseline/v0.6.2/` with both scalar-only (`--features slh-dsa,ml-dsa`) and `pqc-simd` configurations. Criterion change columns will flag regressions in CI against this baseline.
+- **benches/README.md** updated with baseline instructions, `cargo bench --load-baseline` commands, and CI workflow example.
+
+### Changed
+- **`test-utils` feature gating**: Benchmark-only exports (`ntru_prime::ntt`, `rq::mult_scalar`, `rq::round3_scalar`) are now `pub` only under `#[cfg(feature = "test-utils")]`. Without `test-utils`, they're `pub(crate)` (internal usage). Benchmarks require `test-utils` via `required-features = ["slh-dsa", "ml-dsa", "test-utils"]`.
+- **6 internal modules demoted from `pub` to `pub(crate)`**: `entropy`, `mmr`, `primitives`, `siphash`, `compression`, `blob` — all `#[doc(hidden)]` modules with zero external consumers. This shrinks the public API surface by 6 modules.
+- **Crate-root hash re-exports**: `pub use primitives::sha3_256`, `pub use primitives::sha3_512`, `pub use primitives::blake3` — these were the only `primitives` items referenced by integration tests; now accessible at `origin_crypto_sdk::sha3_256` etc. instead of `origin_crypto_sdk::primitives::sha3_256`.
+
+### Benchmarking
+- Added benchmark groups: `poly_mul` (scalar O(P²) vs Karatsuba O(P¹·⁵⁸⁵) head-to-head), `round3` (scalar vs AVX2 dispatch), `serpent` (Serpent-CBC 1 MB encrypt/decrypt), `hybrid-hashes` (Skein512 + Skein1024 at 5B/1KB/64KB/1MB).
+
+## [0.6.1] — 2026-07-26
+
+### Added
+- **`ocra` (RFC 6287: OATH Challenge-Response Algorithms)** — new public module implementing the **core** challenge→response algorithm. No Suite-string parsing (deferred to 0.6.2) and no QR mode (deferred to 0.6.2).
+  - `pub struct OcraRequest<'a>` — explicit field set: `counter: u64` (C, 8-byte big-endian), `challenge: &'a [u8]` (Q; **SHA-1-hashed internally per §6.1**), `password: Option<&'a [u8]>` (P; **SHA-1-hashed internally per §6.2**), `session: &'a [u8]` (S; raw), `timestamp: Option<u64>` (T, 8-byte big-endian).
+  - `pub struct OcraResponse { value: u32, digits: u32 }` with `format_code()` (zero-padded) and `verify(&expected) -> bool` **constant-time** comparison via `subtle::ConstantTimeEq` (RFC 6287 §10).
+  - `pub fn ocra(key: &[u8], req: &OcraRequest, digits: u32, algo: HashAlgorithm) -> Result<OcraResponse>` — RFC 6287 §7.1 formula `Truncate(HMAC(K, C || Q || P || S || T))` with RFC 4226 §5.3 dynamic truncation.
+  - Custom `Debug` impls on `OcraRequest` and `OcraResponse` redacting secret-derived content (challenge/password bytes hidden, response value hidden). `OcraResponse` is `#[derive(Clone, Copy, PartialEq, Eq)]`.
+  - Reuses the existing `drbg::otp::{compute_hmac, format_code, HashAlgorithm}` — **no new dependencies**.
+- **`drbg::otp::compute_hmac`** is now `pub(crate)` (was `fn`) so the new `ocra` module can share the HMAC computation without duplication.
+
+### Notes
+- **Additive release.** No public API removed or renamed from 0.6.0. Downstream code that imports `HybridSigningKeyBundle`, `XChaCha20Poly1305`, `ChaCha20Drbg`, `Argon2id`, etc. all continues to compile unchanged.
+- `cargo test --lib` count: 247 → 258 (+11 OCRA tests inline in `src/ocra.rs`). Note: the orphan `test_poly_mul_ntt_simple` in `src/pqc/ntru_prime/ntt.rs` was never in the baseline count (the file was always unreachable), so it neither adds nor subtracts from this delta. Includes the **canonical RFC 6287 Appendix A.1 Test #1** vector: Suite `OCRA-1:HOTP-SHA1-6:QN08`, key ASCII `12345678901234567890`, counter=0, Q = numeric zeros × 8 (ASCII `"00000000"`) → expected `196958` (  verified independently by a Python recomputation against the RFC §7.1 byte-trace). If the test vector ever fails on your machine, the standard has drifted or your HMAC impl has — investigate against the RFC text before patching.
+
+## [0.6.0] — 2026-07-26
 
 ### Removed (BREAKING)
 - **`pub mod signing_legacy`** — entire module deleted. Pre-0.4 flat `signing_*` API was deprecated at `0.4.0` with a promise of removal in `0.5`; that removal was deferred once at `0.5.1` and is now honored in `0.6.0`. See [MIGRATION.md](MIGRATION.md#0.5x--06) for migration instructions.

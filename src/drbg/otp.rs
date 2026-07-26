@@ -156,7 +156,7 @@ pub fn totp_uri(
 // Internal helpers
 // ---------------------------------------------------------------------------
 
-fn compute_hmac(secret: &[u8], message: &[u8], algo: HashAlgorithm) -> Vec<u8> {
+pub(crate) fn compute_hmac(secret: &[u8], message: &[u8], algo: HashAlgorithm) -> Vec<u8> {
     match algo {
         HashAlgorithm::Sha1 => {
             type HmacSha1 = Hmac<Sha1>;

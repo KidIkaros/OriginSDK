@@ -242,6 +242,20 @@ impl Default for Sha3_256 {
     }
 }
 
+impl std::fmt::Debug for Sha3_256 {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // `state` holds the SHA3 permutation state plus XORed input bytes during
+        // absorption. `buffer` holds the most-recently-absorbed partial block.
+        // Both redact by default; if SHA3 hashes secret data, leaks would
+        // otherwise surface via `:?` formatting.
+        f.debug_struct("Sha3_256")
+            .field("state", &"<redacted>")
+            .field("buffer", &"<redacted>")
+            .field("buf_len", &self.buf_len)
+            .finish()
+    }
+}
+
 /// SHA3-512 implementation (rate=72 bytes, capacity=128 bytes, output=64 bytes)
 pub struct Sha3_512 {
     state: [u64; 25],
@@ -317,6 +331,18 @@ impl Sha3_512 {
 impl Default for Sha3_512 {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+impl std::fmt::Debug for Sha3_512 {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // Same rationale as Sha3_256: state and buffer redact; buf_len surfaces
+        // for flow-control debugging.
+        f.debug_struct("Sha3_512")
+            .field("state", &"<redacted>")
+            .field("buffer", &"<redacted>")
+            .field("buf_len", &self.buf_len)
+            .finish()
     }
 }
 

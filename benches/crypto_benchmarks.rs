@@ -2,16 +2,18 @@
 
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 use ed25519_dalek::SigningKey as Ed25519Sk;
-use origin_crypto_sdk::hybrid::{
+use origin_crypto_sdk::signing::hybrid::{
     self, derive_hybrid_keys, skein1024, skein512, Ed25519Blake3, Ed25519ChaCha20Blake3Sha3_256,
     Ed25519Falcon1024, Ed25519Falcon512, Ed25519Shake256, Ed25519Skein512, Ed448Falcon1024,
     Ed448Sha3_256, Ed448Shake256, Ed448Skein512, HybridSigningKeyBundle,
 };
 use origin_crypto_sdk::internal::rng::ChaCha20Rng;
-use origin_crypto_sdk::pqc::curve41417::ed41417::SigningKey as Ed41417Sk;
+use origin_crypto_sdk::pqc::ed448::SigningKey as Ed448Signer;
+use origin_crypto_sdk::pqc::ntru_prime::constants::P;
+use rand::RngCore;
 use origin_crypto_sdk::{
     aead, error_correction, kdf, pqc::falcon1024, pqc::falcon512, pqc::mldsa, pqc::ntru_prime,
-    pqc::slhdsa, symmetric,
+    pqc::slhdsa,
 };
 
 fn benchmark_aead(c: &mut Criterion) {
@@ -183,6 +185,65 @@ fn benchmark_mldsa(c: &mut Criterion) {
     group.finish();
 }
 
+fn benchmark_poly_mul(c: &mut Criterion) {
+    let mut group = c.benchmark_group("poly_mul");
+
+    // Generate deterministic random test data
+    let mut rng = ChaCha20Rng::from_seed([42u8; 32]);
+    let mut f_i16 = [0i16; P];
+    let mut g_i8 = [0i8; P];
+    for i in 0..P {
+        f_i16[i] = (rng.next_u32() % 4591) as i16 - 2295; // range ~[-2295, 2295]
+        g_i8[i] = (rng.next_u32() % 3) as i8 - 1;          // range [-1, 0, 1]
+    }
+    let g_i16: Vec<i16> = g_i8.iter().map(|&x| x as i16).collect();
+
+    // Pre-allocate output buffer for mult_scalar
+    let mut h_scalar = [0i16; P];
+
+    // Warmup: ensure both paths are JIT-compiled/cached before measurement
+    origin_crypto_sdk::pqc::ntru_prime::rq::mult_scalar(
+        &mut h_scalar,
+        black_box(f_i16),
+        black_box(g_i8),
+    );
+    let karatsuba_result = origin_crypto_sdk::pqc::ntru_prime::ntt::ntru_poly_mul_karatsuba(
+        black_box(&f_i16),
+        black_box(&g_i16),
+    );
+
+    group.bench_function("mult_scalar_O_P2", |b| {
+        b.iter(|| {
+            origin_crypto_sdk::pqc::ntru_prime::rq::mult_scalar(
+                black_box(&mut h_scalar),
+                black_box(f_i16),
+                black_box(g_i8),
+            );
+        })
+    });
+
+    group.bench_function("karatsuba_O_P1.585", |b| {
+        b.iter(|| {
+            let _ = origin_crypto_sdk::pqc::ntru_prime::ntt::ntru_poly_mul_karatsuba(
+                black_box(&f_i16),
+                black_box(&g_i16),
+            );
+        })
+    });
+
+    group.finish();
+
+    // Verify both paths produce same result (sanity check)
+    for i in 0..P {
+        assert_eq!(
+            h_scalar[i],
+            karatsuba_result[i],
+            "Mismatch at coefficient {}: scalar={}, karatsuba={}",
+            i, h_scalar[i], karatsuba_result[i]
+        );
+    }
+}
+
 fn benchmark_ntru(c: &mut Criterion) {
     let mut group = c.benchmark_group("ntru");
 
@@ -207,6 +268,33 @@ fn benchmark_ntru(c: &mut Criterion) {
     group.finish();
 }
 
+fn benchmark_round3(c: &mut Criterion) {
+    let mut group = c.benchmark_group("round3");
+
+    // Deterministic test data: h = wild coefficients in [-2295, 2295]
+    let mut rng = ChaCha20Rng::from_seed([42u8; 32]);
+    let mut h = [0i16; P];
+    for i in 0..P {
+        h[i] = (rng.next_u32() % 4591) as i16 - 2295;
+    }
+
+    group.bench_function("scalar", |b| {
+        let mut h_copy = h;
+        b.iter(|| {
+            origin_crypto_sdk::pqc::ntru_prime::rq::round3_scalar(black_box(&mut h_copy));
+        })
+    });
+
+    group.bench_function("dispatch_round3", |b| {
+        let mut h_copy = h;
+        b.iter(|| {
+            origin_crypto_sdk::pqc::ntru_prime::rq::round3(black_box(&mut h_copy));
+        })
+    });
+
+    group.finish();
+}
+
 fn benchmark_serpent(c: &mut Criterion) {
     let mut group = c.benchmark_group("serpent");
 
@@ -216,16 +304,16 @@ fn benchmark_serpent(c: &mut Criterion) {
 
     group.bench_function("encrypt", |b| {
         b.iter(|| {
-            symmetric::SerpentCbc::encrypt(black_box(&key), black_box(&iv), black_box(&plaintext))
+            aead::symmetric::SerpentCbc::encrypt(black_box(&key), black_box(&iv), black_box(&plaintext))
                 .unwrap()
         })
     });
 
-    let encrypted = symmetric::SerpentCbc::encrypt(&key, &iv, &plaintext).unwrap();
+    let encrypted = aead::symmetric::SerpentCbc::encrypt(&key, &iv, &plaintext).unwrap();
 
     group.bench_function("decrypt", |b| {
         b.iter(|| {
-            symmetric::SerpentCbc::decrypt(black_box(&key), black_box(&iv), black_box(&encrypted))
+            aead::symmetric::SerpentCbc::decrypt(black_box(&key), black_box(&iv), black_box(&encrypted))
                 .unwrap()
         })
     });
@@ -272,7 +360,7 @@ fn benchmark_hybrid_signatures(c: &mut Criterion) {
     let message = b"benchmark message for hybrid signatures";
     let ed_sk = Ed25519Sk::from_bytes(&seed);
     let ed_pk = ed_sk.verifying_key();
-    let ed448_sk = Ed41417Sk::from_bytes_mod_order([42u8; 52]);
+    let ed448_sk = Ed448Signer::from_bytes(&[42u8; 57]).unwrap();
     let ed448_pk = ed448_sk.verifying_key();
 
     // Ed25519 + Falcon-1024
@@ -492,6 +580,8 @@ criterion_group!(
     benchmark_slhdsa,
     benchmark_mldsa,
     benchmark_ntru,
+    benchmark_poly_mul,
+    benchmark_round3,
     benchmark_serpent,
     benchmark_hybrid_hashes,
     benchmark_hybrid_signatures,

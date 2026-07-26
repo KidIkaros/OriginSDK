@@ -13,6 +13,7 @@ use cipher::{
 use serpent::Serpent;
 
 /// Serpent CBC mode encryption provider
+#[derive(Debug)]
 pub struct SerpentCbc;
 
 impl SerpentCbc {

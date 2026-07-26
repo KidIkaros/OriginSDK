@@ -17,6 +17,7 @@ use crate::internal::getrandom;
 use crate::primitives::chacha20poly1305::{xchacha20_poly1305_open, xchacha20_poly1305_seal};
 
 /// XChaCha20-Poly1305 AEAD encryption provider
+#[derive(Debug)]
 pub struct XChaCha20Poly1305;
 
 impl XChaCha20Poly1305 {

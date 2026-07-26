@@ -146,6 +146,7 @@ pub fn analyze(data: &[u8]) -> EntropyMetrics {
 // ---------------------------------------------------------------------------
 
 /// Quality requirements for a given seed bit length.
+#[derive(Debug)]
 pub struct QualityRequirements {
     /// Minimum Shannon entropy (bits of entropy per bit of input).
     pub min_shannon: f64,

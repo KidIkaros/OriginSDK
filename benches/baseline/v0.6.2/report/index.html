@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>Index - Criterion.rs</title>
+    <style type="text/css">
+        body {
+            font: 14px Helvetica Neue;
+            text-rendering: optimizelegibility;
+        }
+
+        .body {
+            width: 960px;
+            margin: auto;
+        }
+
+        a:link {
+            color: #1F78B4;
+            text-decoration: none;
+        }
+
+        h2 {
+            font-size: 36px;
+            font-weight: 300;
+        }
+
+        h3 {
+            font-size: 24px;
+            font-weight: 300;
+        }
+
+        #footer {
+            height: 40px;
+            background: #888;
+            color: white;
+            font-size: larger;
+            font-weight: 300;
+        }
+
+        #footer a {
+            color: white;
+            text-decoration: underline;
+        }
+
+        #footer p {
+            text-align: center
+        }
+
+        table {
+            border-collapse: collapse;
+        }
+
+        table,
+        th,
+        td {
+            border: 1px solid #888;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="body">
+        <h2>Criterion.rs Benchmark Index</h2>
+        See individual benchmark pages below for more details.
+        <ul>
+            <li><a href="../aead/report/index.html">aead</a></li>
+            
+            <ul>
+                <li>
+                    <table>
+                        <tr>
+                            <th></th>
+                            <th><a href="../aead/encrypt/report/index.html">encrypt</a></th>
+                        </tr>
+                        <tr>
+                            <th>1024</th>
+                            <td><a href="../aead/encrypt/1024/report/index.html">aead/encrypt/1024</a></td>
+                        </tr>
+                        <tr>
+                            <th>1048576</th>
+                            <td><a href="../aead/encrypt/1048576/report/index.html">aead/encrypt/1048576</a></td>
+                        </tr>
+                        <tr>
+                            <th>10485760</th>
+                            <td><a href="../aead/encrypt/10485760/report/index.html">aead/encrypt/10485760</a></td>
+                        </tr>
+                    </table>
+                </li>
+            </ul>
+            <li><a href="../falcon/report/index.html">falcon</a></li>
+            
+            <ul>
+                <li><a href="../falcon/falcon1024_keygen/report/index.html">falcon1024_keygen</a></li>
+                <li><a href="../falcon/falcon1024_sign/report/index.html">falcon1024_sign</a></li>
+                <li><a href="../falcon/falcon1024_verify/report/index.html">falcon1024_verify</a></li>
+                <li><a href="../falcon/falcon512_keygen/report/index.html">falcon512_keygen</a></li>
+                <li><a href="../falcon/falcon512_sign/report/index.html">falcon512_sign</a></li>
+                <li><a href="../falcon/falcon512_verify/report/index.html">falcon512_verify</a></li>
+            </ul>
+            <li><a href="../hybrid-hashes/report/index.html">hybrid-hashes</a></li>
+            
+            <ul>
+                <li><a href="../hybrid-hashes/1KB/report/index.html">1KB</a></li>
+                <li><a href="../hybrid-hashes/1MB/report/index.html">1MB</a></li>
+                <li><a href="../hybrid-hashes/5B/report/index.html">5B</a></li>
+                <li><a href="../hybrid-hashes/64KB/report/index.html">64KB</a></li>
+            </ul>
+            <li><a href="../hybrid-kdf/report/index.html">hybrid-kdf</a></li>
+            
+            <ul>
+                <li><a href="../hybrid-kdf/bundle_from_seed/report/index.html">bundle_from_seed</a></li>
+                <li><a href="../hybrid-kdf/bundle_from_seed_cached/report/index.html">bundle_from_seed_cached</a></li>
+                <li><a href="../hybrid-kdf/bundle_from_seed_uncached/report/index.html">bundle_from_seed_uncached</a></li>
+                <li><a href="../hybrid-kdf/bundle_sign_hybrid/report/index.html">bundle_sign_hybrid</a></li>
+                <li><a href="../hybrid-kdf/derive_hybrid_keys/report/index.html">derive_hybrid_keys</a></li>
+                <li><a href="../hybrid-kdf/ed25519_chacha20blake3_sha3_256_sign/report/index.html">ed25519_chacha20blake3_sha3_256_sign</a></li>
+                <li><a href="../hybrid-kdf/ed25519_chacha20blake3_sha3_256_verify/report/index.html">ed25519_chacha20blake3_sha3_256_verify</a></li>
+            </ul>
+            <li><a href="../hybrid-signatures/report/index.html">hybrid-signatures</a></li>
+            
+            <ul>
+                <li><a href="../hybrid-signatures/ed25519_blake3_sign/report/index.html">ed25519_blake3_sign</a></li>
+                <li><a href="../hybrid-signatures/ed25519_blake3_verify/report/index.html">ed25519_blake3_verify</a></li>
+                <li><a href="../hybrid-signatures/ed25519_falcon1024_sign/report/index.html">ed25519_falcon1024_sign</a></li>
+                <li><a href="../hybrid-signatures/ed25519_falcon1024_verify/report/index.html">ed25519_falcon1024_verify</a></li>
+                <li><a href="../hybrid-signatures/ed25519_falcon512_sign/report/index.html">ed25519_falcon512_sign</a></li>
+                <li><a href="../hybrid-signatures/ed25519_falcon512_verify/report/index.html">ed25519_falcon512_verify</a></li>
+                <li><a href="../hybrid-signatures/ed25519_shake256_sign/report/index.html">ed25519_shake256_sign</a></li>
+                <li><a href="../hybrid-signatures/ed25519_shake256_verify/report/index.html">ed25519_shake256_verify</a></li>
+                <li><a href="../hybrid-signatures/ed25519_skein512_sign/report/index.html">ed25519_skein512_sign</a></li>
+                <li><a href="../hybrid-signatures/ed25519_skein512_verify/report/index.html">ed25519_skein512_verify</a></li>
+                <li><a href="../hybrid-signatures/ed448_falcon1024_sign/report/index.html">ed448_falcon1024_sign</a></li>
+                <li><a href="../hybrid-signatures/ed448_falcon1024_verify/report/index.html">ed448_falcon1024_verify</a></li>
+                <li><a href="../hybrid-signatures/ed448_sha3_256_sign/report/index.html">ed448_sha3_256_sign</a></li>
+                <li><a href="../hybrid-signatures/ed448_sha3_256_verify/report/index.html">ed448_sha3_256_verify</a></li>
+                <li><a href="../hybrid-signatures/ed448_shake256_sign/report/index.html">ed448_shake256_sign</a></li>
+                <li><a href="../hybrid-signatures/ed448_shake256_verify/report/index.html">ed448_shake256_verify</a></li>
+                <li><a href="../hybrid-signatures/ed448_skein512_sign/report/index.html">ed448_skein512_sign</a></li>
+                <li><a href="../hybrid-signatures/ed448_skein512_verify/report/index.html">ed448_skein512_verify</a></li>
+            </ul>
+            <li><a href="../kdf/report/index.html">kdf</a></li>
+            
+            <ul>
+                <li><a href="../kdf/argon2id_normal/report/index.html">argon2id_normal</a></li>
+                <li><a href="../kdf/argon2id_paranoid/report/index.html">argon2id_paranoid</a></li>
+            </ul>
+            <li><a href="../ml-dsa/report/index.html">ml-dsa</a></li>
+            
+            <ul>
+                <li><a href="../ml-dsa/keygen/report/index.html">keygen</a></li>
+                <li><a href="../ml-dsa/sign/report/index.html">sign</a></li>
+                <li><a href="../ml-dsa/verify/report/index.html">verify</a></li>
+            </ul>
+            <li><a href="../ntru/report/index.html">ntru</a></li>
+            
+            <ul>
+                <li><a href="../ntru/decapsulate/report/index.html">decapsulate</a></li>
+                <li><a href="../ntru/encapsulate/report/index.html">encapsulate</a></li>
+                <li><a href="../ntru/keygen/report/index.html">keygen</a></li>
+            </ul>
+            <li><a href="../poly_mul/report/index.html">poly_mul</a></li>
+            
+            <ul>
+                <li><a href="../poly_mul/karatsuba_O_P1.585/report/index.html">karatsuba_O_P1.585</a></li>
+                <li><a href="../poly_mul/mult_scalar_O_P2/report/index.html">mult_scalar_O_P2</a></li>
+            </ul>
+            <li><a href="../reed_solomon/report/index.html">reed_solomon</a></li>
+            
+            <ul>
+                <li><a href="../reed_solomon/decode/report/index.html">decode</a></li>
+                <li><a href="../reed_solomon/encode_parallel/report/index.html">encode_parallel</a></li>
+                <li><a href="../reed_solomon/encode_serial/report/index.html">encode_serial</a></li>
+            </ul>
+            <li><a href="../round3/report/index.html">round3</a></li>
+            
+            <ul>
+                <li><a href="../round3/dispatch_round3/report/index.html">dispatch_round3</a></li>
+                <li><a href="../round3/scalar/report/index.html">scalar</a></li>
+            </ul>
+            <li><a href="../serpent/report/index.html">serpent</a></li>
+            
+            <ul>
+                <li><a href="../serpent/decrypt/report/index.html">decrypt</a></li>
+                <li><a href="../serpent/encrypt/report/index.html">encrypt</a></li>
+            </ul>
+            <li><a href="../slh-dsa/report/index.html">slh-dsa</a></li>
+            
+            <ul>
+                <li><a href="../slh-dsa/keygen/report/index.html">keygen</a></li>
+                <li><a href="../slh-dsa/sign/report/index.html">sign</a></li>
+                <li><a href="../slh-dsa/verify/report/index.html">verify</a></li>
+            </ul>
+        </ul>
+    </div>
+    <div id="footer">
+        <p>This report was generated by
+            <a href="https://github.com/bheisler/criterion.rs">Criterion.rs</a>, a statistics-driven benchmarking
+            library in Rust.</p>
+    </div>
+</body>
+</html>

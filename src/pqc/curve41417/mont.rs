@@ -52,6 +52,14 @@ impl Zeroize for SecretKey {
     }
 }
 
+impl std::fmt::Debug for SecretKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // Full redaction — `scalar` is the secret DH scalar. Tuple shape only,
+        // no field-name tag.
+        write!(f, "SecretKey(<redacted>)")
+    }
+}
+
 impl Drop for SecretKey {
     fn drop(&mut self) {
         self.zeroize();
@@ -117,6 +125,13 @@ pub struct SharedSecret {
 impl Zeroize for SharedSecret {
     fn zeroize(&mut self) {
         self.secret.zeroize();
+    }
+}
+
+impl std::fmt::Debug for SharedSecret {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // Full redaction — `secret` is the ECDH shared secret. Tuple shape only.
+        write!(f, "SharedSecret(<redacted>)")
     }
 }
 

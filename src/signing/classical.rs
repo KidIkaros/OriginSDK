@@ -29,6 +29,13 @@ pub struct Ed25519Signer {
     key: SigningKey,
 }
 
+impl std::fmt::Debug for Ed25519Signer {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // Full redaction: the private `:key` field never surfaces via Debug.
+        f.debug_struct("Ed25519Signer").finish_non_exhaustive()
+    }
+}
+
 impl Ed25519Signer {
     /// Create a signer from a 32-byte seed.
     pub fn from_seed(seed: &[u8; 32]) -> Self {

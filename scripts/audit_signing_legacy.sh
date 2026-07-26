@@ -49,6 +49,7 @@ emit_json=0
 scan_toml=0
 scan_md=0
 quiet=0
+skip_comments=0
 
 # ── pattern table ────────────────────────────────────────────────────
 # Each line: <rule_id><TAB><grep regex>
@@ -83,6 +84,7 @@ while [[ $# -gt 0 ]]; do
     --include-toml) scan_toml=1; shift;;
     --include-md)   scan_md=1; shift;;
     --quiet)        quiet=1; shift;;
+    --skip-comments) skip_comments=1; shift;;
     -h|--help)      print_help; exit 0;;
     --)             shift; break;;
     -*)             printf 'Unknown flag: %s\n' "$1" >&2; exit 2;;
@@ -174,6 +176,34 @@ if [[ ${#unique[@]} -gt 0 ]]; then
   IFS=$'\n' sorted=($(printf '%s\n' "${unique[@]}" | LC_ALL=C sort -t'|' -k2,2))
   unset IFS
   unique=("${sorted[@]}")
+fi
+
+# Optional: drop comment-only matches. A match is "comment-only" if the
+# line snippet (everything after file:line:) begins with `//`, `/*`, or
+# `*` (the latter indicates the body of an already-opened `/* ... */`
+# block — grep is line-scoped so we cannot track nesting precisely, but
+# the common case is mid-block-comment doc text).
+#
+# Default OFF: when auditing a consumer repo, a comment like
+# `// TODO: migrate away from signing_legacy` is a useful signal.
+# Turn ON for SDK self-audit where the source includes intentional
+# historical-context comments that are not actual code uses.
+if [[ $skip_comments -eq 1 && ${#unique[@]} -gt 0 ]]; then
+  filtered=()
+  for entry in "${unique[@]}"; do
+    loc="${entry#*|}"
+    # snippet is everything after the third ':' segment (file:line:snippet)
+    snippet="${loc#*:*:}"
+    # Trim leading whitespace.
+    trimmed="${snippet#"${snippet%%[![:space:]]*}"}"
+    case "$trimmed" in
+      "//"*) ;;      # line comment  → drop
+      "/*"*) ;;      # block-comment start  → drop
+      "*"*) ;;       # inside a block comment  → drop
+      *) filtered+=( "$entry" ) ;;  # otherwise, keep
+    esac
+  done
+  unique=("${filtered[@]}")
 fi
 
 # ── output ───────────────────────────────────────────────────────────

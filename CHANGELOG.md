@@ -18,12 +18,31 @@ _Future work for 0.7.0+ lives here as it accumulates._
   - 12 unit tests covering roundtrip, determinism, key/nonce/counter distinction
 - **ChaCha40 example**: `cargo run --example chacha40_encrypt` — demonstrates
   file encryption and key wrapping modes
+- **Property-based tests**: 20 new proptest invariants across Reed-Solomon,
+  compression, Poly1305, SipHash, blob, and DRBG — verified at 1,000 cases each
+  (23,000 total property checks, all passing)
+- **Edge-case unit tests**: +26 new tests across 10 modules: AEAD (empty/large
+  plaintext, wrong nonce), Serpent-CBC (empty/invalid-length), DRBG (fill,
+  zero-length, OS-entropy), HKDF (no-salt/empty-info/large-output/different-info),
+  HMAC (empty key/data, key sensitivity), hex (encode-to-slice, decode-array),
+  MemoryTier (labels, buffer-size, should-lock, defaults)
+- **Fuzz targets**: `fuzz_chacha40` (roundtrip + wrong-key detection) and
+  `fuzz_reed_solomon` (encode/decode + corruption recovery)
+- **Fuzz-like test harness**: `tests/fuzz_like_testing.rs` — 13 randomized tests
+  at 10,000 iterations each (130,000+ random inputs), covering ChaCha40,
+  Reed-Solomon, compression, Poly1305, HKDF, HMAC, DRBG, and SipHash.
+  Bypasses `cargo +nightly fuzz` toolchain issues.
 - Crate-root re-exports: `pub use primitives::chacha40` and `pub use primitives::chacha20`
 
 ### Changed
 - `primitives::chacha20::quarter_round` and `init_state` promoted from `fn` to
   `pub(crate)` so the ChaCha40 module can share the canonical implementations
   (no code duplication)
+- `siphash`, `compression`, and `blob` promoted from `pub(crate) mod` to
+  `pub mod` (with `#[doc(hidden)]`, matching `error_correction`'s pattern)
+  for integration-test access
+- Crate-root re-exports: `pub use primitives::poly1305` and
+  `pub use primitives::tier` (both `#[doc(hidden)]`)
 - README docs: updated What's Inside table, Module Map, and examples list
 - lib.rs docs: updated Module organization and Security defaults sections
 

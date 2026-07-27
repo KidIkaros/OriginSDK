@@ -25,3 +25,11 @@ path = "fuzz_targets/fuzz_hybrid_verify.rs"
 [[bin]]
 name = "fuzz_kdf"
 path = "fuzz_targets/fuzz_kdf.rs"
+
+[[bin]]
+name = "fuzz_chacha40"
+path = "fuzz_targets/fuzz_chacha40.rs"
+
+[[bin]]
+name = "fuzz_reed_solomon"
+path = "fuzz_targets/fuzz_reed_solomon.rs"

@@ -131,4 +131,42 @@ mod tests {
 
         assert_ne!(before, after);
     }
+
+    #[test]
+    fn fill_method_works() {
+        let seed = [99u8; 32];
+        let mut drbg = ChaCha20Drbg::from_seed(seed);
+        let mut buf = [0u8; 32];
+        drbg.fill(&mut buf);
+        assert_ne!(buf, [0u8; 32]);
+    }
+
+    #[test]
+    fn fill_matches_random_bytes() {
+        let seed = [42u8; 32];
+        let mut a = ChaCha20Drbg::from_seed(seed);
+        let mut b = ChaCha20Drbg::from_seed(seed);
+        let mut buf = [0u8; 32];
+        a.fill(&mut buf);
+        let bytes = b.random_bytes(32);
+        assert_eq!(buf.to_vec(), bytes);
+    }
+
+    #[test]
+    fn from_os_entropy_produces_different_instances() {
+        let mut a = ChaCha20Drbg::from_os_entropy();
+        let mut b = ChaCha20Drbg::from_os_entropy();
+        let bytes_a = a.random_bytes(32);
+        let bytes_b = b.random_bytes(32);
+        // Very unlikely to collide from OS entropy
+        assert_ne!(bytes_a, bytes_b);
+    }
+
+    #[test]
+    fn zero_length_output() {
+        let seed = [42u8; 32];
+        let mut drbg = ChaCha20Drbg::from_seed(seed);
+        let bytes = drbg.random_bytes(0);
+        assert!(bytes.is_empty());
+    }
 }

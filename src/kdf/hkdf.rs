@@ -61,4 +61,46 @@ mod tests {
 
         assert_eq!(output1, output2);
     }
+
+    #[test]
+    fn test_hkdf_no_salt() {
+        let master_key = [3u8; 32];
+        let mut output = [0u8; 32];
+
+        hkdf_sha3_256(&master_key, None, b"info", &mut output).unwrap();
+        assert_ne!(output, [0u8; 32]);
+    }
+
+    #[test]
+    fn test_hkdf_empty_info() {
+        let master_key = [4u8; 32];
+        let salt = [5u8; 32];
+        let mut output = [0u8; 32];
+
+        hkdf_sha3_256(&master_key, Some(&salt), b"", &mut output).unwrap();
+        assert_ne!(output, [0u8; 32]);
+    }
+
+    #[test]
+    fn test_hkdf_large_output() {
+        let master_key = [6u8; 32];
+        let salt = [7u8; 32];
+        let mut output = vec![0u8; 256];
+
+        hkdf_sha3_256(&master_key, Some(&salt), b"expand", &mut output).unwrap();
+        assert_ne!(output, vec![0u8; 256]);
+    }
+
+    #[test]
+    fn test_hkdf_different_info_different_output() {
+        let master_key = [8u8; 32];
+        let salt = [9u8; 32];
+        let mut out1 = [0u8; 32];
+        let mut out2 = [0u8; 32];
+
+        hkdf_sha3_256(&master_key, Some(&salt), b"info1", &mut out1).unwrap();
+        hkdf_sha3_256(&master_key, Some(&salt), b"info2", &mut out2).unwrap();
+
+        assert_ne!(out1, out2);
+    }
 }

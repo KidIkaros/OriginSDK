@@ -78,4 +78,55 @@ mod tests {
 
         assert!(result.is_err());
     }
+
+    #[test]
+    fn test_empty_plaintext() {
+        let key = generate_key();
+        let nonce = generate_nonce();
+
+        let encrypted = XChaCha20Poly1305::encrypt(&key, &nonce, b"").unwrap();
+        let decrypted = XChaCha20Poly1305::decrypt(&key, &nonce, &encrypted).unwrap();
+
+        assert!(decrypted.is_empty());
+    }
+
+    #[test]
+    fn test_large_plaintext() {
+        let key = generate_key();
+        let nonce = generate_nonce();
+        let plaintext = vec![0xABu8; 65536];
+
+        let encrypted = XChaCha20Poly1305::encrypt(&key, &nonce, &plaintext).unwrap();
+        let decrypted = XChaCha20Poly1305::decrypt(&key, &nonce, &encrypted).unwrap();
+
+        assert_eq!(plaintext, decrypted);
+    }
+
+    #[test]
+    fn test_wrong_nonce_fails() {
+        let key = generate_key();
+        let nonce = generate_nonce();
+        let mut wrong_nonce = nonce;
+        wrong_nonce[0] ^= 0x01;
+        let plaintext = b"secret";
+
+        let encrypted = XChaCha20Poly1305::encrypt(&key, &nonce, plaintext).unwrap();
+        let result = XChaCha20Poly1305::decrypt(&key, &wrong_nonce, &encrypted);
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_generate_nonce_is_random() {
+        let a = generate_nonce();
+        let b = generate_nonce();
+        assert_ne!(a, b);
+    }
+
+    #[test]
+    fn test_generate_key_is_random() {
+        let a = generate_key();
+        let b = generate_key();
+        assert_ne!(a, b);
+    }
 }

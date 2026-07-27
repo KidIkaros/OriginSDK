@@ -97,4 +97,46 @@ mod tests {
         let arr: [u8; 4] = decode_array("deadbeef").unwrap();
         assert_eq!(arr, [0xde, 0xad, 0xbe, 0xef]);
     }
+
+    #[test]
+    fn encode_empty() {
+        assert_eq!(encode(b""), "");
+    }
+
+    #[test]
+    fn encode_to_slice_basic() {
+        let data = [0xde, 0xad];
+        let mut out = [0u8; 4];
+        encode_to_slice(&data, &mut out);
+        assert_eq!(&out, b"dead");
+    }
+
+    #[test]
+    fn encode_to_slice_all_bytes() {
+        let data: Vec<u8> = (0..=255).collect();
+        let mut out = vec![0u8; 512];
+        encode_to_slice(&data, &mut out);
+        let hex = encode(&data);
+        assert_eq!(out, hex.as_bytes());
+    }
+
+    #[test]
+    fn decode_array_wrong_len_returns_none() {
+        assert!(decode_array::<4>("deadbe").is_none());
+        assert!(decode_array::<4>("deadbeef01").is_none());
+    }
+
+    #[test]
+    fn empty_decode_roundtrip() {
+        assert_eq!(decode("").unwrap(), Vec::<u8>::new());
+    }
+
+    #[test]
+    fn single_byte_roundtrip() {
+        for byte in [0x00u8, 0x01, 0x80, 0xff] {
+            let hex = encode(&[byte]);
+            let decoded = decode(&hex).unwrap();
+            assert_eq!(decoded, vec![byte]);
+        }
+    }
 }

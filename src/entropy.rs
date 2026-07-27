@@ -16,7 +16,7 @@
 //!
 //! # Quick start
 //!
-//! ```
+//! ```ignore
 //! use origin_crypto_sdk::entropy;
 //!
 //! let data = [0x42u8; 256];

@@ -74,6 +74,15 @@ jobs:
           components: rustfmt
       - run: cargo fmt --all -- --check
 
+  doctest:
+    name: Doc tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo test --doc --features slh-dsa,ml-dsa,pqc-simd,test-utils
+
   doc:
     name: Docs
     runs-on: ubuntu-latest
@@ -103,6 +112,31 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: cargo test --features test-utils --lib test_utils
 
+  coverage:
+    name: Coverage gate (≥77%)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Install cargo-tarpaulin
+        uses: baptiste0928/cargo-install@v3
+        with:
+          crate: cargo-tarpaulin
+          version: "0.37"
+      - name: Run coverage with gate
+        run: |
+          cargo tarpaulin --lib \
+            --features slh-dsa,ml-dsa,pqc-simd,test-utils \
+            --engine Llvm \
+            --out Html \
+            --fail-under 77
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: tarpaulin-report.html
+
   msrv:
     name: MSRV (1.85)
     runs-on: ubuntu-latest
@@ -112,3 +146,4 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: cargo check --lib --no-default-features
       - run: cargo check --lib
+

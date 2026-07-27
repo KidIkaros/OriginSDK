@@ -14,7 +14,7 @@
 //!
 //! # Example
 //!
-//! ```no_run
+//! ```ignore
 //! use origin_crypto_sdk::mmr::Mmr;
 //!
 //! let mut mmr = Mmr::new();

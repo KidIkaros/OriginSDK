@@ -45,4 +45,36 @@ mod tests {
         let result2 = hmac_sha3_256(key, data).unwrap();
         assert_eq!(result1, result2);
     }
+
+    #[test]
+    fn test_hmac_empty_key() {
+        let result = hmac_sha3_256(b"", b"data").unwrap();
+        assert_eq!(result.len(), 32);
+    }
+
+    #[test]
+    fn test_hmac_empty_data() {
+        let result = hmac_sha3_256(b"key", b"").unwrap();
+        assert_eq!(result.len(), 32);
+    }
+
+    #[test]
+    fn test_hmac_empty_both() {
+        let result = hmac_sha3_256(b"", b"").unwrap();
+        assert_eq!(result.len(), 32);
+    }
+
+    #[test]
+    fn test_hmac_multi_single_chunk() {
+        let result = hmac_sha3_256_multi(b"key", &[b"single_chunk"]).unwrap();
+        let expected = hmac_sha3_256(b"key", b"single_chunk").unwrap();
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_hmac_key_sensitivity() {
+        let a = hmac_sha3_256(b"key_a", b"data").unwrap();
+        let b = hmac_sha3_256(b"key_b", b"data").unwrap();
+        assert_ne!(a, b);
+    }
 }

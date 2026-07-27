@@ -1,0 +1,2 @@
+[alias]
+coverage = "tarpaulin --lib --features slh-dsa,ml-dsa,pqc-simd,test-utils --engine Llvm --out Html --fail-under 77"

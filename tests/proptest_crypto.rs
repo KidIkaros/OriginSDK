@@ -204,3 +204,222 @@ proptest! {
         prop_assert_eq!(seed.as_bytes(), &bytes);
     }
 }
+
+// ── Reed-Solomon error correction ──────────────────────────────────
+
+proptest! {
+    /// Encode then decode must restore the original data.
+    #[test]
+    fn prop_reed_solomon_roundtrip(
+        data in any_bytes(256),
+    ) {
+        prop_assume!(!data.is_empty());
+        let codec = origin_crypto_sdk::error_correction::ReedSolomonCodec::new(4, 2);
+        let encoded = codec.encode(&data).expect("encode");
+        let decoded = codec.decode(&encoded).expect("decode");
+        prop_assert_eq!(decoded, data);
+    }
+
+    /// Decode with corrupted data should not panic (may succeed or fail gracefully).
+    #[test]
+    fn prop_reed_solomon_corruption_no_panic(
+        data in any_bytes(128),
+        flip_pos in 0usize..1024,
+    ) {
+        prop_assume!(!data.is_empty());
+        let codec = origin_crypto_sdk::error_correction::ReedSolomonCodec::new(2, 1);
+        if let Ok(encoded) = codec.encode(&data) {
+            if flip_pos < encoded.len() {
+                let mut corrupted = encoded.clone();
+                corrupted[flip_pos] ^= 0xFF;
+                // Should not panic — may succeed (recoverable) or fail with error
+                let _ = codec.decode(&corrupted);
+            }
+        }
+    }
+}
+
+// ── Compression ──────────────────────────────────────────────────────
+
+proptest! {
+    /// Compress then decompress must restore the original data.
+    #[test]
+    fn prop_compress_decompress_roundtrip(
+        data in any_bytes(4096),
+    ) {
+        use origin_crypto_sdk::compression::{compress, decompress};
+        let compressed = compress(&data)
+            .expect("compress");
+        let decompressed = decompress(&compressed)
+            .expect("decompress");
+        prop_assert_eq!(decompressed, data);
+    }
+
+    /// Decompress random garbage must not panic (may fail gracefully).
+    #[test]
+    fn prop_decompress_garbage_no_panic(
+        garbage in any_bytes(256),
+    ) {
+        use origin_crypto_sdk::compression::decompress;
+        // Should not panic — only return Err
+        let _ = decompress(&garbage);
+    }
+}
+
+// ── Poly1305 ─────────────────────────────────────────────────────────
+
+proptest! {
+    /// Poly1305 is deterministic: same key + message produces same tag.
+    #[test]
+    fn prop_poly1305_deterministic(
+        msg in any_bytes(512),
+    ) {
+        let key = [0x42u8; 32];
+        let tag1 = origin_crypto_sdk::poly1305::poly1305_mac(&msg, &key);
+        let tag2 = origin_crypto_sdk::poly1305::poly1305_mac(&msg, &key);
+        prop_assert_eq!(tag1, tag2);
+    }
+
+    /// Different key produces different tag (with high probability).
+    ///
+    /// NOTE: Empty messages will produce identical tags if the `s` pad
+    /// portion of the key (bytes 16..32) is the same. We test with non-empty
+    /// messages to exercise the `r`-based multiplication path.
+    #[test]
+    fn prop_poly1305_key_sensitivity(
+        msg in any_bytes(64),
+    ) {
+        prop_assume!(!msg.is_empty());
+        let key1 = [0x42u8; 32];
+        let mut key2 = [0x42u8; 32];
+        key2[0] ^= 0x01;
+        let tag1 = origin_crypto_sdk::poly1305::poly1305_mac(&msg, &key1);
+        let tag2 = origin_crypto_sdk::poly1305::poly1305_mac(&msg, &key2);
+        prop_assert_ne!(tag1, tag2);
+    }
+
+    /// Incremental update produces same tag as one-shot.
+    #[test]
+    fn prop_poly1305_incremental(
+        a in any_bytes(64),
+        b in any_bytes(64),
+        c in any_bytes(64),
+    ) {
+        use origin_crypto_sdk::poly1305::Poly1305;
+        let key = [0xABu8; 32];
+
+        let one_shot = origin_crypto_sdk::poly1305::poly1305_mac(
+            &[a.as_slice(), b.as_slice(), c.as_slice()].concat(), &key
+        );
+
+        let mut poly = Poly1305::new(&key);
+        poly.update(&a);
+        poly.update(&b);
+        poly.update(&c);
+        let incremental = poly.finalize();
+        prop_assert_eq!(one_shot, incremental);
+    }
+}
+
+// ── SipHash ──────────────────────────────────────────────────────────
+
+proptest! {
+    /// SipHash expansion is deterministic.
+    #[test]
+    fn prop_siphash_deterministic(
+        msg in any_bytes(64),
+    ) {
+        let key = [0x42u8; 16];
+        let result = origin_crypto_sdk::siphash::siphash_expand(128, 8, 16, &key, &msg);
+        prop_assert_eq!(result.len(), 16);
+        let expected = origin_crypto_sdk::siphash::siphash_expand(128, 8, 16, &key, &msg);
+        prop_assert_eq!(result, expected);
+    }
+
+    /// Different key produces different output.
+    #[test]
+    fn prop_siphash_key_sensitivity(
+        msg in any_bytes(32),
+    ) {
+        let key1 = [0x42u8; 16];
+        let mut key2 = [0x42u8; 16];
+        key2[0] ^= 0x01;
+        let a = origin_crypto_sdk::siphash::siphash_expand(128, 8, 16, &key1, &msg);
+        let b = origin_crypto_sdk::siphash::siphash_expand(128, 8, 16, &key2, &msg);
+        prop_assert_ne!(a, b);
+    }
+}
+
+// ── Seed Blob ────────────────────────────────────────────────────────
+
+proptest! {
+    /// Blob roundtrip: create + recover preserves seed.
+    #[test]
+    fn prop_blob_roundtrip(
+        passphrase in any_bytes(64),
+    ) {
+        prop_assume!(!passphrase.is_empty());
+        let seed = [0x42u8; 32];
+        let blob = origin_crypto_sdk::blob::create_blob(
+            &passphrase,
+            origin_crypto_sdk::tier::MemoryTier::Nano,
+            Some(&seed),
+        ).expect("create_blob");
+        let recovered = origin_crypto_sdk::blob::recover_seed(
+            &blob,
+            &passphrase,
+            origin_crypto_sdk::tier::MemoryTier::Nano,
+        ).expect("recover_seed");
+        prop_assert_eq!(recovered, seed);
+    }
+
+    /// Wrong passphrase must fail recovery.
+    #[test]
+    fn prop_blob_wrong_passphrase_fails(
+        good_pw in any_bytes(32),
+        bad_pw in any_bytes(32),
+    ) {
+        prop_assume!(!good_pw.is_empty() && !bad_pw.is_empty() && good_pw != bad_pw);
+        let seed = [0x42u8; 32];
+        let blob = origin_crypto_sdk::blob::create_blob(
+            &good_pw,
+            origin_crypto_sdk::tier::MemoryTier::Nano,
+            Some(&seed),
+        ).expect("create_blob");
+        let result = origin_crypto_sdk::blob::recover_seed(
+            &blob,
+            &bad_pw,
+            origin_crypto_sdk::tier::MemoryTier::Nano,
+        );
+        prop_assert!(result.is_err());
+    }
+}
+
+// ── DRBG ─────────────────────────────────────────────────────────────
+
+proptest! {
+    /// DRBG is deterministic from seed.
+    #[test]
+    fn prop_drbg_deterministic(
+        seed in any_32_bytes(),
+        n in 1usize..256,
+    ) {
+        let mut a = origin_crypto_sdk::drbg::ChaCha20Drbg::from_seed(seed);
+        let mut b = origin_crypto_sdk::drbg::ChaCha20Drbg::from_seed(seed);
+        prop_assert_eq!(a.random_bytes(n), b.random_bytes(n));
+    }
+
+    /// Different seeds produce different output.
+    #[test]
+    fn prop_drbg_seed_sensitivity(
+        seed in any_32_bytes(),
+    ) {
+        let mut a = origin_crypto_sdk::drbg::ChaCha20Drbg::from_seed(seed);
+        let mut seed2 = seed;
+        seed2[0] ^= 0x01;
+        let mut b = origin_crypto_sdk::drbg::ChaCha20Drbg::from_seed(seed2);
+        let bytes_a = a.random_bytes(64);
+        let bytes_b = b.random_bytes(64);
+        prop_assert_ne!(bytes_a, bytes_b);
+    }
+}

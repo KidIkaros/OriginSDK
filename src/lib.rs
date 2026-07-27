@@ -188,15 +188,15 @@ pub(crate) mod primitives;
 
 /// SipHash keyed hash — internal utility.
 #[doc(hidden)]
-pub(crate) mod siphash;
+pub mod siphash;
 
 /// Compression utility — internal.
 #[doc(hidden)]
-pub(crate) mod compression;
+pub mod compression;
 
 /// Blob storage — internal utility.
 #[doc(hidden)]
-pub(crate) mod blob;
+pub mod blob;
 
 // ──────────────────────────────────────────────────────────────────────
 // Internal modules (not part of public API; use at your own risk)
@@ -220,6 +220,12 @@ pub use primitives::chacha40;
 // ── Additional cipher module re-exports ──
 /// ChaCha20 stream cipher module.
 pub use primitives::chacha20;
+/// Poly1305 message authentication code.
+#[doc(hidden)]
+pub use primitives::poly1305;
+/// Memory tier configuration for Argon2id KDF.
+#[doc(hidden)]
+pub use primitives::tier;
 
 // ──────────────────────────────────────────────────────────────────────
 // Re-exports at crate root for convenience

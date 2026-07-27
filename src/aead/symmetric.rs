@@ -106,4 +106,50 @@ mod tests {
 
         assert_eq!(plaintext.to_vec(), decrypted);
     }
+
+    #[test]
+    fn test_serpent_cbc_empty_plaintext() {
+        let key = [1u8; 32];
+        let iv = [2u8; 16];
+
+        let encrypted = SerpentCbc::encrypt(&key, &iv, b"").unwrap();
+        let decrypted = SerpentCbc::decrypt(&key, &iv, &encrypted).unwrap();
+
+        assert!(decrypted.is_empty());
+    }
+
+    #[test]
+    fn test_serpent_cbc_wrong_key_fails() {
+        let key = [1u8; 32];
+        let wrong_key = [2u8; 32];
+        let iv = [3u8; 16];
+        let plaintext = b"Hello, World!";
+
+        let encrypted = SerpentCbc::encrypt(&key, &iv, plaintext).unwrap();
+        let decrypted = SerpentCbc::decrypt(&wrong_key, &iv, &encrypted).unwrap();
+
+        assert_ne!(plaintext.to_vec(), decrypted);
+    }
+
+    #[test]
+    fn test_serpent_cbc_invalid_ciphertext_len() {
+        let key = [1u8; 32];
+        let iv = [2u8; 16];
+        let invalid_ct = vec![0u8; 13];
+
+        let result = SerpentCbc::decrypt(&key, &iv, &invalid_ct);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_serpent_cbc_deterministic() {
+        let key = [1u8; 32];
+        let iv = [2u8; 16];
+        let plaintext = b"fixed message";
+
+        let a = SerpentCbc::encrypt(&key, &iv, plaintext).unwrap();
+        let b = SerpentCbc::encrypt(&key, &iv, plaintext).unwrap();
+
+        assert_eq!(a, b);
+    }
 }

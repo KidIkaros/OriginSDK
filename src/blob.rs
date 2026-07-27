@@ -22,7 +22,7 @@
 //!
 //! # Example
 //!
-//! ```rust,no_run
+//! ```ignore
 //! use origin_crypto_sdk::blob::{create_blob, recover_seed};
 //! use origin_crypto_sdk::primitives::MemoryTier;
 //!

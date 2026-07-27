@@ -84,4 +84,45 @@ mod tests {
         assert_eq!(p.t_cost(), 5);
         assert_eq!(p.p_cost(), 4);
     }
+
+    #[test]
+    fn default_tier_is_standard() {
+        let tier: MemoryTier = Default::default();
+        assert_eq!(tier, MemoryTier::Standard);
+    }
+
+    #[test]
+    fn tier_labels() {
+        assert_eq!(MemoryTier::Nano.label(), "nano");
+        assert_eq!(MemoryTier::Standard.label(), "standard");
+        assert_eq!(MemoryTier::Sovereign.label(), "sovereign");
+    }
+
+    #[test]
+    fn buffer_sizes() {
+        assert_eq!(MemoryTier::Nano.buffer_size(), 1024);
+        assert_eq!(MemoryTier::Standard.buffer_size(), 4096);
+        assert_eq!(MemoryTier::Sovereign.buffer_size(), 4096);
+    }
+
+    #[test]
+    fn should_lock_only_for_sovereign() {
+        assert!(!MemoryTier::Nano.should_lock());
+        assert!(!MemoryTier::Standard.should_lock());
+        assert!(MemoryTier::Sovereign.should_lock());
+    }
+
+    #[test]
+    fn tier_equality() {
+        assert_eq!(MemoryTier::Nano, MemoryTier::Nano);
+        assert_ne!(MemoryTier::Nano, MemoryTier::Standard);
+    }
+
+    #[test]
+    fn argon2_params_different_output_lens() {
+        for &len in &[16, 32, 64] {
+            let p = MemoryTier::Nano.argon2_params(len);
+            assert_eq!(p.output_len(), Some(len));
+        }
+    }
 }

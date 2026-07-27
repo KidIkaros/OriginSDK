@@ -48,6 +48,8 @@
 //!   - [`signing::postquantum`] — Falcon-512/1024, SLH-DSA, ML-DSA
 //!   - [`signing::hybrid`] — Recommended default. Ed25519 + PQ combined.
 //! - [`aead`] / [`chacha20_blake3`] — Symmetric encryption (committing & non-committing)
+//! - [`chacha40`] — Post-quantum hardened stream cipher (512-bit key, 40 rounds, dual-state)
+//! - [`chacha20`] — Standard ChaCha20 stream cipher (RFC 8439)
 //! - [`kdf`] — Key derivation (Argon2id, HKDF-SHA3-256)
 //! - [`pqc`] — Raw post-quantum primitives (advanced use)
 //! - [`ec_schnorr`] — secp256k1 Schnorr signatures (native, no external deps)
@@ -60,6 +62,9 @@
 //! - For **encryption**: prefer [`chacha20_blake3`] (committing AEAD).
 //!   Avoid XChaCha20-Poly1305 unless you specifically need the smaller tag
 //!   and accept the partitioning-oracle risk.
+//! - For **PQ-hardened stream cipher**: use [`chacha40`] when 256-bit post-quantum
+//!   security against Grover's algorithm is desired. Note that ChaCha40 is a bare
+//!   stream cipher — pair with Poly1305 or BLAKE3 for authenticated encryption.
 //! - For **key derivation**: use Argon2id (memory-hard) for password-based KDF,
 //!   HKDF-SHA3-256 for HKDF-style derivation.
 //!
@@ -206,6 +211,15 @@ pub use primitives::sha3_256;
 pub use primitives::sha3_512;
 /// BLAKE3 hash module — fast, parallelizable.
 pub use primitives::blake3;
+/// ChaCha40 — post-quantum hardened stream cipher (512-bit key, 40 rounds, dual-state).
+///
+/// Provides 256-bit post-quantum security against Grover's algorithm.
+/// See [`primitives::chacha40`] for full documentation.
+pub use primitives::chacha40;
+
+// ── Additional cipher module re-exports ──
+/// ChaCha20 stream cipher module.
+pub use primitives::chacha20;
 
 // ──────────────────────────────────────────────────────────────────────
 // Re-exports at crate root for convenience

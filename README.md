@@ -25,10 +25,11 @@ let sig = bundle.sign_hybrid(b"sign this");
 | Category | Primitives | Recommended |
 |----------|-----------|-------------|
 | **Signatures** | Ed25519, Falcon-512/1024, SLH-DSA, ML-DSA, Ed448, Ed41417 | Hybrid (Ed25519 + Falcon-1024) |
-| **Encryption** | XChaCha20-Poly1305, ChaCha20-BLAKE3, Serpent CBC | ChaCha20-BLAKE3 (committing AEAD) |
+| **Encryption** | XChaCha20-Poly1305, ChaCha20-BLAKE3, Serpent CBC, **ChaCha40** (512-bit key stream cipher) | ChaCha20-BLAKE3 (committing AEAD) |
 | **KDF** | Argon2id, HKDF-SHA3-256, HMAC-SHA3-256 | Argon2id for passwords, HKDF for derivation |
 | **Hashing** | BLAKE3, SHA3-256, SHAKE128/256, Skein-512/1024 | BLAKE3 or SHA3-256 |
 | **PQC KEM** | NTRU Prime (sntrup761), hybrid X25519+NTRU+Ed41417 | Hybrid KEM |
+| **Ciphers** | ChaCha20 stream cipher, **ChaCha40** (PQ-hardened, 512-bit key, 40 rounds) | ChaCha40 for PQ-sensitive streams |
 | **Utilities** | ChaCha20-DRBG, seed hierarchy, Reed-Solomon, OTP/TOTP, compression, entropy analysis | -- |
 | **Recovery** | Unicode-codepoint recovery phrases (12 / 24-word, SHA-3-256 checksum) | Unicode cipher — NOT BIP-39 compatible |
 
@@ -114,6 +115,8 @@ origin_crypto_sdk::
     symmetric::         -- Serpent CBC (non-AEAD)
     streaming::         -- Streaming encryption
   chacha20_blake3::     -- ChaCha20-BLAKE3 (committing AEAD)
+  chacha40::            -- ChaCha40 (PQ-hardened stream cipher, 512-bit key)
+  chacha20::            -- ChaCha20 stream cipher (RFC 8439)
   kdf::                 -- Argon2id, HKDF-SHA3-256
     mac::               -- HMAC-SHA3-256 (keyed hash)
   pqc::                 -- Raw PQC primitives (advanced)
@@ -169,6 +172,7 @@ The `signing::postquantum` OOP types are thin wrappers over `pqc::` — no dupli
 ```bash
 cargo run --example hybrid_sign
 cargo run --example encrypt_file
+cargo run --example chacha40_encrypt
 cargo run --example kdf_derive
 cargo run --example seed_tree
 ```

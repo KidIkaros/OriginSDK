@@ -35,7 +35,7 @@ const CONSTANTS: [u32; 4] = [0x61707865, 0x3320646e, 0x79622d32, 0x6b206574];
 ///
 /// Operates on four 32-bit words in-place using ARX (Add-Rotate-XOR) operations.
 #[inline(always)]
-fn quarter_round(state: &mut [u32; 16], a: usize, b: usize, c: usize, d: usize) {
+pub(crate) fn quarter_round(state: &mut [u32; 16], a: usize, b: usize, c: usize, d: usize) {
     state[a] = state[a].wrapping_add(state[b]);
     state[d] ^= state[a];
     state[d] = state[d].rotate_left(16);
@@ -54,7 +54,7 @@ fn quarter_round(state: &mut [u32; 16], a: usize, b: usize, c: usize, d: usize) 
 }
 
 /// Initialize ChaCha20 state from key, nonce, and counter (RFC 8439 §2.3)
-fn init_state(key: &[u8; CHACHA20_KEY_SIZE], counter: u32, nonce: &[u8]) -> [u32; 16] {
+pub(crate) fn init_state(key: &[u8; CHACHA20_KEY_SIZE], counter: u32, nonce: &[u8]) -> [u32; 16] {
     let mut state = [0u32; 16];
 
     // Constants

@@ -6,6 +6,27 @@ All notable changes to origin-crypto-sdk will be documented in this file.
 
 _Future work for 0.7.0+ lives here as it accumulates._
 
+## [0.6.3] — 2026-07-26
+
+### Added
+- **ChaCha40** — post-quantum hardened stream cipher with 512-bit key and 40 rounds
+  (dual-state parallel design). Provides 256-bit post-quantum security against
+  Grover's algorithm. Accessible at `origin_crypto_sdk::chacha40::*`.
+  - `chacha40_block(key, counter, nonce) -> [u8; 64]` — combined keystream block
+  - `chacha40_encrypt(key, counter, nonce, data) -> Vec<u8>` — stream cipher
+  - `hchacha40(key, nonce) -> [u8; 64]` — key derivation for XChaCha40
+  - 12 unit tests covering roundtrip, determinism, key/nonce/counter distinction
+- **ChaCha40 example**: `cargo run --example chacha40_encrypt` — demonstrates
+  file encryption and key wrapping modes
+- Crate-root re-exports: `pub use primitives::chacha40` and `pub use primitives::chacha20`
+
+### Changed
+- `primitives::chacha20::quarter_round` and `init_state` promoted from `fn` to
+  `pub(crate)` so the ChaCha40 module can share the canonical implementations
+  (no code duplication)
+- README docs: updated What's Inside table, Module Map, and examples list
+- lib.rs docs: updated Module organization and Security defaults sections
+
 ## [0.6.2] — 2026-07-26
 
 ### Fixed

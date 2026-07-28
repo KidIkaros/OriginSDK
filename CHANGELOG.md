@@ -6,6 +6,44 @@ All notable changes to origin-crypto-sdk will be documented in this file.
 
 _Future work for 0.7.0+ lives here as it accumulates._
 
+## [0.6.4] — 2026-07-28
+
+### Fixed
+- **secp256k1 scalar arithmetic** — rewrote `Scalar` to plain (non-Montgomery)
+  modular arithmetic, fixing large-scalar multiplication and reduction that
+  broke `ec_schnorr` roundtrips for many key/message combinations.
+- **ec_schnorr challenge computation** — `compute_challenge` now uses
+  `Scalar::from_repr_reduced` instead of falling back to `Scalar::ONE` when the
+  hash digest is ≥ n. This eliminates false-positive verification where
+  different messages could share the same challenge.
+- **Reed-Solomon erasure recovery** — added `decode_shards`/`encode_shards` for
+  full parity_shards-way erasure recovery with explicit erasure indices. Fixed
+  Vandermonde matrix generation so every data shard affects parity.
+- **Falcon test performance** — reduced fuzz iterations (10k→100) and stress
+  loops (50→5) to keep test suite runtime practical without sacrificing
+  coverage.
+
+### Added
+- **HKDF-SHA3-256 reference-vector tests** — cross-checked against Python
+  `hmac`/`hashlib` for independent verification.
+- **HMAC-SHA3-256 reference-vector tests** — same independent verification.
+- **Constant-time NTRU Prime ciphertext comparison** — hash check now uses
+  constant-time comparison to avoid timing side-channels.
+- **`SDK_DEFECTS.md`** — defect tracking document used for the 0.6.4 repair
+  cycle.
+
+### Changed
+- Un-ignored all `ec_schnorr` tests (roundtrip, wrong-message, wrong-key,
+  batch verify, empty/large message) — all pass.
+- Updated `decode()` doc comments to accurately describe the single-error
+  correction limitation of the flat RS path. `decode_shards()` with explicit
+  erasure locations is the documented robust recovery path.
+- Updated fuzz test doc comments to match actual default iteration count (100).
+
+### Removed
+- `tests/diag_secp.rs` — temporary diagnostic scaffolding.
+- `dbg_reduce` debug test in scalar.rs.
+
 ## [0.6.3] — 2026-07-26
 
 ### Added

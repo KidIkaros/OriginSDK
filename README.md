@@ -68,10 +68,10 @@ See the [module docs](https://docs.rs/origin-crypto-sdk/latest/origin_crypto_sdk
 
 ```toml
 # Minimal (no parallel, no optional PQC)
-origin-crypto-sdk = { version = "0.4", default-features = false }
+origin-crypto-sdk = { version = "0.6", default-features = false }
 
 # With FIPS 204 + FIPS 205 signatures
-origin-crypto-sdk = { version = "0.4", features = ["slh-dsa", "ml-dsa"] }
+origin-crypto-sdk = { version = "0.6", features = ["slh-dsa", "ml-dsa"] }
 ```
 
 ## Security Posture
@@ -197,7 +197,7 @@ Apache-2.0 — see [LICENSE](LICENSE).
 
 ## API Stability
 
-**Pre-1.0 notice**: This crate is at version 0.6.1. Per [Cargo's SemVer guidance](https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html#pre-1.0), anything below 1.0 may contain breaking changes in minor releases.
+**Pre-1.0 notice**: This crate is at version 0.6.4. Per [Cargo's SemVer guidance](https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html#pre-1-0), anything below 1.0 may contain breaking changes in minor releases.
 
 **Stable** (breaking changes will require a major version bump):
 - `CryptoError` variants and their `Display` output

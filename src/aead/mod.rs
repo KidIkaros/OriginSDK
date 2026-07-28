@@ -34,6 +34,29 @@ impl XChaCha20Poly1305 {
         xchacha20_poly1305_open(key, nonce, ciphertext, &[])
             .map_err(|_| CryptoError::AuthenticationFailed)
     }
+
+    /// Encrypt with associated data (AAD).
+    /// The AAD is authenticated but not encrypted.
+    pub fn encrypt_aad(
+        key: &[u8; 32],
+        nonce: &[u8; 24],
+        plaintext: &[u8],
+        aad: &[u8],
+    ) -> Result<Vec<u8>> {
+        Ok(xchacha20_poly1305_seal(key, nonce, plaintext, aad))
+    }
+
+    /// Decrypt with associated data (AAD).
+    /// The AAD must match what was used during encryption.
+    pub fn decrypt_aad(
+        key: &[u8; 32],
+        nonce: &[u8; 24],
+        ciphertext: &[u8],
+        aad: &[u8],
+    ) -> Result<Vec<u8>> {
+        xchacha20_poly1305_open(key, nonce, ciphertext, aad)
+            .map_err(|_| CryptoError::AuthenticationFailed)
+    }
 }
 
 /// Generate a secure random nonce

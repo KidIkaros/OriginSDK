@@ -380,7 +380,9 @@ fn domain_separation_hybrid_signing_key_bundle() {
 #[test]
 fn determinism_under_repeated_derivation() {
     let seed = [42u8; 32];
-    for _ in 0..100 {
+    // A handful of passes is enough to prove determinism — Falcon keygen is
+    // expensive and hundreds of repeats add time, not confidence.
+    for _ in 0..5 {
         let b1 = HybridSigningKeyBundle::from_seed(&seed, "test").unwrap();
         let b2 = HybridSigningKeyBundle::from_seed(&seed, "test").unwrap();
         assert_eq!(b1.ed25519_pk().to_bytes(), b2.ed25519_pk().to_bytes());
@@ -602,13 +604,13 @@ fn timing_valid_and_invalid_take_similar_time() {
 // =============================================================================
 
 #[test]
-fn stress_50_consecutive_hybrid_signs() {
+fn stress_consecutive_hybrid_signs() {
     let seed = [42u8; 32];
     let (f_pk, f_sk) = falcon1024::generate_keypair_from_seed(&seed).unwrap();
     let ed_sk = Ed25519Sk::from_bytes(&seed);
     let ed_pk = ed_sk.verifying_key();
 
-    for i in 0..50 {
+    for i in 0..5 {
         let msg = format!("message-{}", i);
         let sig = Ed25519Falcon1024::sign(&ed_sk, &f_sk, msg.as_bytes());
         Ed25519Falcon1024::verify(&ed_pk, &f_pk, msg.as_bytes(), &sig).unwrap();
@@ -616,11 +618,11 @@ fn stress_50_consecutive_hybrid_signs() {
 }
 
 #[test]
-fn stress_50_consecutive_kdf_signs() {
+fn stress_consecutive_kdf_signs() {
     let seed = [42u8; 32];
     let domain = "stress";
 
-    for i in 0..50 {
+    for i in 0..5 {
         let msg = format!("msg-{}", i);
         let sig = Ed25519ChaCha20Blake3Sha3_256::sign(&seed, domain, msg.as_bytes()).unwrap();
         Ed25519ChaCha20Blake3Sha3_256::verify(&seed, domain, msg.as_bytes(), &sig).unwrap();

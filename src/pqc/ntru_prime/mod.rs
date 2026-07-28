@@ -118,7 +118,11 @@ impl NtruPrime {
         }
 
         let s = native_sha3::sha3_512(&zx::encoding::encode(r));
-        let hash_check = s[..32] == ciphertext[..32];
+        let hash_check: bool = crate::internal::subtle::ConstantTimeEq::ct_eq(
+            &s[..32],
+            &ciphertext[..32],
+        )
+        .into();
 
         if weight_check && c_check && hash_check {
             let mut shared_secret = [0u8; K_SIZE];

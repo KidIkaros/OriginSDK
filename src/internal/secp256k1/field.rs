@@ -10,7 +10,7 @@
 use crate::internal::subtle::{Choice, ConstantTimeEq};
 
 /// secp256k1 field prime p
-const P: [u64; 4] = [
+pub(crate) const P: [u64; 4] = [
     0xFFFF_FFFE_FFFF_FC2F,
     0xFFFF_FFFF_FFFF_FFFF,
     0xFFFF_FFFF_FFFF_FFFF,
@@ -18,20 +18,25 @@ const P: [u64; 4] = [
 ];
 
 /// secp256k1 field R = 2^256 mod p (Montgomery radix)
+/// p = 2^256 - 2^32 - 2^9 - 2^8 - 2^7 - 2^6 - 2^4 - 1
+/// => 2^256 mod p = 2^32 + 2^9 + 2^8 + 2^7 + 2^6 + 2^4 + 1 = 0x1000003d1
 const R: [u64; 4] = [
-    0x0000000000000001,
-    0x0000000000000000,
-    0x0000000000000000,
-    0x0000000000000000,
+    0x0000_0001_0000_03d1,
+    0x0,
+    0x0,
+    0x0,
 ];
 
-/// secp256k1 field R^2 mod p
+/// secp256k1 field R^2 mod p = (2^256)^2 mod p = 0x7a2000e90a1 (little-endian limb 0)
 const R2: [u64; 4] = [
-    0x0000000000000007,
-    0x0000000000000000,
-    0x0000000000000000,
-    0x0000000000000000,
+    0x0000_07a2_000e_90a1,
+    0x0000_0000_0000_0001,
+    0x0,
+    0x0,
 ];
+
+/// Montgomery reduction constant: -P[0]^{-1} mod 2^64.
+const INV: u64 = 0xd838_091d_d225_3531;
 
 /// Field element in Montgomery representation
 #[derive(Clone, Copy, Debug)]
@@ -39,7 +44,20 @@ pub struct FieldElement {
     limbs: [u64; 4],
 }
 
+/// Small integer constants in Montgomery form (value * R mod p).
+/// Used by the point arithmetic formulas. Precomputed:
+///   2 => 0x2_0000_07a2, 3 => 0x3_0000_0b73,
+///   4 => 0x4_0000_0f44, 8 => 0x8_0000_1e88   (limb 0, others 0)
 impl FieldElement {
+    /// Integer 2 in Montgomery form.
+    pub const TWO: Self = Self { limbs: [0x0000_0002_0000_07a2, 0, 0, 0] };
+    /// Integer 3 in Montgomery form.
+    pub const THREE: Self = Self { limbs: [0x0000_0003_0000_0b73, 0, 0, 0] };
+    /// Integer 4 in Montgomery form.
+    pub const FOUR: Self = Self { limbs: [0x0000_0004_0000_0f44, 0, 0, 0] };
+    /// Integer 8 in Montgomery form.
+    pub const EIGHT: Self = Self { limbs: [0x0000_0008_0000_1e88, 0, 0, 0] };
+
     /// Zero element
     pub const ZERO: Self = Self {
         limbs: [0, 0, 0, 0],
@@ -90,9 +108,12 @@ impl FieldElement {
         self.mul(&Self::from_limbs(R2))
     }
 
-    /// Normalize from Montgomery form (divide by R, i.e., multiply by 1)
+    /// Normalize from Montgomery form (divide by R, i.e., multiply by raw 1).
+    /// `mul` is Montgomery multiplication (it already divides by R once via
+    /// REDC), so multiplying by the raw value 1 (not `R`, which is the
+    /// Montgomery form of 1) is what actually removes the R factor.
     fn normalize(&self) -> Self {
-        self.mul(&Self::from_limbs(R))
+        self.mul(&Self::from_limbs([1, 0, 0, 0]))
     }
 
     /// Check if the element is zero
@@ -133,37 +154,63 @@ impl FieldElement {
         res.conditional_add_p(borrow)
     }
 
-    /// Multiplication: self * rhs mod p
+    /// Multiplication: self * rhs, interpreted as Montgomery multiplication.
     ///
-    /// Uses the "wide reduction trick": a 5-limb u64 accumulator holds
-    /// the full 512-bit product, reducing once at the end instead of
-    /// repeatedly during multiplication. This matches the approach
-    /// described in Filippo Valsorda's "A Wide Reduction Trick".
+    /// Computes (self * rhs) / R mod p via standard schoolbook
+    /// multiplication followed by Montgomery reduction (REDC), so that
+    /// if `self` and `rhs` are Montgomery representations (x*R mod p),
+    /// the result is (x*y*R) mod p, also a valid Montgomery representation.
     pub fn mul(&self, rhs: &Self) -> Self {
-        // 5-limb accumulator for the 512-bit intermediate product.
-        // t[0..4] hold the low 256 bits, t[4] holds the overflow.
-        let mut t = [0u64; 5];
+        // t holds the running 576-bit accumulator (9 limbs) during
+        // multiply + reduce; index 8 absorbs carries beyond limb 7.
+        let mut t = [0u64; 9];
 
+        // Schoolbook product into t[0..8].
         for i in 0..4 {
             let mut carry = 0u64;
             for j in 0..4 {
-                let prod = u128::from(self.limbs[j]).wrapping_mul(u128::from(rhs.limbs[i]));
-                let sum = prod + u128::from(t[j]) + u128::from(carry);
-                t[j] = sum as u64;
+                let prod = u128::from(self.limbs[i]) * u128::from(rhs.limbs[j]);
+                let sum = prod + u128::from(t[i + j]) + u128::from(carry);
+                t[i + j] = sum as u64;
                 carry = (sum >> 64) as u64;
             }
-            t[4] = t[4].wrapping_add(carry);
+            t[i + 4] = t[i + 4].wrapping_add(carry);
         }
 
-        // Final reduction: result = low 4 limbs; if overflow limb is
-        // non-zero or low 4 limbs >= p, subtract p once.
-        let mut result = Self::from_limbs([t[0], t[1], t[2], t[3]]);
-        let overflow = t[4];
-        let gte_p = result.is_gte_p();
+        // Montgomery reduction (REDC): for each of the 4 low limbs,
+        // add a multiple of p that clears that limb, then shift.
+        for i in 0..4 {
+            let u = t[i].wrapping_mul(INV);
+            let mut carry: u128 = 0;
+            for j in 0..4 {
+                let prod = u128::from(u) * u128::from(P[j]) + u128::from(t[i + j]) + carry;
+                t[i + j] = prod as u64;
+                carry = prod >> 64;
+            }
+            // Propagate remaining carry into higher limbs.
+            let mut k = i + 4;
+            while carry != 0 {
+                let sum = u128::from(t[k]) + carry;
+                t[k] = sum as u64;
+                carry = sum >> 64;
+                k += 1;
+            }
+        }
 
-        // Constant-time conditional subtraction
-        let needs_reduce = Choice::from_bool(overflow != 0) | gte_p;
-        if bool::from(needs_reduce) {
+        let mut result = Self::from_limbs([t[4], t[5], t[6], t[7]]);
+
+        // Account for the carry-out bit from the REDC shift: since
+        // R = 2^256 mod p, a carry-out of 1 contributes exactly R.
+        // Using `add` (not `sub`) here is important: `sub` auto-corrects
+        // underflow by adding P back, which would cancel this
+        // correction whenever `result` is already < P.
+        if t[8] != 0 {
+            result = result.add(&Self::from_limbs(R));
+        }
+
+        // At this point result < 2p, so at most one subtraction of p
+        // is needed, and it is guaranteed not to underflow.
+        if bool::from(result.is_gte_p()) {
             result = result.sub(&Self::from_limbs(P));
         }
         result
@@ -301,5 +348,74 @@ impl ConstantTimeEq for FieldElement {
 impl Default for FieldElement {
     fn default() -> Self {
         Self::ZERO
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rand::RngCore;
+
+    #[test]
+    fn mul_small_values() {
+        let a = FieldElement::from_bytes(&{
+            let mut b = [0u8; 32];
+            b[31] = 6;
+            b
+        });
+        let b = FieldElement::from_bytes(&{
+            let mut b = [0u8; 32];
+            b[31] = 7;
+            b
+        });
+        let c = a.mul(&b).to_bytes();
+        assert_eq!(c[31], 42);
+        assert!(c[..31].iter().all(|&x| x == 0));
+    }
+
+    #[test]
+    fn mul_identity_roundtrip() {
+        let mut rng = rand::thread_rng();
+        for _ in 0..64 {
+            let mut ab = [0u8; 32];
+            rng.fill_bytes(&mut ab);
+            let a = FieldElement::from_bytes(&ab);
+            assert_eq!(a.mul(&FieldElement::ONE).to_bytes(), ab);
+        }
+    }
+
+    #[test]
+    fn mul_is_associative_and_distributive() {
+        let mut rng = rand::thread_rng();
+        for _ in 0..64 {
+            let mut ab = [0u8; 32];
+            let mut bb = [0u8; 32];
+            let mut cb = [0u8; 32];
+            rng.fill_bytes(&mut ab);
+            rng.fill_bytes(&mut bb);
+            rng.fill_bytes(&mut cb);
+            let a = FieldElement::from_bytes(&ab);
+            let b = FieldElement::from_bytes(&bb);
+            let c = FieldElement::from_bytes(&cb);
+            assert!(bool::from(a.mul(&b).mul(&c).ct_eq(&a.mul(&b.mul(&c)))));
+            assert!(bool::from(
+                a.add(&b).mul(&c).ct_eq(&a.mul(&c).add(&b.mul(&c)))
+            ));
+        }
+    }
+
+    #[test]
+    fn invert_roundtrip() {
+        let mut rng = rand::thread_rng();
+        for _ in 0..64 {
+            let mut ab = [0u8; 32];
+            rng.fill_bytes(&mut ab);
+            let a = FieldElement::from_bytes(&ab);
+            if bool::from(a.is_zero()) {
+                continue;
+            }
+            let inv = a.invert();
+            assert!(bool::from(a.mul(&inv).ct_eq(&FieldElement::ONE)));
+        }
     }
 }

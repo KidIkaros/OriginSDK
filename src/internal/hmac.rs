@@ -140,6 +140,31 @@ mod tests {
         assert_eq!(result, result2);
     }
 
+    /// Cross-checked against Python's `hmac.new(key, data, hashlib.sha3_256)`
+    /// (the standard/reference HMAC-SHA3-256 construction), not just
+    /// self-consistency, to catch construction bugs the other tests can't.
+    #[test]
+    fn test_hmac_matches_reference() {
+        let result = hmac_sha3_256(b"test_key", b"test_data");
+        let expected =
+            hex_to_bytes32("ba6e94f64991f0a93338a73d7c2c1c7e96adffb694cb3320cf85d9d4364bc697");
+        assert_eq!(result, expected);
+
+        // Long key (> block size), same reference tool
+        let result_long = hmac_sha3_256(&[0u8; 200], b"test_data");
+        let expected_long =
+            hex_to_bytes32("7532acb5a16fa5fd797611187734cad8d22d6af3da9b9cc7a3060a1c22730f8f");
+        assert_eq!(result_long, expected_long);
+    }
+
+    fn hex_to_bytes32(hex: &str) -> [u8; 32] {
+        let mut out = [0u8; 32];
+        for i in 0..32 {
+            out[i] = u8::from_str_radix(&hex[i * 2..i * 2 + 2], 16).unwrap();
+        }
+        out
+    }
+
     #[test]
     fn test_hmac_multi() {
         let key = b"test_key";

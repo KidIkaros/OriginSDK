@@ -18,33 +18,52 @@ pub use field::FieldElement;
 pub use point::{AffinePoint, EncodedPoint, ProjectivePoint};
 pub use scalar::Scalar;
 
-/// secp256k1 curve order n
+/// secp256k1 curve order n (little-endian limbs, matches `scalar::N`).
 pub const CURVE_ORDER: [u64; 4] = [
     0xBFD25E8CD0364141,
     0xBAAEDCE6AF48A03B,
-    0xFFFFFFFFFFFFFFFF,
     0xFFFFFFFFFFFFFFFE,
+    0xFFFFFFFFFFFFFFFF,
 ];
 
-/// secp256k1 field prime p
+/// secp256k1 field prime p (little-endian limbs, matches `field::P`).
 pub const FIELD_PRIME: [u64; 4] = [
     0xFFFFFFFEFFFFFC2F,
     0xFFFFFFFFFFFFFFFF,
     0xFFFFFFFFFFFFFFFF,
-    0xFFFFFFFFFFFFFFFE,
+    0xFFFFFFFFFFFFFFFF,
 ];
 
-/// secp256k1 generator point G (x, y)
+/// secp256k1 generator point G (x, y), in Montgomery form (x/y * R mod p),
+/// little-endian limbs. Matches `point::G_X`/`point::G_Y`.
 pub const GENERATOR_X: [u64; 4] = [
-    0x59F2815B16F81798,
-    0x029BFCDB2DCE28D9,
-    0x55A06295CE870B07,
-    0x79BE667EF9DCBBAC,
+    0xd7362e5a487e2097,
+    0x231e295329bc66db,
+    0x979f48c033fd129c,
+    0x9981e643e9089f48,
 ];
 
 pub const GENERATOR_Y: [u64; 4] = [
-    0x9C47D08FFB10D4B8,
-    0xFD17B448A6855419,
-    0x5DA4FBFC0E1108A8,
-    0x483ADA7726A3C465,
+    0xb15ea6d2d3dbabe2,
+    0x8dfc5d5d1f1dc64d,
+    0x70b6b59aac19c136,
+    0xcf3f851fd4a582d6,
 ];
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Regression test: these public constants were previously wrong
+    /// (didn't match the internal, verified-correct representations used
+    /// by `Scalar`, `FieldElement`, and `ProjectivePoint::GENERATOR`).
+    /// Cross-check against those single sources of truth so the two can't
+    /// silently drift apart again.
+    #[test]
+    fn public_constants_match_internal_representations() {
+        assert_eq!(CURVE_ORDER, scalar::N);
+        assert_eq!(FIELD_PRIME, field::P);
+        assert_eq!(GENERATOR_X, point::G_X);
+        assert_eq!(GENERATOR_Y, point::G_Y);
+    }
+}

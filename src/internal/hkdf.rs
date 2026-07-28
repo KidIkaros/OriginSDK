@@ -205,6 +205,25 @@ mod tests {
         assert_eq!(okm, okm2);
     }
 
+    /// Cross-checked against a reference HKDF-SHA3-256 implementation
+    /// (RFC 5869 Extract/Expand run over Python's `hmac`+`hashlib.sha3_256`),
+    /// not just self-consistency, to catch construction bugs the other
+    /// tests can't (e.g. wrong counter byte, wrong T(i) chaining).
+    #[test]
+    fn test_hkdf_matches_reference() {
+        let ikm = hex_to_bytes("0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b");
+        let salt = hex_to_bytes("000102030405060708090a0b0c");
+        let info = hex_to_bytes("f0f1f2f3f4f5f6f7f8f9");
+
+        let mut okm = [0u8; 42];
+        hkdf_sha3_256(Some(&salt), &ikm, &info, &mut okm).unwrap();
+
+        let expected = hex_to_bytes(
+            "0c5160501d65021deaf2c14f5abce04c5bd2635abceeba61c2edb6e8ed72674900557728f2c9f2c4c179",
+        );
+        assert_eq!(&okm[..], &expected[..]);
+    }
+
     fn hex_to_bytes(hex: &str) -> Vec<u8> {
         let hex = hex.as_bytes();
         let mut out = Vec::with_capacity(hex.len() / 2);

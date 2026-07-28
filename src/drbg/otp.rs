@@ -187,8 +187,12 @@ fn algo_str(algo: HashAlgorithm) -> &'static str {
     }
 }
 
-/// Minimal base32 encoding (no padding, uppercase).
-fn base32_encode(data: &[u8]) -> String {
+/// Minimal base32 *encode* (RFC 4648 §5 alphabet, A-Z + 2-7, no padding,
+/// uppercase). Used internally to format TOTP shared secrets for
+/// `otpauth://` URIs; the same alphabet is consumed by [`base32_decode`]
+/// on the import side. Made `pub` so `origin-tools/origin-pass` can
+/// reuse the SDK's encoder (no crate-local base32 dep needed).
+pub fn base32_encode(data: &[u8]) -> String {
     const ALPHABET: &[u8; 32] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
     let mut out = String::new();
     let mut buffer: u64 = 0;
@@ -208,6 +212,37 @@ fn base32_encode(data: &[u8]) -> String {
         out.push(ALPHABET[idx] as char);
     }
     out
+}
+
+/// Minimal base32 *decode* (RFC 4648 §5 alphabet, A-Z + 2-7). Strips
+/// trailing `=` padding if present (`otpauth://` URIs omit padding;
+/// we accept both forms). Uppercase only — lowercase input returns
+/// `Err`.
+///
+/// Inverse of [`base32_encode`]. Used by
+/// `origin-tools/origin-pass`'s `cmd_import_qr` to recover the raw
+/// shared secret from an `otpauth://` URI's `secret=` query parameter.
+pub fn base32_decode(s: &str) -> Result<Vec<u8>, String> {
+    const ALPHABET: &[u8; 32] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+    let mut acc: u64 = 0;
+    let mut bits = 0u32;
+    let mut out = Vec::with_capacity(s.len() * 5 / 8);
+    for byte in s.bytes() {
+        if byte == b'=' {
+            break; // padding terminates the stream.
+        }
+        let v = match ALPHABET.iter().position(|&c| c == byte) {
+            Some(p) => p as u64,
+            None => return Err(format!("invalid base32 character: {:?}", byte as char)),
+        };
+        acc = (acc << 5) | v;
+        bits += 5;
+        if bits >= 8 {
+            bits -= 8;
+            out.push(((acc >> bits) & 0xff) as u8);
+        }
+    }
+    Ok(out)
 }
 
 /// Minimal percent-encoding for URI components.
@@ -290,6 +325,39 @@ mod tests {
         assert_eq!(base32_encode(b"Hello"), "JBSWY3DP");
         assert_eq!(base32_encode(b"\x00"), "AA");
         assert_eq!(base32_encode(b"f"), "MY");
+    }
+
+    #[test]
+    fn base32_round_trip_and_rfc4648_vectors() {
+        // Round-trip the custom vectors preserved from `base32_encoding`.
+        assert_eq!(base32_decode("JBSWY3DP").unwrap(), b"Hello");
+        assert_eq!(base32_decode("AA").unwrap(), b"\x00");
+        assert_eq!(base32_decode("MY").unwrap(), b"f");
+
+        // RFC 4648 §10 canonical test vectors (no padding — otpauth:// form).
+        // These are the canonical outputs of the standard upper-case RFC 4648
+        // base32 alphabet, with `=` padding stripped (otpauth:// convention).
+        assert_eq!(base32_encode(b"f"), "MY");        //  8 bits -> 2 chars
+        assert_eq!(base32_encode(b"fo"), "MZXQ");     // 16 bits -> 4 chars
+        assert_eq!(base32_encode(b"foo"), "MZXW6");   // 24 bits -> 5 chars (4 bits dropped)
+        assert_eq!(base32_encode(b"foob"), "MZXW6YQ");  // 32 bits -> 7 chars
+        assert_eq!(base32_encode(b"fooba"), "MZXW6YTB"); // 40 bits -> 8 chars (full byte boundary)
+        assert_eq!(base32_encode(b"foobar"), "MZXW6YTBOI"); // 48 bits -> 10 chars
+
+        // Decode round-trips the canonical outputs back to original bytes.
+        assert_eq!(base32_decode("MZXW6").unwrap(), b"foo");
+        assert_eq!(base32_decode("MZXW6YQ").unwrap(), b"foob");
+        assert_eq!(base32_decode("MZXW6YTB").unwrap(), b"fooba");
+        assert_eq!(base32_decode("MZXW6YTBOI").unwrap(), b"foobar");
+
+        // Padding tolerated if present (RFC 4648 §5 strict with `=` padding).
+        assert_eq!(base32_decode("MZXW6YQ=").unwrap(), b"foob");
+        assert_eq!(base32_decode("MY======").unwrap(), b"f");
+
+        // Rejection: invalid character.
+        assert!(base32_decode("JBSWY3D!").is_err());
+        // Rejection: lowercase (RFC 4648 requires uppercase A-Z).
+        assert!(base32_decode("jbswy3dp").is_err());
     }
 
     #[test]

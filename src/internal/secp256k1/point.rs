@@ -8,25 +8,27 @@
 use super::{FieldElement, Scalar};
 use crate::internal::subtle::{Choice, ConstantTimeEq, CtOption};
 
-/// Generator point X coordinate
-const G_X: [u64; 4] = [
-    0x79BE_667E_F9DC_BBAC,
-    0x55A0_6295_CE87_0B07,
-    0x029B_FCDB_2DCE_28D9,
-    0x59F2_815B_16F8_1798,
+/// Generator point X coordinate, in Montgomery form (little-endian limbs,
+/// limb 0 least significant), since `FieldElement` values are always
+/// represented in Montgomery form (x * R mod p).
+pub(crate) const G_X: [u64; 4] = [
+    0xd7362e5a487e2097,
+    0x231e295329bc66db,
+    0x979f48c033fd129c,
+    0x9981e643e9089f48,
 ];
 
-/// Generator point Y coordinate
-const G_Y: [u64; 4] = [
-    0x483A_DA77_26A3_C465,
-    0x5DA4_FBFC_0E11_08A8,
-    0xFD17_B448_A685_5419,
-    0x9C47_D08F_FB10_D4B8,
+/// Generator point Y coordinate, in Montgomery form (little-endian limbs).
+pub(crate) const G_Y: [u64; 4] = [
+    0xb15ea6d2d3dbabe2,
+    0x8dfc5d5d1f1dc64d,
+    0x70b6b59aac19c136,
+    0xcf3f851fd4a582d6,
 ];
 
-/// Curve coefficient b = 7
+/// Curve coefficient b = 7, in Montgomery form.
 const CURVE_B: FieldElement = FieldElement::from_limbs([
-    0x0000_0000_0000_0007,
+    0x0000_0007_0000_1ab7,
     0x0000_0000_0000_0000,
     0x0000_0000_0000_0000,
     0x0000_0000_0000_0000,
@@ -262,22 +264,37 @@ impl ProjectivePoint {
         let s1 = self.y.mul(&other.z).mul(&z2z2);
         let s2 = other.y.mul(&self.z).mul(&z1z1);
 
+        // The general formula below divides by h = u2 - u1, which is zero
+        // both when the points are equal (result should be self.double())
+        // and when they are inverses of each other (result should be the
+        // identity). Handle both cases explicitly before using the
+        // general formula.
+        if u1.ct_eq(&u2).is_true() {
+            return if s1.ct_eq(&s2).is_true() {
+                self.double()
+            } else {
+                Self::IDENTITY
+            };
+        }
+
         let h = u2.sub(&u1);
-        let i = h.mul(&h).mul(&FieldElement::from_limbs([4, 0, 0, 0]));
+        let i = h.mul(&h).mul(&FieldElement::FOUR);
 
         let j = h.mul(&i);
-        let r = s2.sub(&s1).mul(&FieldElement::from_limbs([2, 0, 0, 0]));
+        let r = s2.sub(&s1).mul(&FieldElement::TWO);
 
         let v = u1.mul(&i);
 
         let x3 = r
             .mul(&r)
             .sub(&j)
-            .sub(&v.mul(&FieldElement::from_limbs([2, 0, 0, 0])));
+            .sub(&v.mul(&FieldElement::TWO));
         let y3 = r
             .mul(&v.sub(&x3))
-            .sub(&s1.mul(&j).mul(&FieldElement::from_limbs([2, 0, 0, 0])));
-        let z3 = self.z.add(&other.z).mul(&h).sub(&z1z1).sub(&z2z2).mul(&h);
+            .sub(&s1.mul(&j).mul(&FieldElement::TWO));
+        // Standard Jacobian z3 = ((z1 + z2)^2 - z1z1 - z2z2) * h
+        let z1z2 = self.z.add(&other.z);
+        let z3 = z1z2.mul(&z1z2).sub(&z1z1).sub(&z2z2).mul(&h);
 
         Self {
             x: x3,
@@ -303,20 +320,20 @@ impl ProjectivePoint {
             .mul(&self.x.add(&yy))
             .sub(&xx)
             .sub(&yyyy)
-            .mul(&FieldElement::from_limbs([2, 0, 0, 0]));
+            .mul(&FieldElement::TWO);
 
-        let m = xx.mul(&FieldElement::from_limbs([3, 0, 0, 0]));
+        let m = xx.mul(&FieldElement::THREE);
 
         let x3 = m
             .mul(&m)
-            .sub(&s.mul(&FieldElement::from_limbs([2, 0, 0, 0])));
+            .sub(&s.mul(&FieldElement::TWO));
         let y3 = m
             .mul(&s.sub(&x3))
-            .sub(&yyyy.mul(&FieldElement::from_limbs([8, 0, 0, 0])));
+            .sub(&yyyy.mul(&FieldElement::EIGHT));
         let z3 = self
             .y
             .mul(&self.z)
-            .mul(&FieldElement::from_limbs([2, 0, 0, 0]));
+            .mul(&FieldElement::TWO);
 
         Self {
             x: x3,
@@ -390,6 +407,88 @@ impl core::ops::Mul<&Scalar> for &ProjectivePoint {
     type Output = ProjectivePoint;
     fn mul(self, rhs: &Scalar) -> Self::Output {
         self.mul(rhs)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::internal::secp256k1::Scalar;
+    use rand::RngCore;
+
+    /// Regression test: `add` must special-case self-addition. The general
+    /// Jacobian addition formula divides by h = u2 - u1, which is zero both
+    /// when the points are equal and when they are inverses, so it cannot
+    /// distinguish `double(P)` from `P + (-P) = O` without an explicit check.
+    #[test]
+    fn double_matches_self_add() {
+        let g = ProjectivePoint::GENERATOR;
+        assert!(bool::from(g.double().ct_eq(&g.add(&g))));
+    }
+
+    #[test]
+    fn scalar_mul_matches_repeated_add() {
+        let g = ProjectivePoint::GENERATOR;
+        for k in 1u64..40 {
+            let mut kb = [0u8; 32];
+            kb[24..32].copy_from_slice(&k.to_be_bytes());
+            let s = Scalar::from_repr(&kb).unwrap();
+            let p = g.mul(&s);
+            let mut acc = ProjectivePoint::IDENTITY;
+            for _ in 0..k {
+                acc = acc.add(&g);
+            }
+            assert!(bool::from(p.ct_eq(&acc)), "k={}", k);
+        }
+    }
+
+    #[test]
+    fn mul_distributes_over_scalar_add() {
+        let g = ProjectivePoint::GENERATOR;
+        let mut rng = rand::thread_rng();
+        for _ in 0..50 {
+            let mut b1 = [0u8; 32];
+            let mut b2 = [0u8; 32];
+            rng.fill_bytes(&mut b1);
+            rng.fill_bytes(&mut b2);
+            let (k1, k2) = match (
+                crate::internal::subtle::ct_option_to_option(Scalar::from_repr(&b1)),
+                crate::internal::subtle::ct_option_to_option(Scalar::from_repr(&b2)),
+            ) {
+                (Some(a), Some(b)) => (a, b),
+                _ => continue,
+            };
+            let lhs = g.mul(&k1.add(&k2));
+            let rhs = g.mul(&k1).add(&g.mul(&k2));
+            assert!(bool::from(lhs.ct_eq(&rhs)));
+        }
+    }
+
+    #[test]
+    fn double_matches_mul_by_two() {
+        let g = ProjectivePoint::GENERATOR;
+        let mut rng = rand::thread_rng();
+        for _ in 0..30 {
+            let mut b1 = [0u8; 32];
+            rng.fill_bytes(&mut b1);
+            let k1 = match crate::internal::subtle::ct_option_to_option(Scalar::from_repr(&b1)) {
+                Some(s) => s,
+                None => continue,
+            };
+            let p1 = g.mul(&k1);
+            assert!(bool::from(p1.double().ct_eq(&g.mul(&k1.add(&k1)))));
+        }
+    }
+
+    #[test]
+    fn add_distinct_points() {
+        let g = ProjectivePoint::GENERATOR;
+        let two_g = g.double();
+        let three_via_add = two_g.add(&g);
+        let mut kb = [0u8; 32];
+        kb[31] = 3;
+        let three_via_mul = g.mul(&Scalar::from_repr(&kb).unwrap());
+        assert!(bool::from(three_via_add.ct_eq(&three_via_mul)));
     }
 }
 

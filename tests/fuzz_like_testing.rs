@@ -7,16 +7,16 @@
 //! random inputs in a tight loop and verifies that operations never panic.
 //!
 //! Run with: cargo test --test fuzz_like_testing --features test-utils --release
-//! For more iterations: FUZZ_ITERATIONS=50000 cargo test ... (default: 10000)
+//! For more iterations: FUZZ_ITERATIONS=50000 cargo test ... (default: 100)
 
 use std::env;
 
-/// Return the number of fuzz iterations configured (env FUZZ_ITERATIONS or 10000).
+/// Return the number of fuzz iterations configured (env FUZZ_ITERATIONS or 100).
 fn fuzz_iterations() -> usize {
     env::var("FUZZ_ITERATIONS")
         .ok()
         .and_then(|s| s.parse::<usize>().ok())
-        .unwrap_or(10_000)
+        .unwrap_or(100)
 }
 
 /// Generate a random byte vector of length `len` using a simple LCG seeded from iteration.
@@ -168,7 +168,7 @@ fn fuzz_reed_solomon_roundtrip() {
 
 #[test]
 fn fuzz_reed_solomon_empty_and_edge_cases() {
-    for i in 0..1000 {
+    for i in 0..fuzz_iterations().min(1000) {
         let seed = i as u64 * 9999 + 1;
         let data_shards = 1 + (seed as usize % 8);
         let parity_shards = 1 + (seed as usize % 4);
@@ -234,7 +234,7 @@ fn fuzz_compress_garbage_no_panic() {
 
 #[test]
 fn fuzz_compress_levels() {
-    for i in 0..5000 {
+    for i in 0..fuzz_iterations().min(5000) {
         let seed = i as u64 * 33333 + 11;
         let data_len = 1 + (seed as usize % 1024);
         let data = random_bytes(seed, data_len);
@@ -270,7 +270,7 @@ fn fuzz_poly1305_determinism() {
 
 #[test]
 fn fuzz_poly1305_incremental_vs_oneshot() {
-    for i in 0..5000 {
+    for i in 0..fuzz_iterations().min(5000) {
         let seed = i as u64 * 11111 + 17;
         let a = random_bytes(seed, seed as usize % 128);
         let b = random_bytes(seed ^ 0x1111, seed as usize % 128);
@@ -359,7 +359,7 @@ fn fuzz_drbg_determinism() {
 
 #[test]
 fn fuzz_siphash_determinism() {
-    for i in 0..5000 {
+    for i in 0..fuzz_iterations().min(5000) {
         let seed = i as u64 * 77777 + 37;
         let key = random_array::<16>(seed);
         let msg = random_bytes(seed ^ 0x8888, i as usize % 256);

@@ -157,13 +157,11 @@ fn compute_challenge(commitment: &[u8], public_key: &[u8], message: &[u8]) -> Sc
     input.extend_from_slice(message);
     let hash = sha3_256(&input);
 
-    ct_option_to_option(Scalar::from_repr(&hash)).unwrap_or_else(|| {
-        let mut rehash_input = Vec::with_capacity(22 + 32);
-        rehash_input.extend_from_slice(b"ec-schnorr-rehash");
-        rehash_input.extend_from_slice(&hash);
-        let hash2 = sha3_256(&rehash_input);
-        ct_option_to_option(Scalar::from_repr(&hash2)).unwrap_or(Scalar::ONE)
-    })
+    // Reduce the digest mod n deterministically. This avoids the earlier
+    // bug where digests >= n fell back to Scalar::ONE, which collapsed
+    // distinct messages onto the same challenge and let verify accept
+    // tampered messages.
+    Scalar::from_repr_reduced(&hash)
 }
 
 /// Generate a secp256k1 keypair from a 32-byte seed.
@@ -196,23 +194,7 @@ pub fn generate_keypair(seed: &[u8; 32]) -> ([u8; 32], Vec<u8>) {
 mod tests {
     use super::*;
 
-    // ── WARNING ──────────────────────────────────────────────
-    // The following tests are #[ignore]d because the underlying
-    // secp256k1 Montgomery arithmetic in `internal/secp256k1/`
-    // has a persistent normalize/encoding bug that causes points
-    // to encode/decode incorrectly.  The bug is in the
-    // Montgomery constant conventions: field.rs uses R=1 (trivial
-    // Montgomery) while scalar.rs uses R=R^2 mod n (proper
-    // Montgomery), creating a mismatch in the point encode/decode
-    // boundary.  Fixing this requires reworking both field.rs
-    // and scalar.rs Montgomery conventions together.
-    //
-    // ec_schnorr is exported from the SDK but NOT imported by
-    // origin-identity or any internal SDK module.  These tests
-    // were failing since first check-in.
-    // ──────────────────────────────────────────────────────────
 
-    #[ignore = "secp256k1 Montgomery encoding bug — see module-level doc"]
     #[test]
     fn test_prove_verify_roundtrip() {
         let seed = [42u8; 32];
@@ -222,7 +204,6 @@ mod tests {
         assert!(verify(&proof, &pk_bytes, message).unwrap());
     }
 
-    #[ignore = "secp256k1 Montgomery encoding bug — see module-level doc"]
     #[test]
     fn test_verify_wrong_message_fails() {
         let seed = [42u8; 32];
@@ -231,7 +212,6 @@ mod tests {
         assert!(!verify(&proof, &pk_bytes, b"different message").unwrap());
     }
 
-    #[ignore = "secp256k1 Montgomery encoding bug — see module-level doc"]
     #[test]
     fn test_verify_wrong_public_key_fails() {
         let (sk1, pk1) = generate_keypair(&[42u8; 32]);
@@ -248,7 +228,6 @@ mod tests {
         assert_eq!(pk1, pk2);
     }
 
-    #[ignore = "secp256k1 Montgomery encoding bug — see module-level doc"]
     #[test]
     fn test_different_seeds_different_keys() {
         let (sk1, pk1) = generate_keypair(&[1u8; 32]);
@@ -257,7 +236,6 @@ mod tests {
         assert_ne!(pk1, pk2);
     }
 
-    #[ignore = "secp256k1 Montgomery encoding bug — see module-level doc"]
     #[test]
     fn test_batch_verify_all_valid() {
         let mut proofs = Vec::new();
@@ -273,7 +251,6 @@ mod tests {
         assert!(batch_verify(&proofs, &pks, &msgs).unwrap());
     }
 
-    #[ignore = "secp256k1 Montgomery encoding bug — see module-level doc"]
     #[test]
     fn test_batch_verify_one_invalid() {
         let mut proofs = Vec::new();
@@ -293,7 +270,6 @@ mod tests {
         assert!(!batch_verify(&proofs, &pks, &msgs).unwrap());
     }
 
-    #[ignore = "secp256k1 Montgomery encoding bug — see module-level doc"]
     #[test]
     fn test_empty_message() {
         let seed = [42u8; 32];
@@ -302,7 +278,6 @@ mod tests {
         assert!(verify(&proof, &pk_bytes, b"").unwrap());
     }
 
-    #[ignore = "secp256k1 Montgomery encoding bug — see module-level doc"]
     #[test]
     fn test_large_message() {
         let seed = [42u8; 32];

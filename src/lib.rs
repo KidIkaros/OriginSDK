@@ -160,10 +160,13 @@ pub mod ocra;
 /// SHA-256). For interop with other wallets, use the `bip39` crate.
 pub mod recovery;
 
-// ── Utility modules (hidden from docs) ──
-/// Entropy analysis — internal utility.
-#[doc(hidden)]
-pub(crate) mod entropy;
+// ── Utility modules ──
+/// Entropy analysis — Shannon/min/collision entropy, chi-squared, serial
+/// correlation, and bit-bias metrics for auditing randomness quality.
+///
+/// Public so downstream tools (and the origin-web browser teaser) can use the
+/// SDK's real analysis rather than reimplementing it.
+pub mod entropy;
 
 /// Seed handling with TTL and memory security.
 pub mod seed;

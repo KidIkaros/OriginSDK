@@ -205,10 +205,6 @@ pub mod blob;
 pub mod internal;
 
 // ── Hash function re-exports (primitives is pub(crate); these are the public surface) ──
-/// SHA3-256 hash.
-pub use primitives::sha3_256;
-/// SHA3-512 hash.
-pub use primitives::sha3_512;
 /// BLAKE3 hash module — fast, parallelizable.
 pub use primitives::blake3;
 /// ChaCha40 — post-quantum hardened stream cipher (512-bit key, 40 rounds, dual-state).
@@ -216,6 +212,10 @@ pub use primitives::blake3;
 /// Provides 256-bit post-quantum security against Grover's algorithm.
 /// See [`primitives::chacha40`] for full documentation.
 pub use primitives::chacha40;
+/// SHA3-256 hash.
+pub use primitives::sha3_256;
+/// SHA3-512 hash.
+pub use primitives::sha3_512;
 
 // ── Additional cipher module re-exports ──
 /// ChaCha20 stream cipher module.

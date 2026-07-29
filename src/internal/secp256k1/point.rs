@@ -285,13 +285,8 @@ impl ProjectivePoint {
 
         let v = u1.mul(&i);
 
-        let x3 = r
-            .mul(&r)
-            .sub(&j)
-            .sub(&v.mul(&FieldElement::TWO));
-        let y3 = r
-            .mul(&v.sub(&x3))
-            .sub(&s1.mul(&j).mul(&FieldElement::TWO));
+        let x3 = r.mul(&r).sub(&j).sub(&v.mul(&FieldElement::TWO));
+        let y3 = r.mul(&v.sub(&x3)).sub(&s1.mul(&j).mul(&FieldElement::TWO));
         // Standard Jacobian z3 = ((z1 + z2)^2 - z1z1 - z2z2) * h
         let z1z2 = self.z.add(&other.z);
         let z3 = z1z2.mul(&z1z2).sub(&z1z1).sub(&z2z2).mul(&h);
@@ -324,16 +319,9 @@ impl ProjectivePoint {
 
         let m = xx.mul(&FieldElement::THREE);
 
-        let x3 = m
-            .mul(&m)
-            .sub(&s.mul(&FieldElement::TWO));
-        let y3 = m
-            .mul(&s.sub(&x3))
-            .sub(&yyyy.mul(&FieldElement::EIGHT));
-        let z3 = self
-            .y
-            .mul(&self.z)
-            .mul(&FieldElement::TWO);
+        let x3 = m.mul(&m).sub(&s.mul(&FieldElement::TWO));
+        let y3 = m.mul(&s.sub(&x3)).sub(&yyyy.mul(&FieldElement::EIGHT));
+        let z3 = self.y.mul(&self.z).mul(&FieldElement::TWO);
 
         Self {
             x: x3,

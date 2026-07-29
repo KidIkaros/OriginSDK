@@ -194,7 +194,6 @@ pub fn generate_keypair(seed: &[u8; 32]) -> ([u8; 32], Vec<u8>) {
 mod tests {
     use super::*;
 
-
     #[test]
     fn test_prove_verify_roundtrip() {
         let seed = [42u8; 32];

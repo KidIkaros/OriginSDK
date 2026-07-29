@@ -211,10 +211,7 @@ pub fn chacha40_encrypt(
 /// ```text
 /// subkey = HChaCha20(key[0..32], nonce) || HChaCha20(key[32..64], nonce)
 /// ```
-pub fn hchacha40(
-    key: &[u8; CHACHA40_KEY_SIZE],
-    nonce: &[u8; 16],
-) -> [u8; CHACHA40_KEY_SIZE] {
+pub fn hchacha40(key: &[u8; CHACHA40_KEY_SIZE], nonce: &[u8; 16]) -> [u8; CHACHA40_KEY_SIZE] {
     // Split the 512-bit key into two 256-bit halves
     let key_a: [u8; CHACHA20_KEY_SIZE] = {
         let mut k = [0u8; 32];
@@ -245,10 +242,7 @@ pub fn hchacha40(
 /// but runs 40 rounds instead of 20. Cannot reuse `init_state` because
 /// HChaCha's state layout differs from ChaCha20's block function layout
 /// (no counter word — all 4 state[12..15] slots hold nonce bytes).
-fn hchacha40_internal(
-    key: &[u8; CHACHA20_KEY_SIZE],
-    nonce: &[u8; 16],
-) -> [u8; CHACHA20_KEY_SIZE] {
+fn hchacha40_internal(key: &[u8; CHACHA20_KEY_SIZE], nonce: &[u8; 16]) -> [u8; CHACHA20_KEY_SIZE] {
     let mut state = [0u32; 16];
 
     // Constants

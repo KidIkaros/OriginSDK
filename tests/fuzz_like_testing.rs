@@ -58,7 +58,10 @@ fn fuzz_chacha40_roundtrip() {
         // Roundtrip
         let ciphertext = origin_crypto_sdk::chacha40::chacha40_encrypt(&key, 0, &nonce, &plaintext);
         let decrypted = origin_crypto_sdk::chacha40::chacha40_encrypt(&key, 0, &nonce, &ciphertext);
-        assert_eq!(decrypted, plaintext, "ChaCha40 roundtrip failed at iteration {i}");
+        assert_eq!(
+            decrypted, plaintext,
+            "ChaCha40 roundtrip failed at iteration {i}"
+        );
 
         // Wrong key must produce different output (for non-empty plaintext)
         // NOTE: XOR key[0] (affects state A's first keystream byte) rather than
@@ -68,7 +71,8 @@ fn fuzz_chacha40_roundtrip() {
         if !plaintext.is_empty() {
             let mut wrong_key = key;
             wrong_key[0] ^= 0xFF;
-            let wrong_ct = origin_crypto_sdk::chacha40::chacha40_encrypt(&wrong_key, 0, &nonce, &plaintext);
+            let wrong_ct =
+                origin_crypto_sdk::chacha40::chacha40_encrypt(&wrong_key, 0, &nonce, &plaintext);
             assert_ne!(
                 wrong_ct, ciphertext,
                 "ChaCha40 wrong key produced same output at iteration {i}"
@@ -77,8 +81,10 @@ fn fuzz_chacha40_roundtrip() {
 
         // Different counter must produce different output
         if !plaintext.is_empty() && pt_len > 0 {
-            let diff_counter = origin_crypto_sdk::chacha40::chacha40_encrypt(&key, 0, &nonce, &plaintext);
-            let counter_1 = origin_crypto_sdk::chacha40::chacha40_encrypt(&key, 1, &nonce, &plaintext);
+            let diff_counter =
+                origin_crypto_sdk::chacha40::chacha40_encrypt(&key, 0, &nonce, &plaintext);
+            let counter_1 =
+                origin_crypto_sdk::chacha40::chacha40_encrypt(&key, 1, &nonce, &plaintext);
             assert_ne!(
                 diff_counter, counter_1,
                 "ChaCha40 different counters produced same output at iteration {i}"
@@ -98,28 +104,44 @@ fn fuzz_chacha40_block_properties() {
         // Block output is deterministic
         let block1 = origin_crypto_sdk::chacha40::chacha40_block(&key, 0, &nonce);
         let block2 = origin_crypto_sdk::chacha40::chacha40_block(&key, 0, &nonce);
-        assert_eq!(block1, block2, "ChaCha40 block not deterministic at iteration {i}");
+        assert_eq!(
+            block1, block2,
+            "ChaCha40 block not deterministic at iteration {i}"
+        );
 
         // Block output is 64 bytes
-        assert_eq!(block1.len(), 64, "ChaCha40 block wrong size at iteration {i}");
+        assert_eq!(
+            block1.len(),
+            64,
+            "ChaCha40 block wrong size at iteration {i}"
+        );
 
         // Different keys produce different blocks
         let mut key2 = key;
         key2[i as usize % 64] ^= 0x01;
         let block3 = origin_crypto_sdk::chacha40::chacha40_block(&key2, 0, &nonce);
-        assert_ne!(block1, block3, "ChaCha40 block key collision at iteration {i}");
+        assert_ne!(
+            block1, block3,
+            "ChaCha40 block key collision at iteration {i}"
+        );
 
         // Different nonces produce different blocks
         let mut nonce2 = nonce;
         nonce2[i as usize % 12] ^= 0x01;
         let block4 = origin_crypto_sdk::chacha40::chacha40_block(&key, 0, &nonce2);
-        assert_ne!(block1, block4, "ChaCha40 block nonce collision at iteration {i}");
+        assert_ne!(
+            block1, block4,
+            "ChaCha40 block nonce collision at iteration {i}"
+        );
 
         // Different counters produce different blocks
         let block5 = origin_crypto_sdk::chacha40::chacha40_block(&key, i as u32, &nonce);
         if i > 0 {
             let block0 = origin_crypto_sdk::chacha40::chacha40_block(&key, 0, &nonce);
-            assert_ne!(block0, block5, "ChaCha40 block counter collision at iteration {i}");
+            assert_ne!(
+                block0, block5,
+                "ChaCha40 block counter collision at iteration {i}"
+            );
         }
     }
 }
@@ -140,7 +162,8 @@ fn fuzz_reed_solomon_roundtrip() {
             1 => (4, 2),
             _ => (8, 4),
         };
-        let codec = origin_crypto_sdk::error_correction::ReedSolomonCodec::new(data_shards, parity_shards);
+        let codec =
+            origin_crypto_sdk::error_correction::ReedSolomonCodec::new(data_shards, parity_shards);
 
         // Encode must succeed
         let encoded = match codec.encode(&data) {
@@ -153,7 +176,10 @@ fn fuzz_reed_solomon_roundtrip() {
             Ok(d) => d,
             Err(e) => panic!("Reed-Solomon decode failed at iteration {i}: {e}"),
         };
-        assert_eq!(decoded, data, "Reed-Solomon roundtrip failed at iteration {i}");
+        assert_eq!(
+            decoded, data,
+            "Reed-Solomon roundtrip failed at iteration {i}"
+        );
 
         // Corrupt a single byte — should still decode gracefully
         if !encoded.is_empty() && encoded.len() > 5 {
@@ -172,7 +198,8 @@ fn fuzz_reed_solomon_empty_and_edge_cases() {
         let seed = i as u64 * 9999 + 1;
         let data_shards = 1 + (seed as usize % 8);
         let parity_shards = 1 + (seed as usize % 4);
-        let codec = origin_crypto_sdk::error_correction::ReedSolomonCodec::new(data_shards, parity_shards);
+        let codec =
+            origin_crypto_sdk::error_correction::ReedSolomonCodec::new(data_shards, parity_shards);
 
         // Single byte
         let single = vec![seed as u8];
@@ -215,7 +242,10 @@ fn fuzz_compress_roundtrip() {
             Ok(d) => d,
             Err(e) => panic!("Decompress failed at iteration {i}: {e}"),
         };
-        assert_eq!(decompressed, data, "Compress roundtrip failed at iteration {i}");
+        assert_eq!(
+            decompressed, data,
+            "Compress roundtrip failed at iteration {i}"
+        );
     }
 }
 
@@ -246,7 +276,10 @@ fn fuzz_compress_levels() {
         };
 
         let decompressed = origin_crypto_sdk::compression::decompress(&compressed).unwrap();
-        assert_eq!(decompressed, data, "Compress level {level} roundtrip failed at iteration {i}");
+        assert_eq!(
+            decompressed, data,
+            "Compress level {level} roundtrip failed at iteration {i}"
+        );
     }
 }
 
@@ -312,7 +345,11 @@ fn fuzz_hkdf_determinism() {
         if let Ok(()) = origin_crypto_sdk::hkdf_sha3_256(&ikm, Some(&salt), &info, &mut out1) {
             let _ = origin_crypto_sdk::hkdf_sha3_256(&ikm, Some(&salt), &info, &mut out2);
             assert_eq!(out1, out2, "HKDF determinism failed at iteration {i}");
-            assert_ne!(out1, vec![0u8; out_len], "HKDF produced all zeros at iteration {i}");
+            assert_ne!(
+                out1,
+                vec![0u8; out_len],
+                "HKDF produced all zeros at iteration {i}"
+            );
         }
     }
 }
@@ -351,7 +388,11 @@ fn fuzz_drbg_determinism() {
         let bytes_a = a.random_bytes(n);
         let bytes_b = b.random_bytes(n);
         assert_eq!(bytes_a, bytes_b, "DRBG determinism failed at iteration {i}");
-        assert_eq!(bytes_a.len(), n, "DRBG output length wrong at iteration {i}");
+        assert_eq!(
+            bytes_a.len(),
+            n,
+            "DRBG output length wrong at iteration {i}"
+        );
     }
 }
 

@@ -262,7 +262,11 @@ impl ReedSolomonCodec {
     /// genuinely missing (`None`), as produced by
     /// [`encode_shards`](Self::encode_shards). Recovers correctly as long
     /// as at most `parity_shards` shards are missing/`None`.
-    pub fn decode_shards(&self, shards: &[Option<Vec<u8>>], original_len: usize) -> Result<Vec<u8>> {
+    pub fn decode_shards(
+        &self,
+        shards: &[Option<Vec<u8>>],
+        original_len: usize,
+    ) -> Result<Vec<u8>> {
         let total_shards = self.data_shards + self.parity_shards;
         if shards.len() != total_shards {
             return Err(CryptoError::ReedSolomon(format!(
@@ -596,8 +600,7 @@ mod tests {
         let shards = codec.encode_shards(data).unwrap();
 
         for missing in 0..shards.len() {
-            let mut with_gap: Vec<Option<Vec<u8>>> =
-                shards.iter().cloned().map(Some).collect();
+            let mut with_gap: Vec<Option<Vec<u8>>> = shards.iter().cloned().map(Some).collect();
             with_gap[missing] = None;
             let decoded = codec.decode_shards(&with_gap, data.len()).unwrap();
             assert_eq!(decoded, data, "failed recovering missing shard {missing}");
@@ -648,7 +651,9 @@ mod tests {
         let mut encoded = codec.encode(data).unwrap();
         // Flip one bit deep in shard 0 (well after the 4-byte length prefix).
         encoded[4] ^= 0x01;
-        let decoded = codec.decode(&encoded).expect("single-bit corruption should be repairable");
+        let decoded = codec
+            .decode(&encoded)
+            .expect("single-bit corruption should be repairable");
         assert_eq!(decoded, data);
     }
 
@@ -664,7 +669,9 @@ mod tests {
         // 4 (length prefix) + 4 data shards * shard_size.
         let parity_offset = 4 + 4 * shard_size;
         encoded[parity_offset] ^= 0x01;
-        let decoded = codec.decode(&encoded).expect("parity-shard corruption should be tolerated");
+        let decoded = codec
+            .decode(&encoded)
+            .expect("parity-shard corruption should be tolerated");
         assert_eq!(decoded, data);
     }
 
@@ -692,7 +699,9 @@ mod tests {
         // this apart from a single-shard error, so it returns Ok with
         // silently-wrong data. Callers must not rely on `decode` to detect
         // multi-shard corruption.
-        let decoded = codec.decode(&encoded).expect("single-error decoder returns Ok");
+        let decoded = codec
+            .decode(&encoded)
+            .expect("single-error decoder returns Ok");
         assert_ne!(
             decoded, data,
             "two-error pattern aliases to a single-error hypothesis and is miscorrected"

@@ -337,10 +337,10 @@ mod tests {
         // RFC 4648 §10 canonical test vectors (no padding — otpauth:// form).
         // These are the canonical outputs of the standard upper-case RFC 4648
         // base32 alphabet, with `=` padding stripped (otpauth:// convention).
-        assert_eq!(base32_encode(b"f"), "MY");        //  8 bits -> 2 chars
-        assert_eq!(base32_encode(b"fo"), "MZXQ");     // 16 bits -> 4 chars
-        assert_eq!(base32_encode(b"foo"), "MZXW6");   // 24 bits -> 5 chars (4 bits dropped)
-        assert_eq!(base32_encode(b"foob"), "MZXW6YQ");  // 32 bits -> 7 chars
+        assert_eq!(base32_encode(b"f"), "MY"); //  8 bits -> 2 chars
+        assert_eq!(base32_encode(b"fo"), "MZXQ"); // 16 bits -> 4 chars
+        assert_eq!(base32_encode(b"foo"), "MZXW6"); // 24 bits -> 5 chars (4 bits dropped)
+        assert_eq!(base32_encode(b"foob"), "MZXW6YQ"); // 32 bits -> 7 chars
         assert_eq!(base32_encode(b"fooba"), "MZXW6YTB"); // 40 bits -> 8 chars (full byte boundary)
         assert_eq!(base32_encode(b"foobar"), "MZXW6YTBOI"); // 48 bits -> 10 chars
 

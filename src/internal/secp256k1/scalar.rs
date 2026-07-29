@@ -46,7 +46,9 @@ pub struct Scalar {
 
 impl Scalar {
     /// The zero scalar.
-    pub const ZERO: Self = Self { limbs: [0, 0, 0, 0] };
+    pub const ZERO: Self = Self {
+        limbs: [0, 0, 0, 0],
+    };
 
     /// The multiplicative identity.
     pub const ONE: Self = Self { limbs: ONE };

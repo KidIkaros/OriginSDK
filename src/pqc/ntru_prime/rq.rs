@@ -192,8 +192,9 @@ pub fn round3(h: &mut [i16; P]) {
 #[target_feature(enable = "avx2")]
 unsafe fn round3_avx2(h: &mut [i16; P]) {
     use std::arch::x86_64::{
-        _mm_add_epi32, _mm_cvtepi16_epi32, _mm_loadu_si128, _mm_mullo_epi32, _mm_packs_epi32,
-        _mm_set1_epi32, _mm_setzero_si128, _mm_srai_epi32, _mm_storel_epi64, _mm_sub_epi32, __m128i,
+        __m128i, _mm_add_epi32, _mm_cvtepi16_epi32, _mm_loadu_si128, _mm_mullo_epi32,
+        _mm_packs_epi32, _mm_set1_epi32, _mm_setzero_si128, _mm_srai_epi32, _mm_storel_epi64,
+        _mm_sub_epi32,
     };
 
     const ROUND_FACTOR: i32 = 21846;

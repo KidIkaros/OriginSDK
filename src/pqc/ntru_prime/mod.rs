@@ -11,13 +11,13 @@
 //! Reference: <https://ntruprime.cr.yp.to/>
 
 pub mod constants;
-mod r3;
-pub mod rq;
-mod zx;
 #[cfg(feature = "test-utils")]
 pub mod ntt;
 #[cfg(not(feature = "test-utils"))]
 mod ntt;
+mod r3;
+pub mod rq;
+mod zx;
 
 use crate::error::{CryptoError, Result};
 use crate::primitives::sha3 as native_sha3;
@@ -118,11 +118,8 @@ impl NtruPrime {
         }
 
         let s = native_sha3::sha3_512(&zx::encoding::encode(r));
-        let hash_check: bool = crate::internal::subtle::ConstantTimeEq::ct_eq(
-            &s[..32],
-            &ciphertext[..32],
-        )
-        .into();
+        let hash_check: bool =
+            crate::internal::subtle::ConstantTimeEq::ct_eq(&s[..32], &ciphertext[..32]).into();
 
         if weight_check && c_check && hash_check {
             let mut shared_secret = [0u8; K_SIZE];

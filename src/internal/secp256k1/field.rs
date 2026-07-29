@@ -20,20 +20,10 @@ pub(crate) const P: [u64; 4] = [
 /// secp256k1 field R = 2^256 mod p (Montgomery radix)
 /// p = 2^256 - 2^32 - 2^9 - 2^8 - 2^7 - 2^6 - 2^4 - 1
 /// => 2^256 mod p = 2^32 + 2^9 + 2^8 + 2^7 + 2^6 + 2^4 + 1 = 0x1000003d1
-const R: [u64; 4] = [
-    0x0000_0001_0000_03d1,
-    0x0,
-    0x0,
-    0x0,
-];
+const R: [u64; 4] = [0x0000_0001_0000_03d1, 0x0, 0x0, 0x0];
 
 /// secp256k1 field R^2 mod p = (2^256)^2 mod p = 0x7a2000e90a1 (little-endian limb 0)
-const R2: [u64; 4] = [
-    0x0000_07a2_000e_90a1,
-    0x0000_0000_0000_0001,
-    0x0,
-    0x0,
-];
+const R2: [u64; 4] = [0x0000_07a2_000e_90a1, 0x0000_0000_0000_0001, 0x0, 0x0];
 
 /// Montgomery reduction constant: -P[0]^{-1} mod 2^64.
 const INV: u64 = 0xd838_091d_d225_3531;
@@ -50,13 +40,21 @@ pub struct FieldElement {
 ///   4 => 0x4_0000_0f44, 8 => 0x8_0000_1e88   (limb 0, others 0)
 impl FieldElement {
     /// Integer 2 in Montgomery form.
-    pub const TWO: Self = Self { limbs: [0x0000_0002_0000_07a2, 0, 0, 0] };
+    pub const TWO: Self = Self {
+        limbs: [0x0000_0002_0000_07a2, 0, 0, 0],
+    };
     /// Integer 3 in Montgomery form.
-    pub const THREE: Self = Self { limbs: [0x0000_0003_0000_0b73, 0, 0, 0] };
+    pub const THREE: Self = Self {
+        limbs: [0x0000_0003_0000_0b73, 0, 0, 0],
+    };
     /// Integer 4 in Montgomery form.
-    pub const FOUR: Self = Self { limbs: [0x0000_0004_0000_0f44, 0, 0, 0] };
+    pub const FOUR: Self = Self {
+        limbs: [0x0000_0004_0000_0f44, 0, 0, 0],
+    };
     /// Integer 8 in Montgomery form.
-    pub const EIGHT: Self = Self { limbs: [0x0000_0008_0000_1e88, 0, 0, 0] };
+    pub const EIGHT: Self = Self {
+        limbs: [0x0000_0008_0000_1e88, 0, 0, 0],
+    };
 
     /// Zero element
     pub const ZERO: Self = Self {

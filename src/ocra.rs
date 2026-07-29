@@ -112,10 +112,13 @@ impl<'a> std::fmt::Debug for OcraRequest<'a> {
         f.debug_struct("OcraRequest")
             .field("counter", &self.counter)
             .field("challenge_len", &self.challenge.len())
-            .field("password", &match self.password {
-                Some(_) => "Some(<redacted>)",
-                None => "None",
-            })
+            .field(
+                "password",
+                &match self.password {
+                    Some(_) => "Some(<redacted>)",
+                    None => "None",
+                },
+            )
             .field("session_len", &self.session.len())
             .field("timestamp", &self.timestamp)
             .finish()
@@ -395,10 +398,7 @@ mod tests {
             session: b"",
             timestamp: None,
         };
-        let req1 = OcraRequest {
-            counter: 1,
-            ..req0
-        };
+        let req1 = OcraRequest { counter: 1, ..req0 };
         let r0 = ocra(key, &req0, 6, HashAlgorithm::Sha1).unwrap();
         let r1 = ocra(key, &req1, 6, HashAlgorithm::Sha1).unwrap();
         assert_ne!(
@@ -423,7 +423,10 @@ mod tests {
         };
         let r0 = ocra(key, &req_zero, 6, HashAlgorithm::Sha1).unwrap();
         let r1 = ocra(key, &req_alt, 6, HashAlgorithm::Sha1).unwrap();
-        assert_ne!(r0.value, r1.value, "challenge change did not change response");
+        assert_ne!(
+            r0.value, r1.value,
+            "challenge change did not change response"
+        );
     }
 
     #[test]
@@ -442,7 +445,10 @@ mod tests {
         };
         let r0 = ocra(key, &req_no_ts, 6, HashAlgorithm::Sha1).unwrap();
         let r1 = ocra(key, &req_with_ts, 6, HashAlgorithm::Sha1).unwrap();
-        assert_ne!(r0.value, r1.value, "timestamp change did not change response");
+        assert_ne!(
+            r0.value, r1.value,
+            "timestamp change did not change response"
+        );
     }
 
     #[test]
@@ -461,7 +467,10 @@ mod tests {
         };
         let r0 = ocra(key, &no_pw, 6, HashAlgorithm::Sha1).unwrap();
         let r1 = ocra(key, &with_pw, 6, HashAlgorithm::Sha1).unwrap();
-        assert_ne!(r0.value, r1.value, "password change did not change response");
+        assert_ne!(
+            r0.value, r1.value,
+            "password change did not change response"
+        );
     }
 
     #[test]

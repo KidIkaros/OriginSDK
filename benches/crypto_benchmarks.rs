@@ -2,19 +2,19 @@
 
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 use ed25519_dalek::SigningKey as Ed25519Sk;
+use origin_crypto_sdk::internal::rng::ChaCha20Rng;
+use origin_crypto_sdk::pqc::ed448::SigningKey as Ed448Signer;
+use origin_crypto_sdk::pqc::ntru_prime::constants::P;
 use origin_crypto_sdk::signing::hybrid::{
     self, derive_hybrid_keys, skein1024, skein512, Ed25519Blake3, Ed25519ChaCha20Blake3Sha3_256,
     Ed25519Falcon1024, Ed25519Falcon512, Ed25519Shake256, Ed25519Skein512, Ed448Falcon1024,
     Ed448Sha3_256, Ed448Shake256, Ed448Skein512, HybridSigningKeyBundle,
 };
-use origin_crypto_sdk::internal::rng::ChaCha20Rng;
-use origin_crypto_sdk::pqc::ed448::SigningKey as Ed448Signer;
-use origin_crypto_sdk::pqc::ntru_prime::constants::P;
-use rand::RngCore;
 use origin_crypto_sdk::{
     aead, error_correction, kdf, pqc::falcon1024, pqc::falcon512, pqc::mldsa, pqc::ntru_prime,
     pqc::slhdsa,
 };
+use rand::RngCore;
 
 fn benchmark_aead(c: &mut Criterion) {
     let mut group = c.benchmark_group("aead");
@@ -194,7 +194,7 @@ fn benchmark_poly_mul(c: &mut Criterion) {
     let mut g_i8 = [0i8; P];
     for i in 0..P {
         f_i16[i] = (rng.next_u32() % 4591) as i16 - 2295; // range ~[-2295, 2295]
-        g_i8[i] = (rng.next_u32() % 3) as i8 - 1;          // range [-1, 0, 1]
+        g_i8[i] = (rng.next_u32() % 3) as i8 - 1; // range [-1, 0, 1]
     }
     let g_i16: Vec<i16> = g_i8.iter().map(|&x| x as i16).collect();
 
@@ -236,8 +236,7 @@ fn benchmark_poly_mul(c: &mut Criterion) {
     // Verify both paths produce same result (sanity check)
     for i in 0..P {
         assert_eq!(
-            h_scalar[i],
-            karatsuba_result[i],
+            h_scalar[i], karatsuba_result[i],
             "Mismatch at coefficient {}: scalar={}, karatsuba={}",
             i, h_scalar[i], karatsuba_result[i]
         );
@@ -304,8 +303,12 @@ fn benchmark_serpent(c: &mut Criterion) {
 
     group.bench_function("encrypt", |b| {
         b.iter(|| {
-            aead::symmetric::SerpentCbc::encrypt(black_box(&key), black_box(&iv), black_box(&plaintext))
-                .unwrap()
+            aead::symmetric::SerpentCbc::encrypt(
+                black_box(&key),
+                black_box(&iv),
+                black_box(&plaintext),
+            )
+            .unwrap()
         })
     });
 
@@ -313,8 +316,12 @@ fn benchmark_serpent(c: &mut Criterion) {
 
     group.bench_function("decrypt", |b| {
         b.iter(|| {
-            aead::symmetric::SerpentCbc::decrypt(black_box(&key), black_box(&iv), black_box(&encrypted))
-                .unwrap()
+            aead::symmetric::SerpentCbc::decrypt(
+                black_box(&key),
+                black_box(&iv),
+                black_box(&encrypted),
+            )
+            .unwrap()
         })
     });
 

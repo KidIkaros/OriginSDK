@@ -110,9 +110,9 @@ pub fn karatsuba_mul(a: &[i16], b: &[i16]) -> Vec<i16> {
     let half = n / 2;
     let n_high = n - half;
 
-    let a_low  = &a[..half];
+    let a_low = &a[..half];
     let a_high = &a[half..];
-    let b_low  = &b[..half];
+    let b_low = &b[..half];
     let b_high = &b[half..];
 
     // Sum vectors, padded to `mid = max(half, n_high)`
@@ -129,8 +129,8 @@ pub fn karatsuba_mul(a: &[i16], b: &[i16]) -> Vec<i16> {
         b_sum[i] = b_high[i];
     }
 
-    let z0      = karatsuba_mul(a_low, b_low);   // len: 2*half-1
-    let z2      = karatsuba_mul(a_high, b_high); // len: 2*n_high-1
+    let z0 = karatsuba_mul(a_low, b_low); // len: 2*half-1
+    let z2 = karatsuba_mul(a_high, b_high); // len: 2*n_high-1
     let z1_temp = karatsuba_mul(&a_sum, &b_sum); // len: 2*mid-1
 
     // z1 = z1_temp − z0 − z2  (zero-padded to max length)
@@ -138,9 +138,15 @@ pub fn karatsuba_mul(a: &[i16], b: &[i16]) -> Vec<i16> {
     let mut z1 = vec![0i16; z1_len];
     for i in 0..z1_len {
         let mut v = 0i32;
-        if i < z1_temp.len() { v += z1_temp[i] as i32; }
-        if i < z0.len()      { v -= z0[i]      as i32; }
-        if i < z2.len()      { v -= z2[i]      as i32; }
+        if i < z1_temp.len() {
+            v += z1_temp[i] as i32;
+        }
+        if i < z0.len() {
+            v -= z0[i] as i32;
+        }
+        if i < z2.len() {
+            v -= z2[i] as i32;
+        }
         z1[i] = freeze_ntt(v) as i16;
     }
 

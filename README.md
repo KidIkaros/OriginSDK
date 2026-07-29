@@ -22,6 +22,9 @@ Standalone Rust cryptographic SDK with classical and post-quantum primitives. Hy
 [![MSRV: 1.85](https://img.shields.io/badge/MSRV-1.85-orange.svg)](https://blog.rust-lang.org/2025/02/20/Rust-1.85.0.html)
 [![crates.io](https://img.shields.io/crates/v/origin-crypto-sdk.svg)](https://crates.io/crates/origin-crypto-sdk)
 
+> **🌐 Live browser demo:** [kidikaros.github.io/origin-web](https://kidikaros.github.io/origin-web)
+> — signing, encryption, sharding, and entropy analysis compiled to WASM. Zero servers, zero network requests.
+
 ## Quick Start
 
 ```rust

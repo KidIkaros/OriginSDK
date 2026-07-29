@@ -73,6 +73,11 @@ sha1 = "0.10"
 
 # Seed generation
 getrandom = "0.2"
+# getrandom 0.4 is pulled transitively by ed448-goldilocks → elliptic-curve
+# 0.14-rc → crypto-bigint 0.7. It needs its own `wasm_js` feature for browser
+# entropy; cargo can't flip a transitive dep's feature, so we alias a direct
+# optional dep to unify it. Only active under the `wasm` feature.
+getrandom04 = { package = "getrandom", version = "0.4", features = ["wasm_js"], optional = true }
 
 # Parallel processing (optional)
 rayon = { version = "1.11", optional = true }
@@ -93,6 +98,10 @@ pqc-simd = []    # Placeholder: SIMD acceleration for NTRU Prime
 slh-dsa = ["dep:slh-dsa"]    # FIPS 205 hash-based signatures (SPHINCS+)
 ml-dsa = ["dep:ml-dsa"]      # FIPS 204 lattice signatures (Dilithium)
 test-utils = []    # Deterministic seeds, keys, and proptest strategies for downstream tests
+# WebAssembly / browser support: pulls entropy from crypto.getRandomValues and
+# compiles the native-only entropy path for wasm32. Additive, off by default;
+# the native build, public API, and test suite are unchanged.
+wasm = ["getrandom/js", "dep:getrandom04"]
 
 [package.metadata.docs.rs]
 all-features = true

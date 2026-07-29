@@ -49,7 +49,10 @@ pub fn fill(dest: &mut [u8]) -> Result<(), &'static str> {
         const SYS_GETRANDOM: i64 = 318;
         #[cfg(target_arch = "aarch64")]
         const SYS_GETRANDOM: i64 = 278;
-        #[cfg(not(any(target_arch = "x86_64", target_arch = "aarch64")))]
+        #[cfg(all(
+            target_os = "linux",
+            not(any(target_arch = "x86_64", target_arch = "aarch64"))
+        ))]
         compile_error!("Unsupported architecture for getrandom syscall");
 
         extern "C" {
@@ -114,5 +117,13 @@ pub fn fill(dest: &mut [u8]) -> Result<(), &'static str> {
         } else {
             Err("BCryptGenRandom failed")
         }
+    }
+
+    // WebAssembly / browser: draw from the Web Crypto API via the `getrandom`
+    // crate's `js` backend (crypto.getRandomValues). Only compiled under the
+    // `wasm` feature so the native build is untouched.
+    #[cfg(all(target_family = "wasm", feature = "wasm"))]
+    {
+        getrandom::getrandom(dest).map_err(|_| "Web Crypto getRandomValues failed")
     }
 }

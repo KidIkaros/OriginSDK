@@ -3,6 +3,14 @@
 
 //! Origin Crypto SDK — Post-quantum and classical cryptographic primitives.
 //!
+//! > **⚠️ EXPERIMENTAL — NOT FOR PRODUCTION USE ⚠️**
+//! >
+//! > This SDK has **not** undergone independent security audit or formal
+//! > review. Do not use it to protect real funds, identities, or data.
+//! > API, wire formats, and on-disk formats may change without notice,
+//! > including in ways that break compatibility with existing data.
+//! > Use for research and experimentation only.
+//!
 //! A standalone Rust SDK for signing, encryption, key derivation, and
 //! key encapsulation, with first-class support for both classical
 //! (Ed25519, X25519) and post-quantum (Falcon-1024, SLH-DSA, ML-DSA,

@@ -6,6 +6,18 @@ All notable changes to origin-crypto-sdk will be documented in this file.
 
 _Future work for 0.7.0+ lives here as it accumulates._
 
+## [0.6.5] — 2026-07-29
+
+### Added
+- **Prominent experimental-use warnings** — README, crate-level docs, and
+  SECURITY.md now lead with a clear "EXPERIMENTAL — NOT FOR PRODUCTION USE"
+  banner. This SDK has not undergone independent security audit; it must not
+  be used to protect real funds, identities, or data.
+
+### Changed
+- Clarified that all releases (including patch releases) are experimental and
+  that API / wire / on-disk formats may change without notice.
+
 ## [0.6.4] — 2026-07-28
 
 ### Fixed

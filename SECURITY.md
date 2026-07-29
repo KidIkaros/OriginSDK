@@ -2,6 +2,12 @@
 
 # Origin Crypto SDK — Security Notes
 
+> ⚠️ **EXPERIMENTAL — NOT FOR PRODUCTION USE**
+>
+> This SDK has not undergone independent security audit or formal review.
+> Do not use it to protect real funds, identities, or data. See the README
+> for the full warning.
+
 ## Overview
 
 The Origin Crypto SDK contains both external (battle-tested) and custom implementations of cryptographic primitives. Custom implementations have **not been independently audited** as of this writing.

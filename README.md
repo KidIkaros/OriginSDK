@@ -1,5 +1,21 @@
 # Origin Crypto SDK
 
+> ⚠️ **EXPERIMENTAL — NOT FOR PRODUCTION USE** ⚠️
+>
+> This SDK is under active development and **has not undergone independent
+> security audit or formal review**. Cryptographic code is notoriously subtle;
+> an implementation that passes its own tests is not the same as one that is
+> safe to trust with real secrets.
+>
+> - **Do not** use this in production systems.
+> - **Do not** use it to protect real funds, real identities, or real data.
+> - Treat every release (including patch releases) as experimental.
+> - The API, wire formats, and on-disk formats **may change without notice**,
+>   and may do so in ways that break compatibility with previously written data.
+>
+> Use for research, evaluation, and experimentation only. A rigorous external
+> audit is a prerequisite for any production deployment.
+
 Standalone Rust cryptographic SDK with classical and post-quantum primitives. Hybrid signing by default.
 
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)

@@ -726,9 +726,11 @@ impl HybridSigningKeyBundle {
 
     /// Get a bundle from a process-wide cache, or derive it if not cached.
     ///
-    /// Falcon-1024 keygen is expensive (~100ms). When you sign many messages
-    /// with the same (seed, domain), use this to avoid re-deriving the bundle
-    /// on every call.
+    /// Falcon-1024 keygen is expensive (~4s on a desktop CPU — the NTRU lattice
+    /// key generation runs a rejection-sampling loop over random polynomial
+    /// pairs until one satisfies the Gram-Schmidt norm bound). When you sign
+    /// many messages with the same (seed, domain), use this to avoid
+    /// re-deriving the bundle on every call.
     ///
     /// The cache holds at most one bundle per (seed, domain) pair and lives for
     /// the duration of the process. Drop it via [`bundle_cache_clear`] if you

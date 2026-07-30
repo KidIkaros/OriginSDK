@@ -6,6 +6,14 @@ All notable changes to origin-crypto-sdk will be documented in this file.
 
 _Future work for 0.7.0+ lives here as it accumulates._
 
+## [0.6.6] — 2026-07-29
+
+### Changed
+- **Docs only** — corrected the `HybridSigningKeyBundle::from_seed_cached`
+  doc comment: Falcon-1024 keygen is ~4s on a desktop CPU (NTRU lattice
+  rejection sampling), not ~100ms as previously stated. No code or API
+  changes.
+
 ## [0.6.5] — 2026-07-29
 
 ### Added

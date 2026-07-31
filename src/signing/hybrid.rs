@@ -737,54 +737,57 @@ impl HybridSigningKeyBundle {
     /// need to force re-derivation.
     pub fn from_seed_cached(master_seed: &[u8; 32], domain: &str) -> Result<Arc<Self>> {
         let key = (*master_seed, domain.to_string());
-        BUNDLE_CACHE.with(|c| {
-            let mut cache = c.bundle_cache.lock().expect("bundle cache poisoned");
-            if let Some(bundle) = cache.get(&key) {
-                return Ok(bundle.clone());
-            }
+        let mut cache = bundle_cache()
+            .bundle_cache
+            .lock()
+            .expect("bundle cache poisoned");
+        if let Some(bundle) = cache.get(&key) {
+            return Ok(bundle.clone());
+        }
 
-            #[allow(non_local_definitions)]
-            impl std::fmt::Debug for HybridSigningKeyBundle {
-                fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                    // Surface `domain` (semi-public — used as a routing label, not a secret).
-                    // All key-bearing fields redact via `<redacted>`. The `Option` presence
-                    // for `falcon512` / `ed448` is preserved as `None` vs `Some(<redacted>)` —
-                    // these are reserved-family expansions and their presence is not a leak.
-                    f.debug_struct("HybridSigningKeyBundle")
-                        .field("domain", &self.domain)
-                        .field("ed25519", &"<redacted>")
-                        .field("falcon1024", &"<redacted>")
-                        .field(
-                            "falcon512",
-                            &if self.falcon512.is_some() {
-                                "Some(<redacted>)"
-                            } else {
-                                "None"
-                            },
-                        )
-                        .field(
-                            "ed448",
-                            &if self.ed448.is_some() {
-                                "Some(<redacted>)"
-                            } else {
-                                "None"
-                            },
-                        )
-                        .finish()
-                }
+        #[allow(non_local_definitions)]
+        impl std::fmt::Debug for HybridSigningKeyBundle {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                // Surface `domain` (semi-public — used as a routing label, not a secret).
+                // All key-bearing fields redact via `<redacted>`. The `Option` presence
+                // for `falcon512` / `ed448` is preserved as `None` vs `Some(<redacted>)` —
+                // these are reserved-family expansions and their presence is not a leak.
+                f.debug_struct("HybridSigningKeyBundle")
+                    .field("domain", &self.domain)
+                    .field("ed25519", &"<redacted>")
+                    .field("falcon1024", &"<redacted>")
+                    .field(
+                        "falcon512",
+                        &if self.falcon512.is_some() {
+                            "Some(<redacted>)"
+                        } else {
+                            "None"
+                        },
+                    )
+                    .field(
+                        "ed448",
+                        &if self.ed448.is_some() {
+                            "Some(<redacted>)"
+                        } else {
+                            "None"
+                        },
+                    )
+                    .finish()
             }
-            let bundle = Arc::new(Self::from_seed(master_seed, domain)?);
-            cache.insert(key, bundle.clone());
-            Ok(bundle)
-        })
+        }
+        let bundle = Arc::new(Self::from_seed(master_seed, domain)?);
+        cache.insert(key, bundle.clone());
+        Ok(bundle)
     }
 }
 
 /// Process-wide cache for [`HybridSigningKeyBundle`], keyed by (seed, domain).
 ///
-/// Thread-local to avoid contention. Each thread maintains its own cache;
-/// bundles are cheap to clone (Arc) and Falcon-1024 keys are large enough
-/// (~2.3KB) that the memory tradeoff is worthwhile for repeated sign calls.
+/// Process-global (shared across all threads) so that repeated derivation of the
+/// same (seed, domain) — e.g. many `#[test]` threads, or a server handling many
+/// sign requests — pays the ~5s Falcon-1024 keygen only once. A single
+/// `std::sync::Mutex` guards the map; the bundles themselves are `Arc` and cheap
+/// to clone on cache hit.
 struct BundleCache {
     bundle_cache: std::sync::Mutex<
         std::collections::HashMap<([u8; 32], String), Arc<HybridSigningKeyBundle>>,
@@ -799,19 +802,23 @@ impl BundleCache {
     }
 }
 
-thread_local! {
-    static BUNDLE_CACHE: BundleCache = BundleCache::new();
+use std::sync::OnceLock;
+static BUNDLE_CACHE: OnceLock<BundleCache> = OnceLock::new();
+
+fn bundle_cache() -> &'static BundleCache {
+    BUNDLE_CACHE.get_or_init(BundleCache::new)
 }
 
-/// Clear the per-thread bundle cache. Useful for tests or memory-constrained
+/// Clear the process-wide bundle cache. Useful for tests or memory-constrained
 /// environments.
 pub fn bundle_cache_clear() {
-    BUNDLE_CACHE.with(|c| {
-        c.bundle_cache
+    if let Some(cache) = BUNDLE_CACHE.get() {
+        cache
+            .bundle_cache
             .lock()
             .expect("bundle cache poisoned")
             .clear();
-    });
+    }
 }
 
 // ============================================================================

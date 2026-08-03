@@ -4,7 +4,7 @@
 //! Authenticated Encryption with Associated Data (AEAD) using
 //! ChaCha20 stream cipher + BLAKE3 keyed_hash for authentication.
 //!
-//! Uses `chacha20-blake3` crate v0.9.11
+//! Uses `chacha20-blake3` crate v0.9.11 (no-std, alloc only)
 //! Spec: <https://kerkour>.com/chacha20-blake3
 //! Committing AEAD — immune to partitioning oracle & Invisible Salamanders attacks.
 

@@ -2,6 +2,20 @@
 
 All notable changes to origin-crypto-sdk will be documented in this file.
 
+## [0.7.1-rc.4] — 2026-08-03
+
+_MSRV correction: disable the `std` feature on `chacha20-blake3` to avoid
+AVX-512 intrinsics that are unstable until Rust 1.89. All published versions
+(0.9.11–0.10.0) declare MSRV 1.85 but compile AVX-512 SIMD code when `std` is
+enabled on x86_64, breaking the MSRV gate. Using `default-features = false`
+with only `alloc` sidesteps the runtime CPU-detection path that pulls in the
+unstable intrinsics, restoring Rust 1.85 compatibility without changing the
+encryption API or test vectors._
+
+### Changed
+- Pin `chacha20-blake3` to `0.9.11` with `default-features = false,
+  features = ["alloc"]` to avoid AVX-512 intrinsics (unstable until Rust 1.89).
+
 ## [0.7.1-rc.3] — 2026-08-03
 
 _MSFR and sanitizer workflow correction: pin the ChaCha20-BLAKE3 dependency

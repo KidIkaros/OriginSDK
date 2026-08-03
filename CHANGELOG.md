@@ -2,6 +2,31 @@
 
 All notable changes to origin-crypto-sdk will be documented in this file.
 
+## [0.7.1-rc.1] — 2026-08-03
+
+_Evidence-backed release candidate: SDK-owned randomness, NTRU CCA validation,
+secret-safe diagnostics, and cross-tool format conformance._
+
+### Changed
+- Seed Blob generation now uses the public fallible SDK randomness boundary.
+- NTRU decapsulation includes the recovered-polynomial weight check in the CCA
+  validity mask.
+- Added redacted `Debug` implementations for ML-DSA, SLH-DSA, and secp256k1
+  scalar types.
+- Added deterministic and malformed-input format evidence for SDK/tool
+  integration, including ORGB, ORGN, SEAL, OVLT, Share, and provenance fixtures.
+
+### Verification
+- 398 default-feature library tests pass.
+- 420 all-feature library tests pass.
+- NTRU/Falcon KAT suites pass.
+- Full origin-tools workspace tests pass against the exact candidate version.
+- Strict origin-tools Clippy and formatting checks pass.
+
+### Release status
+- This is a release candidate, not an independent cryptographic audit or
+  blanket production approval for every experimental module.
+
 ## [0.7.0] — 2026-08-02
 
 _Boundary release: NIST PQC compatibility, CCA-secure KEM, FIPS 206 signatures,

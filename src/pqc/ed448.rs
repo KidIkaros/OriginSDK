@@ -227,7 +227,7 @@ mod tests {
     fn verify_rejects_tampered_signature() {
         let sk = sk(0x42);
         let pk = sk.verifying_key();
-        let mut sig = sk.sign(b"x");
+        let sig = sk.sign(b"x");
         let mut bytes = sig.to_bytes();
         bytes[10] ^= 0x01;
         let bad_sig = Signature::from_bytes(&bytes).unwrap();

@@ -101,16 +101,16 @@ pub fn create_blob(
     seed: Option<&[u8; SEED_LEN]>,
 ) -> Result<Vec<u8>> {
     let mut salt = [0u8; SALT_LEN];
-    rand::RngCore::fill_bytes(&mut rand::thread_rng(), &mut salt);
+    crate::fill_random(&mut salt)?;
 
     let mut nonce_bytes = [0u8; NONCE_LEN];
-    rand::RngCore::fill_bytes(&mut rand::thread_rng(), &mut nonce_bytes);
+    crate::fill_random(&mut nonce_bytes)?;
 
     let raw_seed = if let Some(s) = seed {
         *s
     } else {
         let mut s = [0u8; SEED_LEN];
-        rand::RngCore::fill_bytes(&mut rand::thread_rng(), &mut s);
+        crate::fill_random(&mut s)?;
         s
     };
 

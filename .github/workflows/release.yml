@@ -1,0 +1,67 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+  id-token: write
+  attestations: write
+
+jobs:
+  package:
+    name: Package and attest crate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Package crate
+        run: cargo package --locked
+
+      - name: Locate package
+        id: package
+        shell: bash
+        run: |
+          set -euo pipefail
+          crate="$(find target/package -maxdepth 1 -name 'origin-crypto-sdk-*.crate' -print -quit)"
+          test -n "${crate}"
+          echo "path=${crate}" >> "$GITHUB_OUTPUT"
+          echo "name=$(basename "${crate}")" >> "$GITHUB_OUTPUT"
+
+      - name: Generate checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          sha256sum "${{ steps.package.outputs.path }}" > "${{ steps.package.outputs.path }}.sha256"
+
+      - name: Generate SBOM
+        uses: anchore/sbom-action@v0.24.0
+        with:
+          path: .
+          format: spdx-json
+          output-file: origin-crypto-sdk-${{ github.ref_name }}.spdx.json
+          artifact-name: origin-crypto-sdk-${{ github.ref_name }}.spdx.json
+          upload-release-assets: false
+
+      - name: Attest crate and SBOM
+        uses: actions/attest@v4
+        with:
+          subject-path: |
+            ${{ steps.package.outputs.path }}
+            ${{ steps.package.outputs.path }}.sha256
+          sbom-path: origin-crypto-sdk-${{ github.ref_name }}.spdx.json
+
+      - name: Upload release evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: origin-crypto-sdk-${{ github.ref_name }}-evidence
+          path: |
+            ${{ steps.package.outputs.path }}
+            ${{ steps.package.outputs.path }}.sha256
+            origin-crypto-sdk-${{ github.ref_name }}.spdx.json

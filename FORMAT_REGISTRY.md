@@ -169,22 +169,24 @@ versioning policy, and tracks validation coverage.
   validation, tier validation
 - **Parsing safety:** `try_into` for salt/nonce uses `map_err` (no unwrap)
 - **Ownership:** Tools-owned
-- **Missing:** Maximum payload size, golden vectors
+- **Validation status:** Maximum payload size enforced; golden vectors remain pending
 
 ### 10. Identity Blob (`origin-common/src/identity.rs`)
 
-| Field | Offset | Size | Description |
-|-------|--------|------|-------------|
-| salt | 0 | 16 | KDF salt |
-| nonce | 16 | 24 | XChaCha20-Poly1305 nonce |
-| tier | 40 | 1 | MemoryTier byte |
-| ciphertext | 41 | variable | Encrypted seed + tag |
+`origin-common::IdentityStore` writes and reads the SDK-owned Seed Blob v2
+format. Legacy origin-common identity blobs remain read-compatible through a
+narrow fallback reader but are never written.
 
-- **Minimum length:** 57 bytes (41 + 16)
-- **Validation:** Minimum length, tier validation
-- **Parsing safety:** `try_into` for salt/nonce uses `map_err` (no unwrap)
-- **Ownership:** Tools-owned
-- **Missing:** Magic bytes, version field, maximum size, golden vectors
+- **Current format:** SDK Seed Blob v2 (`ORGB`, 94 bytes)
+- **Legacy format:** `salt(16) || nonce(24) || tier(1) || ciphertext+tag(48)`;
+  read-only compatibility path
+- **Validation:** SDK magic/version/tier/length/authentication validation;
+  legacy minimum length, tier validation, and authentication validation
+- **Maximum size:** 1 MiB at the origin-tools file boundary
+- **Ownership:** SDK-owned for current writes and v2 parsing; origin-tools owns
+  only the legacy compatibility reader
+- **Vectors/tests:** SDK Seed Blob vectors plus origin-common and cross-tool
+  ORGB v2 round-trip/malformed-input coverage
 
 ### 11. SEAL Envelope (`origin-seal/src/commands.rs`)
 
@@ -201,7 +203,8 @@ versioning policy, and tracks validation coverage.
 
 - **Streaming mode:** Length-prefixed chunks (4-byte BE + ciphertext),
   zero-length sentinel marks end. Chunk bounds: 1 KiB – 1 GiB.
-- **Validation:** Magic, version, minimum length, chunk size bounds
+- **Validation:** Magic, version, supported flags, reserved-byte zero, minimum
+  length, chunk size bounds, and maximum total size
 - **Ownership:** Tools-owned
 
 ### 12. OVLT Vault (`origin-pass/src/vault.rs`)
@@ -219,7 +222,9 @@ versioning policy, and tracks validation coverage.
 | header_ct | 50 | variable | Encrypted entry index |
 
 - **Entry index:** 76 bytes per entry (name_hash 32 + nonce 24 + ct_len 4 + reserved 16)
-- **Validation:** Magic, version, minimum header length, tier, cipher suite
+- **Validation:** Magic, version, minimum header length, supported cipher suite,
+  tier, reserved-byte zero, authentication-tag-sized header ciphertext, and
+  maximum total vault size
 - **Ownership:** Tools-owned
 
 ### 13. Channel Message (`origin-channel/src/message.rs`)
@@ -272,10 +277,10 @@ format registry. They are listed for completeness:
 | Ed448 | N/A | N/A | ✅ | ✅ | ✅ | ✅ | ❌ |
 | Ed41417 | N/A | N/A | ✅ | ✅ | ✅ | ✅ | ❌ |
 | Reed-Solomon | N/A | N/A | ✅ | ❌ | ✅ | ✅ | ❌ |
-| ORGN Envelope | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ❌ |
-| Identity Blob | ❌ | ❌ | ✅ | ❌ | ✅ | ✅ | ❌ |
-| SEAL Envelope | ✅ | ✅ | ✅ | partial | ✅ | ✅ | ❌ |
-| OVLT Vault | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ❌ |
+| ORGN Envelope | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Identity Blob | ✅ (ORGB) | ✅ (ORGB) | ✅ | ✅ (1 MiB boundary) | ✅ | ✅ | ✅ (SDK v2) |
+| SEAL Envelope | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| OVLT Vault | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ (header/index) |
 | Channel Message | N/A | N/A | ✅ | ✅ | ✅ | ✅ | ❌ |
 | CombinedSignature | N/A | N/A | ✅ | ❌ | ✅ | ✅ | ❌ |
 

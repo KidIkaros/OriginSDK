@@ -189,7 +189,6 @@ fn decode(out: &mut [u16], s: &[u8], m: &[u16], len: usize) -> usize {
     }
 
     // Recursively decode the upper digits
-    let s_consumed = s_pos;
     let s_remaining = &s[s_pos..];
     let inner_consumed = decode(&mut r2, s_remaining, &m2, half);
     s_pos += inner_consumed;
@@ -228,7 +227,7 @@ fn decode(out: &mut [u16], s: &[u8], m: &[u16], len: usize) -> usize {
 /// encoded using the recursive `Encode()` with all moduli equal to `q`.
 pub fn rq_encode(f: &[i16; P]) -> [u8; RQ_BYTES] {
     let mut r = [0u16; P];
-    let mut m = [Q as u16; P];
+    let m = [Q as u16; P];
     for i in 0..P {
         r[i] = (f[i] as i32 + Q12) as u16;
     }
@@ -251,7 +250,7 @@ pub fn rq_decode(s: &[u8]) -> [i16; P] {
     }
 
     let mut r = [0u16; P];
-    let mut m = [Q as u16; P];
+    let m = [Q as u16; P];
     decode(&mut r, s, &m, P);
 
     let mut f = [0i16; P];
@@ -271,7 +270,7 @@ pub fn rq_decode(s: &[u8]) -> [i16; P] {
 /// `[0, (q+2)/3 - 1]` and encoded with all moduli equal to `(q+2)/3 = 1531`.
 pub fn rounded_encode(f: &[i16; P]) -> [u8; ROUNDED_BYTES] {
     let mut r = [0u16; P];
-    let mut m = [ROUNDED_M; P];
+    let m = [ROUNDED_M; P];
     for i in 0..P {
         // Map from [-q12, q12] (multiples of 3) to [0, 1530]
         // R[i] = ((r[i] + q12) * 10923) >> 15
@@ -297,7 +296,7 @@ pub fn rounded_decode(s: &[u8]) -> [i16; P] {
     }
 
     let mut r = [0u16; P];
-    let mut m = [ROUNDED_M; P];
+    let m = [ROUNDED_M; P];
     decode(&mut r, s, &m, P);
 
     let mut f = [0i16; P];

@@ -183,6 +183,7 @@ pub mod seed;
 
 /// Merkle Mountain Range — internal utility.
 #[doc(hidden)]
+#[allow(dead_code)]
 pub(crate) mod mmr;
 
 /// Stealth address primitives (KDF + PoW).

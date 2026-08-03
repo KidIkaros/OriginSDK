@@ -32,14 +32,16 @@
 pub mod constants;
 pub mod encode;
 #[cfg(feature = "test-utils")]
+#[allow(dead_code)]
 pub mod ntt;
 #[cfg(not(feature = "test-utils"))]
+#[allow(dead_code)]
 mod ntt;
 mod r3;
 pub mod rq;
 mod zx;
 
-use crate::error::{CryptoError, Result};
+use crate::error::Result;
 use rand::{CryptoRng, RngCore};
 
 // KEM hash backend: select based on feature flags.
@@ -257,7 +259,8 @@ impl NtruPrime {
             crate::internal::subtle::ConstantTimeEq::ct_eq(confirm, &confirm_new).0 as i32;
 
         // mask = 0 if everything matches, -1 if any mismatch
-        let all_match = c_match & confirm_match;
+        let weight_match = crate::internal::subtle::Choice::from_bool(weight_ok).0 as i32;
+        let all_match = c_match & confirm_match & weight_match;
         let mask: i32 = if all_match == 1 { 0 } else { -1 };
 
         // CCA fallback: if mask != 0, replace r_enc with rho

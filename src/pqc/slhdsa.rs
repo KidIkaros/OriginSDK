@@ -28,6 +28,20 @@ pub struct SlhDsaPublicKey(pub(crate) Vec<u8>);
 #[derive(Clone)]
 pub struct SlhDsaPrivateKey(pub(crate) Vec<u8>);
 
+impl std::fmt::Debug for SlhDsaPublicKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SlhDsaPublicKey")
+            .field("len", &self.0.len())
+            .finish()
+    }
+}
+
+impl std::fmt::Debug for SlhDsaPrivateKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("SlhDsaPrivateKey [REDACTED]")
+    }
+}
+
 impl Drop for SlhDsaPrivateKey {
     fn drop(&mut self) {
         self.0.zeroize();

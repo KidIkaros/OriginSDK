@@ -384,7 +384,7 @@ mod tests {
     /// Different key → different output
     #[test]
     fn test_chacha40_key_distinction() {
-        let mut key_a = [0u8; 64];
+        let key_a = [0u8; 64];
         let mut key_b = [0u8; 64];
         key_b[63] = 1;
 
@@ -441,7 +441,7 @@ mod tests {
     /// HChaCha40: different key → different subkey
     #[test]
     fn test_hchacha40_key_distinction() {
-        let mut key_a = [0u8; 64];
+        let key_a = [0u8; 64];
         let mut key_b = [0u8; 64];
         key_b[63] = 1;
 

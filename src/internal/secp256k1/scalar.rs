@@ -44,6 +44,14 @@ pub struct Scalar {
     limbs: [u64; 4],
 }
 
+impl std::fmt::Debug for Scalar {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Scalar")
+            .field("value", &"[REDACTED]")
+            .finish()
+    }
+}
+
 impl Scalar {
     /// The zero scalar.
     pub const ZERO: Self = Self {
@@ -118,11 +126,6 @@ impl Scalar {
     pub fn mul(&self, rhs: &Self) -> Self {
         let t = product_512(&self.limbs, &rhs.limbs);
         Scalar::from_limbs(reduce_512(&t))
-    }
-
-    /// Raw product a*b mod n (identical to `mul`; kept for internal callers).
-    pub(crate) fn mul_raw(&self, rhs: &Self) -> Self {
-        self.mul(rhs)
     }
 
     /// Addition: (self + rhs) mod n.

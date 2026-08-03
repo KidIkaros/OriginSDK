@@ -54,6 +54,7 @@ pub fn mod_pow(mut base: i32, mut exp: i32, modulus: i32) -> i32 {
 
 /// Modular inverse via Fermat's little theorem: $a^{-1} \equiv a^{Q-2} \pmod{Q}$.
 #[inline(always)]
+#[allow(dead_code)]
 pub fn mod_inv(a: i32) -> i32 {
     const Q: i32 = 4_591;
     mod_pow(a, Q - 2, Q)

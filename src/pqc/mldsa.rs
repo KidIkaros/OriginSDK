@@ -28,6 +28,20 @@ pub struct MldsaPublicKey(pub(crate) Vec<u8>);
 #[derive(Clone)]
 pub struct MldsaPrivateKey(pub(crate) Vec<u8>);
 
+impl std::fmt::Debug for MldsaPublicKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("MldsaPublicKey")
+            .field("len", &self.0.len())
+            .finish()
+    }
+}
+
+impl std::fmt::Debug for MldsaPrivateKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("MldsaPrivateKey [REDACTED]")
+    }
+}
+
 impl Drop for MldsaPrivateKey {
     fn drop(&mut self) {
         self.0.zeroize();

@@ -479,7 +479,6 @@ mod tests {
     #[test]
     fn test_blake3_differs_from_nist() {
         // BLAKE3 and SHA-2-512 must produce different outputs (different algorithms)
-        let r_enc = [99u8; 191];
         let cache_nist = hash4(&[42u8; 1158]);
         let cache_blake3 = blake3_kem::hash4(&[42u8; 1158]);
         assert_ne!(

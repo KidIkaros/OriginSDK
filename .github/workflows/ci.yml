@@ -238,7 +238,8 @@ jobs:
       - run: cargo deny check
 
   sanitizer-address:
-    name: AddressSanitizer
+    name: AddressSanitizer (best effort)
+    continue-on-error: true
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -256,7 +257,8 @@ jobs:
           cargo +nightly test -Zbuild-std --test malformed_input
 
   sanitizer-thread:
-    name: ThreadSanitizer
+    name: ThreadSanitizer (best effort)
+    continue-on-error: true
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

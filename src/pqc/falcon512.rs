@@ -1,29 +1,75 @@
 // SPDX-License-Identifier: Apache-2.0
 
-//! Falcon-1024 signing wrapper.
+//! Falcon-512 (FN-DSA-512) signing wrapper.
 //!
-//! Provides deterministic Falcon-1024 signing with SHAKE-based seed derivation.
-//! Wraps falcon-rust crate with Origin's type system.
+//! Provides Falcon-512 signing via the `falcon-rs` crate (NIST FIPS 206).
+//! Wraps the FN-DSA API with Origin's type system.
 //!
-//! ## Sizes (Falcon-1024)
+//! ## Sizes (Falcon-512 / FN-DSA-512)
 //!
 //! - Public key: 897 bytes
-//! - Secret key: 1281 bytes  
-//! - Max signature: 666 bytes
+//! - Secret key: 1281 bytes
+//! - Max signature: 809 bytes (constant-time format; NIST padded = 666 bytes)
 
 use crate::error::{CryptoError, Result};
 use crate::internal::zeroize::Zeroize;
+use falcon::safe_api::{DomainSeparation, FalconError, FnDsaKeyPair, FnDsaSignature};
 
-/// Maximum Falcon-1024 signature length.
-pub const MAX_SIGNATURE_LEN: usize = 666;
+/// FN-DSA logn parameter for Falcon-512.
+const LOGN_512: u32 = 9;
+
+/// Maximum Falcon-512 signature length (constant-time format).
+/// The CT format is 809 bytes; NIST padded format is 666 bytes.
+/// We produce CT format for side-channel resistance; verify accepts all formats.
+pub const MAX_SIGNATURE_LEN: usize = 809;
 
 /// Falcon-512 public key.
 #[derive(Clone, Debug)]
 pub struct Falcon512PublicKey(pub Vec<u8>);
 
+impl Falcon512PublicKey {
+    /// Create from raw bytes, validating the expected length (897 bytes).
+    pub fn from_bytes(bytes: &[u8]) -> Result<Self> {
+        const PK_LEN: usize = 897;
+        if bytes.len() != PK_LEN {
+            return Err(CryptoError::InvalidKeyLength {
+                algorithm: "Falcon-512",
+                expected: PK_LEN,
+                got: bytes.len(),
+            });
+        }
+        Ok(Self(bytes.to_vec()))
+    }
+
+    /// Get raw bytes.
+    pub fn as_bytes(&self) -> &[u8] {
+        &self.0
+    }
+}
+
 /// Falcon-512 private key (zeroized on drop).
 pub struct Falcon512PrivateKey {
     sk: Vec<u8>,
+}
+
+impl Falcon512PrivateKey {
+    /// Create from raw bytes, validating the expected length (1281 bytes).
+    pub fn from_bytes(bytes: &[u8]) -> Result<Self> {
+        const SK_LEN: usize = 1281;
+        if bytes.len() != SK_LEN {
+            return Err(CryptoError::InvalidKeyLength {
+                algorithm: "Falcon-512",
+                expected: SK_LEN,
+                got: bytes.len(),
+            });
+        }
+        Ok(Self { sk: bytes.to_vec() })
+    }
+
+    /// Get raw bytes.
+    pub fn as_bytes(&self) -> &[u8] {
+        &self.sk
+    }
 }
 
 impl Clone for Falcon512PrivateKey {
@@ -56,36 +102,75 @@ impl Drop for Falcon512PrivateKey {
 #[derive(Clone, Debug)]
 pub struct Falcon512Signature(pub Vec<u8>);
 
-/// Generate Falcon-1024 keypair deterministically from a 32-byte seed.
+impl Falcon512Signature {
+    /// Create from raw bytes, validating the maximum signature length (666 bytes).
+    pub fn from_bytes(bytes: &[u8]) -> Result<Self> {
+        if bytes.len() > MAX_SIGNATURE_LEN {
+            return Err(CryptoError::InvalidParameter(format!(
+                "Falcon-512 signature too large: {} > {MAX_SIGNATURE_LEN}",
+                bytes.len()
+            )));
+        }
+        Ok(Self(bytes.to_vec()))
+    }
+}
+
+/// Convert falcon-rs error to CryptoError.
+fn map_falcon_err(e: FalconError) -> CryptoError {
+    match e {
+        FalconError::BadArgument => CryptoError::InvalidParameter("Falcon bad argument".into()),
+        FalconError::BadSignature => CryptoError::AuthenticationFailed,
+        FalconError::FormatError => CryptoError::InvalidKey("Falcon format error".into()),
+        FalconError::RandomError => CryptoError::Pqc("Falcon RNG failure".into()),
+        FalconError::SizeError => CryptoError::InvalidParameter("Falcon buffer size error".into()),
+        FalconError::InternalError => CryptoError::InvalidParameter("Falcon internal error".into()),
+    }
+}
+
+/// Generate Falcon-512 keypair deterministically from a 32-byte seed.
 pub fn generate_keypair(seed: [u8; 32]) -> (Falcon512PrivateKey, Falcon512PublicKey) {
-    let (sk, pk) = falcon_rust::falcon512::keygen(seed);
+    let kp = FnDsaKeyPair::generate_deterministic(&seed, LOGN_512)
+        .expect("Falcon-512 keygen with valid seed and logn=9 cannot fail");
     (
         Falcon512PrivateKey {
-            sk: sk.to_bytes().to_vec(),
+            sk: kp.private_key().to_vec(),
         },
-        Falcon512PublicKey(pk.to_bytes().to_vec()),
+        Falcon512PublicKey(kp.public_key().to_vec()),
     )
 }
 
 /// Sign a message with a Falcon-512 private key.
+///
+/// Uses OS entropy for the signing nonce (standard FN-DSA behavior).
 pub fn sign(message: &[u8], sk: &Falcon512PrivateKey) -> Result<Falcon512Signature> {
-    let secret_key = falcon_rust::falcon512::SecretKey::from_bytes(&sk.sk)
-        .map_err(|_| CryptoError::InvalidKey("Invalid Falcon-512 secret key".to_string()))?;
-    let sig = falcon_rust::falcon512::sign(message, &secret_key);
+    let kp = FnDsaKeyPair::from_private_key(&sk.sk)
+        .map_err(|e| CryptoError::InvalidKey(format!("Invalid Falcon-512 secret key: {:?}", e)))?;
+    let sig = kp
+        .sign(message, &DomainSeparation::None)
+        .map_err(map_falcon_err)?;
     Ok(Falcon512Signature(sig.to_bytes().to_vec()))
 }
 
-/// Verify a Falcon-1024 signature.
+/// Sign a message with a Falcon-512 private key using a deterministic nonce.
+///
+/// The same `(sk, message, nonce_seed)` always produces the same signature.
+/// Useful for testing and reproducibility.
+pub fn sign_deterministic(
+    message: &[u8],
+    sk: &Falcon512PrivateKey,
+    nonce_seed: &[u8],
+) -> Result<Falcon512Signature> {
+    let kp = FnDsaKeyPair::from_private_key(&sk.sk)
+        .map_err(|e| CryptoError::InvalidKey(format!("Invalid Falcon-512 secret key: {:?}", e)))?;
+    let sig = kp
+        .sign_deterministic(message, nonce_seed, &DomainSeparation::None)
+        .map_err(map_falcon_err)?;
+    Ok(Falcon512Signature(sig.to_bytes().to_vec()))
+}
+
+/// Verify a Falcon-512 signature.
 pub fn verify(message: &[u8], sig: &Falcon512Signature, pk: &Falcon512PublicKey) -> bool {
-    let public_key = match falcon_rust::falcon512::PublicKey::from_bytes(&pk.0) {
-        Ok(pk) => pk,
-        Err(_) => return false,
-    };
-    let signature = match falcon_rust::falcon512::Signature::from_bytes(&sig.0) {
-        Ok(sig) => sig,
-        Err(_) => return false,
-    };
-    falcon_rust::falcon512::verify(message, &signature, &public_key)
+    FnDsaSignature::verify(&sig.0, &pk.0, message, &DomainSeparation::None).is_ok()
 }
 
 #[cfg(test)]
@@ -104,12 +189,34 @@ mod tests {
     }
 
     #[test]
-    fn test_falcon512_deterministic() {
+    fn test_falcon512_deterministic_keygen() {
         let seed = [42u8; 32];
         let (sk1, pk1) = generate_keypair(seed);
         let (sk2, pk2) = generate_keypair(seed);
 
         assert_eq!(pk1.0, pk2.0, "Same seed should produce same public key");
+        assert_eq!(
+            sk1.as_bytes(),
+            sk2.as_bytes(),
+            "Same seed should produce same private key"
+        );
+    }
+
+    #[test]
+    fn test_falcon512_deterministic_sign() {
+        let seed = [42u8; 32];
+        let (sk, pk) = generate_keypair(seed);
+        let message = b"deterministic test";
+        let nonce = [99u8; 32];
+
+        let sig1 = sign_deterministic(message, &sk, &nonce).unwrap();
+        let sig2 = sign_deterministic(message, &sk, &nonce).unwrap();
+
+        assert_eq!(
+            sig1.0, sig2.0,
+            "Same (key, message, nonce) should produce same signature"
+        );
+        assert!(verify(message, &sig1, &pk));
     }
 
     #[test]
@@ -122,5 +229,13 @@ mod tests {
             "Signature too large: {}",
             sig.0.len()
         );
+    }
+
+    #[test]
+    fn test_falcon512_key_sizes() {
+        let seed = [42u8; 32];
+        let (sk, pk) = generate_keypair(seed);
+        assert_eq!(pk.0.len(), 897, "Public key must be 897 bytes");
+        assert_eq!(sk.as_bytes().len(), 1281, "Private key must be 1281 bytes");
     }
 }

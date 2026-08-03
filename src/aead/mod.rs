@@ -59,18 +59,40 @@ impl XChaCha20Poly1305 {
     }
 }
 
-/// Generate a secure random nonce
+/// Generate a secure random nonce.
+///
+/// # Panics
+/// Panics if the operating-system entropy source is unavailable or fails.
+/// Use [`try_generate_nonce`] for a fallible variant.
 pub fn generate_nonce() -> [u8; 24] {
     let mut nonce = [0u8; 24];
     getrandom::fill(&mut nonce).expect("RNG failed");
     nonce
 }
 
-/// Generate a secure random key
+/// Generate a secure random nonce, returning an error on RNG failure.
+pub fn try_generate_nonce() -> Result<[u8; 24]> {
+    let mut nonce = [0u8; 24];
+    getrandom::fill(&mut nonce).map_err(|error| CryptoError::Io(std::io::Error::other(error)))?;
+    Ok(nonce)
+}
+
+/// Generate a secure random key.
+///
+/// # Panics
+/// Panics if the operating-system entropy source is unavailable or fails.
+/// Use [`try_generate_key`] for a fallible variant.
 pub fn generate_key() -> [u8; 32] {
     let mut key = [0u8; 32];
     getrandom::fill(&mut key).expect("RNG failed");
     key
+}
+
+/// Generate a secure random key, returning an error on RNG failure.
+pub fn try_generate_key() -> Result<[u8; 32]> {
+    let mut key = [0u8; 32];
+    getrandom::fill(&mut key).map_err(|error| CryptoError::Io(std::io::Error::other(error)))?;
+    Ok(key)
 }
 
 #[cfg(test)]

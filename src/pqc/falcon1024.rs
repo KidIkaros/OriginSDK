@@ -1,12 +1,17 @@
 // SPDX-License-Identifier: Apache-2.0
 
-//! Falcon-1024 Digital Signature wrapper
+//! Falcon-1024 (FN-DSA-1024) Digital Signature wrapper
 //!
-//! Falcon is a NIST-standardized post-quantum signature scheme based on
-//! NTRU lattices. It provides compact signatures with fast verification.
+//! Falcon is a NIST-standardized post-quantum signature scheme (FIPS 206)
+//! based on NTRU lattices. This wrapper uses the `falcon-rs` crate which
+//! passes all NIST KAT vectors and has been security audited.
 
 use crate::error::{CryptoError, Result};
 use crate::internal::zeroize::Zeroize;
+use falcon::safe_api::{DomainSeparation, FalconError, FnDsaKeyPair, FnDsaSignature};
+
+/// FN-DSA logn parameter for Falcon-1024.
+const LOGN_1024: u32 = 10;
 
 /// Falcon-1024 size constants
 pub mod sizes {
@@ -14,8 +19,10 @@ pub mod sizes {
     pub const PUBLIC_KEY: usize = 1793;
     /// Private key size (2305 bytes)
     pub const PRIVATE_KEY: usize = 2305;
-    /// Maximum signature size (1330 bytes)
-    pub const SIGNATURE_MAX: usize = 1330;
+    /// Maximum signature size (1577 bytes, constant-time format).
+    /// The CT format is 1577 bytes; NIST padded format is 1280 bytes.
+    /// We produce CT format for side-channel resistance; verify accepts all formats.
+    pub const SIGNATURE_MAX: usize = 1577;
 }
 
 /// Falcon-1024 public key (1793 bytes)
@@ -38,7 +45,7 @@ impl Drop for FalconPrivateKey {
     }
 }
 
-/// Falcon-1024 signature (variable length, max ~1280 bytes)
+/// Falcon-1024 signature (variable length, max 1577 bytes CT format)
 #[derive(Clone)]
 pub struct FalconSignature(pub(crate) Vec<u8>);
 
@@ -138,41 +145,75 @@ impl std::fmt::Debug for FalconSignature {
     }
 }
 
+/// Convert falcon-rs error to CryptoError.
+fn map_falcon_err(e: FalconError) -> CryptoError {
+    match e {
+        FalconError::BadArgument => CryptoError::InvalidParameter("Falcon bad argument".into()),
+        FalconError::BadSignature => CryptoError::AuthenticationFailed,
+        FalconError::FormatError => CryptoError::InvalidKey("Falcon format error".into()),
+        FalconError::RandomError => CryptoError::Pqc("Falcon RNG failure".into()),
+        FalconError::SizeError => CryptoError::InvalidParameter("Falcon buffer size error".into()),
+        FalconError::InternalError => CryptoError::InvalidParameter("Falcon internal error".into()),
+    }
+}
+
 /// Generate Falcon-1024 keypair from a 32-byte seed.
 pub fn generate_keypair_from_seed(seed: &[u8; 32]) -> Result<(FalconPublicKey, FalconPrivateKey)> {
-    let (sk, pk) = falcon_rust::falcon1024::keygen(*seed);
+    let kp = FnDsaKeyPair::generate_deterministic(seed, LOGN_1024)
+        .map_err(|e| CryptoError::InvalidKey(format!("Falcon-1024 keygen failed: {:?}", e)))?;
 
-    let pk_bytes = pk.to_bytes();
-    let sk_bytes = sk.to_bytes();
-
-    Ok((FalconPublicKey(pk_bytes), FalconPrivateKey(sk_bytes)))
+    Ok((
+        FalconPublicKey(kp.public_key().to_vec()),
+        FalconPrivateKey(kp.private_key().to_vec()),
+    ))
 }
 
-/// Sign a message using Falcon private key.
+/// Sign a message using Falcon-1024 private key.
+///
+/// Uses OS entropy for the signing nonce (standard FN-DSA behavior).
 pub fn sign(message: &[u8], private_key: &FalconPrivateKey) -> Result<FalconSignature> {
-    let sk = falcon_rust::falcon1024::SecretKey::from_bytes(&private_key.0)
+    let kp = FnDsaKeyPair::from_private_key(&private_key.0)
         .map_err(|e| CryptoError::InvalidKey(format!("Invalid Falcon secret key: {:?}", e)))?;
-    let sig = falcon_rust::falcon1024::sign(message, &sk);
-    let sig_bytes = sig.to_bytes();
-
-    Ok(FalconSignature(sig_bytes))
+    let sig = kp
+        .sign(message, &DomainSeparation::None)
+        .map_err(map_falcon_err)?;
+    Ok(FalconSignature(sig.to_bytes().to_vec()))
 }
 
-/// Verify a Falcon signature.
+/// Sign a message using Falcon-1024 private key with a deterministic nonce.
+///
+/// The same `(sk, message, nonce_seed)` always produces the same signature.
+pub fn sign_deterministic(
+    message: &[u8],
+    private_key: &FalconPrivateKey,
+    nonce_seed: &[u8],
+) -> Result<FalconSignature> {
+    let kp = FnDsaKeyPair::from_private_key(&private_key.0)
+        .map_err(|e| CryptoError::InvalidKey(format!("Invalid Falcon secret key: {:?}", e)))?;
+    let sig = kp
+        .sign_deterministic(message, nonce_seed, &DomainSeparation::None)
+        .map_err(map_falcon_err)?;
+    Ok(FalconSignature(sig.to_bytes().to_vec()))
+}
+
+/// Verify a Falcon-1024 signature.
 pub fn verify(
     message: &[u8],
     signature: &FalconSignature,
     public_key: &FalconPublicKey,
 ) -> Result<()> {
-    let pk = falcon_rust::falcon1024::PublicKey::from_bytes(&public_key.0)
-        .map_err(|e| CryptoError::InvalidKey(format!("Invalid Falcon public key: {:?}", e)))?;
-    let sig = falcon_rust::falcon1024::Signature::from_bytes(&signature.0)
-        .map_err(|e| CryptoError::InvalidKey(format!("Invalid Falcon signature: {:?}", e)))?;
-
-    if falcon_rust::falcon1024::verify(message, &sig, &pk) {
-        Ok(())
-    } else {
-        Err(CryptoError::AuthenticationFailed)
+    match FnDsaSignature::verify(
+        &signature.0,
+        &public_key.0,
+        message,
+        &DomainSeparation::None,
+    ) {
+        Ok(()) => Ok(()),
+        Err(FalconError::BadSignature) => Err(CryptoError::AuthenticationFailed),
+        Err(e) => Err(CryptoError::InvalidKey(format!(
+            "Falcon verify error: {:?}",
+            e
+        ))),
     }
 }
 
@@ -192,7 +233,7 @@ mod tests {
 
     #[test]
     fn test_signature_max_size() {
-        assert_eq!(FalconSignature::max_size(), 1330);
+        assert_eq!(FalconSignature::max_size(), 1577);
     }
 
     #[test]
@@ -258,5 +299,19 @@ mod tests {
         let signature = sign(message, &sk1).unwrap();
 
         assert!(verify(message, &signature, &pk2).is_err());
+    }
+
+    #[test]
+    fn test_falcon_deterministic_sign() {
+        let seed = [77u8; 32];
+        let (pk, sk) = generate_keypair_from_seed(&seed).unwrap();
+        let message = b"deterministic test";
+        let nonce = [88u8; 32];
+
+        let sig1 = sign_deterministic(message, &sk, &nonce).unwrap();
+        let sig2 = sign_deterministic(message, &sk, &nonce).unwrap();
+
+        assert_eq!(sig1.as_bytes(), sig2.as_bytes());
+        assert!(verify(message, &sig1, &pk).is_ok());
     }
 }

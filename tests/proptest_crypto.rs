@@ -15,6 +15,23 @@ use origin_crypto_sdk::types::{CNonce, Seed, XNonce};
 
 use proptest::prelude::*;
 
+/// Proptest config for Argon2-dependent tests.
+///
+/// Default proptest runs 256 cases. Argon2id at Nano tier (8 MB, 2 iter)
+/// takes ~50ms each, so 256 cases = ~13s per test. We reduce to 8 cases
+/// for fast dev iteration. Set `ORIGIN_FULL_TESTS=1` for 64 cases in CI.
+fn blob_test_config() -> ProptestConfig {
+    let cases = if std::env::var("ORIGIN_FULL_TESTS").as_deref() == Ok("1") {
+        64
+    } else {
+        8
+    };
+    ProptestConfig {
+        cases,
+        ..ProptestConfig::default()
+    }
+}
+
 // ── Strategies ───────────────────────────────────────────────────────
 
 fn any_bytes(max: usize) -> impl Strategy<Value = Vec<u8>> {
@@ -353,6 +370,8 @@ proptest! {
 // ── Seed Blob ────────────────────────────────────────────────────────
 
 proptest! {
+    #![proptest_config(blob_test_config())]
+
     /// Blob roundtrip: create + recover preserves seed.
     #[test]
     fn prop_blob_roundtrip(
@@ -421,5 +440,125 @@ proptest! {
         let bytes_a = a.random_bytes(64);
         let bytes_b = b.random_bytes(64);
         prop_assert_ne!(bytes_a, bytes_b);
+    }
+}
+
+// ── NTRU Prime ───────────────────────────────────────────────────────
+
+/// NTRU Prime proptest config — keygen is expensive (~1s), so we use
+/// fewer cases. Set `ORIGIN_FULL_TESTS=1` for more.
+fn ntru_test_config() -> ProptestConfig {
+    let cases = if std::env::var("ORIGIN_FULL_TESTS").as_deref() == Ok("1") {
+        16
+    } else {
+        4
+    };
+    ProptestConfig {
+        cases,
+        ..ProptestConfig::default()
+    }
+}
+
+proptest! {
+    #![proptest_config(ntru_test_config())]
+
+    /// NTRU Prime keygen is deterministic from the same seed.
+    #[test]
+    fn prop_ntru_prime_keygen_deterministic(seed in any_32_bytes()) {
+        use origin_crypto_sdk::pqc::ntru_prime::NtruPrime;
+        let (pk1, sk1) = NtruPrime::generate_keypair_from_seed(&seed);
+        let (pk2, sk2) = NtruPrime::generate_keypair_from_seed(&seed);
+        prop_assert_eq!(pk1, pk2, "Same seed must produce same PK");
+        prop_assert_eq!(sk1, sk2, "Same seed must produce same SK");
+    }
+
+    /// NTRU Prime encapsulate→decapsulate roundtrip produces matching shared secrets.
+    #[test]
+    fn prop_ntru_prime_roundtrip(seed in any_32_bytes(), enc_seed in any_32_bytes()) {
+        use origin_crypto_sdk::pqc::ntru_prime::NtruPrime;
+        use origin_crypto_sdk::internal::rng::ChaCha20Rng;
+        let (pk, sk) = NtruPrime::generate_keypair_from_seed(&seed);
+        let mut rng = ChaCha20Rng::from_seed(enc_seed);
+        let (ct, ss1) = NtruPrime::encapsulate(&pk, &mut rng);
+        let ss2 = NtruPrime::decapsulate(&ct, &sk).expect("decapsulation");
+        prop_assert_eq!(ss1, ss2, "Shared secrets must match");
+    }
+
+    /// NTRU Prime different seeds produce different keypairs.
+    #[test]
+    fn prop_ntru_prime_seed_sensitivity(seed in any_32_bytes()) {
+        use origin_crypto_sdk::pqc::ntru_prime::NtruPrime;
+        let (pk1, _) = NtruPrime::generate_keypair_from_seed(&seed);
+        let mut seed2 = seed;
+        seed2[0] ^= 0x01;
+        let (pk2, _) = NtruPrime::generate_keypair_from_seed(&seed2);
+        prop_assert_ne!(pk1, pk2, "Different seeds must produce different PKs");
+    }
+
+    /// NTRU Prime CCA: tampered ciphertext produces different shared secret.
+    #[test]
+    fn prop_ntru_prime_cca_tamper(seed in any_32_bytes(), enc_seed in any_32_bytes(), byte_idx in 0usize..1039) {
+        use origin_crypto_sdk::pqc::ntru_prime::NtruPrime;
+        use origin_crypto_sdk::internal::rng::ChaCha20Rng;
+        let (pk, sk) = NtruPrime::generate_keypair_from_seed(&seed);
+        let mut rng = ChaCha20Rng::from_seed(enc_seed);
+        let (mut ct, ss1) = NtruPrime::encapsulate(&pk, &mut rng);
+        ct[byte_idx] ^= 0x01;
+        let ss2 = NtruPrime::decapsulate(&ct, &sk).expect("CCA always returns Ok");
+        prop_assert_ne!(ss1, ss2, "Tampered CT must produce different SS (CCA fallback)");
+    }
+}
+
+// ── NTRU Prime Encode/Decode property tests ──────────────────────────
+
+proptest! {
+    #![proptest_config(ProptestConfig { cases: 32, ..ProptestConfig::default() })]
+
+    /// Rq encode→decode is a roundtrip for any valid coefficient range.
+    #[test]
+    fn prop_rq_encode_decode_roundtrip(coeffs in prop::collection::vec(0i16..4590, 761)) {
+        use origin_crypto_sdk::pqc::ntru_prime::encode;
+        use origin_crypto_sdk::pqc::ntru_prime::rq::modq;
+
+        let mut f = [0i16; 761];
+        for i in 0..761 {
+            f[i] = modq::freeze(coeffs[i] as i32 - 2295);
+        }
+        let encoded = encode::rq_encode(&f);
+        prop_assert_eq!(encoded.len(), 1158);
+        let decoded = encode::rq_decode(&encoded);
+        prop_assert_eq!(f, decoded, "Rq roundtrip must preserve coefficients");
+    }
+
+    /// Small encode→decode is a roundtrip for any ternary polynomial.
+    #[test]
+    fn prop_small_encode_decode_roundtrip(coeffs in prop::collection::vec(-1i8..=1, 761)) {
+        use origin_crypto_sdk::pqc::ntru_prime::encode;
+
+        let mut f = [0i8; 761];
+        for i in 0..761 {
+            f[i] = coeffs[i];
+        }
+        let encoded = encode::small_encode(&f);
+        prop_assert_eq!(encoded.len(), 191);
+        let decoded = encode::small_decode(&encoded);
+        prop_assert_eq!(f, decoded, "Small roundtrip must preserve coefficients");
+    }
+
+    /// Rounded encode→decode is a roundtrip for multiples of 3.
+    #[test]
+    fn prop_rounded_encode_decode_roundtrip(coeffs in prop::collection::vec(0i16..1531, 761)) {
+        use origin_crypto_sdk::pqc::ntru_prime::encode;
+        use origin_crypto_sdk::pqc::ntru_prime::rq::modq;
+
+        let mut f = [0i16; 761];
+        for i in 0..761 {
+            // Map from [0, 1530] to [-2295, 2295] (multiples of 3)
+            f[i] = modq::freeze(coeffs[i] as i32 * 3 - 2295);
+        }
+        let encoded = encode::rounded_encode(&f);
+        prop_assert_eq!(encoded.len(), 1007);
+        let decoded = encode::rounded_decode(&encoded);
+        prop_assert_eq!(f, decoded, "Rounded roundtrip must preserve coefficients");
     }
 }

@@ -43,6 +43,8 @@ pub fn siphash_expand(bits: usize, c: usize, d: usize, key: &[u8; 16], msg: &[u8
 
 /// Core SipHash-c-d implementation.
 fn siphash_cd(c: usize, d: usize, key: &[u8; 16], msg: &[u8]) -> u64 {
+    // SAFETY: key is &[u8; 16], so key[0..8] and key[8..16] are always 8 bytes.
+    // try_into().unwrap() cannot fail — the slice length is proven by the type.
     let k0 = u64::from_le_bytes(key[0..8].try_into().unwrap());
     let k1 = u64::from_le_bytes(key[8..16].try_into().unwrap());
 
@@ -55,6 +57,7 @@ fn siphash_cd(c: usize, d: usize, key: &[u8; 16], msg: &[u8]) -> u64 {
     let full_blocks = len / 8;
 
     for i in 0..full_blocks {
+        // SAFETY: full_blocks = len / 8, so each msg[i*8..(i+1)*8] is exactly 8 bytes.
         let m = u64::from_le_bytes(msg[i * 8..(i + 1) * 8].try_into().unwrap());
         v3 ^= m;
         for _ in 0..c {

@@ -5,6 +5,12 @@
 //! All randomness in Origin flows through this DRBG so that
 //! PQC key generation (NTRU, Falcon) is fully deterministic from the master seed.
 //!
+//! # Experimental
+//!
+//! This is a custom DRBG implementation. While it follows established
+//! design patterns (ChaCha20-based, auto-reseed), it has not undergone
+//! independent cryptographic review or NIST SP 800-90A certification.
+//!
 //! # Submodules
 //!
 //! - [`otp`] — One-time pad utilities (information-theoretic encryption).

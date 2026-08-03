@@ -22,9 +22,9 @@ The Origin Crypto SDK contains both external (battle-tested) and custom implemen
 | HMAC-SHA3 | External | `hmac` crate |
 | HKDF-SHA3 | External | `hkdf` crate |
 | Serpent CBC | External | `serpent` crate |
-| Falcon-512/1024 | External | `falcon-rust` crate |
+| Falcon-512/1024 | External | `falcon-rs` crate (FIPS 206) |
 | Reed-Solomon | Custom | Parallel encoding support |
-| NTRU Prime (sntrup761) | Custom | Based on NIST Round 3 reference implementation |
+| NTRU Prime (sntrup761) | Custom | NIST-compatible encoding (supercop-20201130), CCA-secure KEM |
 | Ed41417 (Curve41417) | Custom | Based on Bernstein et al. CHES 2014 paper |
 | Native ChaCha20-Poly1305 | Custom | RFC 8439 reference, native Rust (zero-dep) |
 | Native Poly1305 | Custom | RFC 8439 §2.5, native Rust |
@@ -39,7 +39,7 @@ The Origin Crypto SDK contains both external (battle-tested) and custom implemen
 ### Constant-time
 
 - **NTRU Prime**: Uses constant-time comparisons where applicable
-- **Falcon**: Relies on `falcon-rust` implementation
+- **Falcon**: Relies on `falcon-rs` (FIPS 206) implementation
 - **Ed41417**: Scalar multiplication uses Montgomery ladder
 - **Poly1305**: Field arithmetic avoids secret-dependent branches
 - **ChaCha20**: Standard ARX construction, no secret-dependent branches
@@ -81,3 +81,56 @@ on:
 ## Reporting Vulnerabilities
 
 If you discover a security vulnerability, please report it privately to the repository maintainers. Do not open a public issue.
+
+### Disclosure process
+
+1. Report the vulnerability privately via the repository's security advisories
+   page (GitHub Security Advisories) or direct contact with maintainers.
+2. Maintainiers will acknowledge receipt within 72 hours and provide an
+   initial assessment within 7 days.
+3. A fix or mitigation will be developed and coordinated disclosure scheduled.
+4. The reporter will be credited unless they prefer to remain anonymous.
+
+## Dependency Policy
+
+### Pinning
+
+Critical cryptographic dependencies are pinned to exact versions (`=x.y.z`)
+to prevent unexpected breaking changes or subtle behavioral differences in
+cryptographic primitives:
+
+| Dependency | Version | Pin Reason |
+|-----------|---------|------------|
+| `falcon-rs` | `0.2.5` | FIPS 206, NIST KAT verified |
+| `chacha20poly1305` | `=0.10.1` | Stable API; 0.11 has breaking changes |
+| `argon2` | `=0.5.3` | Matches password-hash traits used internally |
+| `sha2` | `=0.10.8` | Compatible with Digest trait usage |
+| `rand` | `=0.8.5` | Intentionally pinned to avoid getrandom 0.3 migration |
+| `unicode-normalization` | `=0.1.25` | NFKC canonical-form checks; input-validation dep |
+
+### Update cadence
+
+- Non-critical dependencies: update quarterly or when a security advisory
+  requires it.
+- Pinned cryptographic dependencies: update only after testing all affected
+  code paths with the full test suite (including KAT vectors, differential
+  tests, and property tests).
+- New dependencies: must be reviewed for license compatibility (via
+  `cargo-deny`), security advisories (via `cargo-audit`), and maintenance
+  status before being added.
+
+### Advisory response
+
+- `cargo audit` and `cargo deny check` run on every PR and push.
+- Vulnerabilities in production dependencies: fix immediately or pin to a
+  non-vulnerable version.
+- Vulnerabilities in dev-only dependencies: fix in the next release cycle
+  unless the vulnerability affects the build or test integrity.
+- All accepted advisories are documented in `deny.toml` with a reason.
+
+### Supply-chain checks
+
+- **cargo-audit**: checks Cargo.lock against the RustSec advisory database
+- **cargo-deny**: checks licenses, duplicate versions, yanked crates, and
+  banned sources
+- Both run in CI on every push and PR

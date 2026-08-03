@@ -90,7 +90,7 @@ cargo fmt --check
 | secp256k1 | Native (this crate) | Active |
 | ChaCha20  | chacha20poly1305 | External |
 | BLAKE3    | blake3 | External |
-| Falcon    | falcon-rust | External |
+| Falcon    | falcon-rs (FIPS 206) | External |
 
 ### Dependency Updates
 

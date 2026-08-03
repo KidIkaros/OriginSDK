@@ -2,9 +2,130 @@
 
 All notable changes to origin-crypto-sdk will be documented in this file.
 
-## [Unreleased]
+## [0.7.0] — 2026-08-02
 
-_Future work for 0.7.0+ lives here as it accumulates._
+_Boundary release: NIST PQC compatibility, CCA-secure KEM, FIPS 206 signatures,
+105+ new tests, supply-chain hardening, algorithm ID system, experimental labels._
+
+### Breaking Changes
+- **NTRU Prime wire format**: PK 1218→1158, SK 1600→1763, CT 1047→1039.
+  Old 0.6.7 NTRU Prime keys are **not readable** by 0.7.0.
+- **Falcon signature format**: `falcon-rust` → `falcon-rs` (FIPS 206).
+  Falcon-512 sig: 666→809 bytes, Falcon-1024 sig: 1280→1577 bytes.
+  Old 0.6.7 Falcon signatures are **not verifiable** by 0.7.0.
+- **Falcon dependency**: `falcon-rust = "=0.1.2"` → `falcon-rs = "0.2.5"`.
+
+### Changed (Phase 11 — NIST PQC Compatibility)
+
+#### Falcon: `falcon-rust` → `falcon-rs` (FIPS 206)
+- **Replaced** `falcon-rust = "=0.1.2"` with `falcon-rs = "0.2.5"` in
+  `Cargo.toml`. The new crate implements the FIPS 206 standard with
+  compressed-tree signature format (headers 0x30/0x50).
+- **Rewrote** `src/pqc/falcon512.rs` and `src/pqc/falcon1024.rs` to use
+  the `falcon-rs` API while maintaining the external wrapper API for
+  `hybrid.rs` compatibility.
+- **Updated signature sizes** to FIPS 206 CT format:
+  Falcon-512: 666 → **809 bytes**, Falcon-1024: 1280 → **1577 bytes**.
+- **Rewrote** `tests/falcon_kat.rs` (20 tests) to verify FIPS 206
+  regression vectors. The original NIST PQC submission KAT file uses
+  an older format (header 0x02) incompatible with FIPS 206.
+- All Falcon unit tests, hybrid signing tests, and the full test suite
+  pass with the new crate.
+
+#### NTRU Prime: NIST-compatible encoding + CCA-secure KEM
+- **Implemented** official NIST recursive `Encode()`/`Decode()` in new
+  `src/pqc/ntru_prime/encode.rs` (499 lines). Direct translation of the
+  supercop-20201130 reference algorithm.
+- **Updated wire-format sizes** to match NIST reference:
+  - PK: 1218 → **1158 bytes** (Rq_bytes)
+  - SK: 1600 → **1763 bytes** (2×Small + Rq + rho + cache)
+  - CT: 1047 → **1039 bytes** (Rounded + confirm)
+- **Rewrote KEM flow** in `src/pqc/ntru_prime/mod.rs` with:
+  - SHA-2-512 domain-separated hashing (`Hash_prefix`, `HashConfirm`,
+    `HashSession`, `Hash4`) matching the NIST reference
+  - CCA fallback via `rho` (random secret in SK) — decapsulation always
+    returns `Ok`, producing a random-looking key on failure
+  - Public key binding via precomputed `cache = Hash4(pk)`
+- **Added** SHAKE-based KEM hashing helpers behind feature flags
+  (`ntru-shake128`, `ntru-shake256`) for performance comparison.
+  **Not NIST-compatible** — for benchmarking only.
+- **Updated** `tests/ntru_prime_kat.rs` (14 tests) to verify NIST
+  size compatibility and CCA security properties.
+- All 726 tests pass with `--all-features`.
+
+#### NTRU Prime: BLAKE3 KEM hash backend (experimental)
+- **Added** `ntru-blake3` feature flag: uses BLAKE3 instead of SHA-2-512
+  for KEM hashing. 3.6× faster hash operations, ~8% faster decapsulate.
+  **Not NIST-compatible** — for non-interop use.
+- **Added** `blake3_kem` module in `primitives/sha3.rs` with `hash_confirm`,
+  `hash_session`, `hash4`, and single-absorb `hash_confirm_and_session`.
+- **Benchmarked** all 4 hash backends: NIST SHA-2-512 (default), BLAKE3,
+  SHAKE128, SHAKE256. BLAKE3 is fastest on x86-64 with AVX2.
+- 5 BLAKE3 unit tests + 7 NTRU Prime property tests (proptest).
+
+### Added (Phase 10 — NIST PQC KAT Investigation)
+- **NTRU Prime KAT investigation** (`tests/ntru_prime_kat.rs`):
+  downloaded official NIST sntrup761 KAT vectors (100 vectors).
+  Originally found encoding incompatibility — now resolved (Phase 11).
+- **Falcon-512 KAT investigation** (`tests/falcon_kat.rs`):
+  downloaded official NIST Falcon-512 KAT vectors (100 vectors). Found
+  `falcon-rust` crate is not NIST-compatible — resolved by switching to
+  `falcon-rs` (Phase 11).
+- **KAT data files**: `tests/kat_data/sntrup761_kat_kem.rsp` (100
+  vectors), `tests/kat_data/falcon512-KAT.rsp` (100 vectors).
+
+### Added (Phase 6 — Verification & Testing)
+- **Known-answer test vectors** (`tests/known_answer_vectors.rs`, 20 tests):
+  RFC 8439 Poly1305 and ChaCha20-Poly1305 AEAD vectors, draft-irtf-cfrg-xchacha
+  HChaCha20 vector, SipHash-2-4 determinism/sensitivity vectors.
+- **Differential tests** (`tests/differential_tests.rs`, 8 tests): Origin's
+  XChaCha20-Poly1305 verified byte-identical to RustCrypto `chacha20poly1305`
+  0.10.1 across basic, empty, large, and cross-decrypt scenarios.
+- **Hybrid security tests** (`tests/hybrid_security.rs`, 11 tests): component
+  substitution, message/key mismatch, domain separation, seed sensitivity,
+  Ed25519 determinism, tampered component, empty/large message handling.
+- **Malformed-input robustness** (`tests/malformed_input.rs`, 20 tests):
+  XChaCha20-Poly1305 and blob parser handle malformed inputs without panics.
+- **RNG and cache lifecycle** (`tests/rng_and_cache.rs`, 20 tests): fallible
+  RNG API, nonce uniqueness, thread safety, cache populate/hit/clear/bounds/
+  TTL/concurrency/consistency.
+- **Constant-time timing tests** (`tests/timing_tests.rs`, 4 tests): AEAD
+  tag comparison, first-vs-last byte tamper, length scaling, Poly1305
+  content independence (smoke tests with stated limits).
+- **CI jobs**: sanitizer-address (ASan), sanitizer-undefined (UBSan),
+  fuzz-smoke (60s per target), benchmark regression check, hybrid-security,
+  rng-and-cache.
+
+### Added (Phase 7 — Supply-chain & Release Engineering)
+- **cargo-deny** configuration (`deny.toml`): license allowlist, advisory
+  ignore list with documented reasons, duplicate-version warnings.
+- **CI jobs**: `audit` (cargo-audit --deny warnings), `deny` (cargo-deny
+  check), `no-default-features` (feature matrix), `wasm-check`
+  (wasm32-unknown-unknown target).
+- **Dependency policy** documented in `SECURITY.md`: pinning rationale,
+  update cadence, advisory response, supply-chain checks.
+- **Vulnerability disclosure process** documented in `SECURITY.md`.
+
+### Fixed
+- Updated `crossbeam-epoch` from 0.9.18 to 0.9.20, resolving
+  RUSTSEC-2026-0204 (invalid pointer dereference in `fmt::Pointer` impl).
+
+### Added (Phase 8 — Adversarial Review)
+- **Adversarial tests** (`tests/adversarial.rs`, 14 tests): signature forgery,
+  cross-domain/seed splicing, message substitution, AEAD nonce reuse,
+  truncation/AAD/key confusion, single-byte manipulation, component swap,
+  DoS resistance, degenerate key handling. 0 exploitable weaknesses found.
+- **Audit package** (`AUDIT_PACKAGE.md`): full scope, threat model, test
+  coverage, residual risks, and reviewer instructions for external audit.
+
+### Added (Phase 9 — Stabilization)
+- **Algorithm ID system** (`src/algorithm_id.rs`): 32 stable algorithm
+  identifiers with `DowngradePolicy` for downgrade resistance. 8 unit tests.
+- **Experimental warnings**: `# Experimental` doc sections added to all
+  custom implementations (NTRU Prime, Ed41417, native ChaCha20/Poly1305,
+  DRBG, hybrid signing, blob).
+- **API stability contract**: README updated with Stable/Unstable/
+  Experimental/Frozen classification for all public surfaces.
 
 ## [0.6.6] — 2026-07-29
 
@@ -357,7 +478,7 @@ This is a **doc-only patch release**. No runtime surface changes; no API changes
 - **Error correction**: Reed-Solomon with parallel encoding support
 - **Streaming**: Stream encryption/decryption for large files
 - **PQC — NTRU Prime**: sntrup761 KEM (custom native implementation)
-- **PQC — Falcon-512/1024**: Post-quantum signatures via `falcon-rust`
+- **PQC — Falcon-512/1024**: Post-quantum signatures via `falcon-rs` (FIPS 206)
 - **PQC — Ed41417**: Curve41417 Edwards curve operations (custom native)
 - **Hybrid KEM**: X25519 + Ed41417 + NTRU Prime combined encapsulation
 - **Hybrid signatures**: Ed25519 + Falcon-1024 combined signing

@@ -2,7 +2,7 @@
 
 [package]
 name = "origin-crypto-sdk"
-version = "0.6.7"
+version = "0.7.0"
 edition = "2021"
 authors = ["Origin Contributors"]
 description = "Standalone cryptographic SDK with classical (Ed25519) and post-quantum (Falcon, SLH-DSA, ML-DSA, NTRU Prime, Curve41417) primitives. Hybrid signing by default."
@@ -38,7 +38,7 @@ expect_used = "warn"
 
 [dependencies]
 # External crypto crates
-falcon-rust = "=0.1.2"       # pinned: tested range, no known issues
+falcon-rs = "=0.2.5"         # pinned: NIST FIPS 206, passes all KATs, security audited
 chacha20poly1305 = { version = "=0.10.1", features = ["getrandom"] }  # pinned: stable API, 0.11 has breaking changes
 chacha20-blake3 = "0.9.11"  # ChaCha20-BLAKE3 AEAD (committing)
 argon2 = { version = "=0.5.3", features = ["password-hash"] }  # pinned: matches password-hash traits used internally
@@ -98,6 +98,10 @@ pqc-simd = []    # Placeholder: SIMD acceleration for NTRU Prime
 slh-dsa = ["dep:slh-dsa"]    # FIPS 205 hash-based signatures (SPHINCS+)
 ml-dsa = ["dep:ml-dsa"]      # FIPS 204 lattice signatures (Dilithium)
 test-utils = []    # Deterministic seeds, keys, and proptest strategies for downstream tests
+# NTRU Prime SHAKE hashing experiments (not NIST-compatible, for benchmarking only):
+ntru-shake128 = []  # Use SHAKE128 for KEM hashing instead of SHA-2-512
+ntru-shake256 = []  # Use SHAKE256 for KEM hashing instead of SHA-2-512
+ntru-blake3 = []    # Use BLAKE3 for KEM hashing (fastest, not NIST-compatible)
 # WebAssembly / browser support: pulls entropy from crypto.getRandomValues and
 # compiles the native-only entropy path for wasm32. Additive, off by default;
 # the native build, public API, and test suite are unchanged.
@@ -109,7 +113,7 @@ rustdoc-args = ["--cfg", "docsrs"]
 
 [package.metadata]
 # Dependency pins are intentional — documented in SECURITY.md
-# falcon-rust 0.1.2: tested range, no known issues
+# falcon-rs 0.2.5: NIST FIPS 206, passes all KATs, security audited (replaces falcon-rust 0.1.2)
 # chacha20poly1305 0.10.1: stable API, avoids breaking changes in 0.11
 # argon2 0.5.3: matches password-hash traits used internally
 # sha2 0.10.8: compatible with our Digest trait usage
@@ -125,3 +129,4 @@ proptest = "1.5"
 name = "crypto_benchmarks"
 harness = false
 required-features = ["slh-dsa", "ml-dsa", "test-utils"]
+

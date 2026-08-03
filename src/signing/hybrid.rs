@@ -36,6 +36,15 @@
 //! ### KDF constructions (derived from master seed)
 //! - [`Ed25519ChaCha20Blake3Sha3_256`] — Ed25519 + keyed-BLAKE3 + HMAC-SHA3-256
 //!
+//! # Experimental
+//!
+//! These hybrid constructions are novel compositions that have not undergone
+//! independent cryptographic review. While individual components (Ed25519,
+//! Falcon, BLAKE3, SHA3) are well-studied, the composition itself — including
+//! domain separation, key binding, and downgrade resistance — requires formal
+//! analysis before production use. The "both must verify" property has been
+//! tested with 25+ adversarial tests, but a security proof is not available.
+//!
 //! ## Quick Start
 //!
 //! ```rust
@@ -74,9 +83,11 @@
 //!   separation, so the same master seed can be reused across domains safely.
 
 use std::sync::Arc;
+use std::time::{Duration, Instant};
 
 use crate::error::{CryptoError, Result};
 use crate::internal::subtle::ConstantTimeEq;
+use crate::internal::zeroize::Zeroize;
 use crate::pqc::ed448::{
     Signature as Ed448Signature, SigningKey as Ed448SigningKey, VerifyingKey as Ed448VerifyingKey,
 };
@@ -444,6 +455,10 @@ impl Ed448Sha3_256 {
 
 impl Ed25519Falcon1024 {
     /// Sign with both Ed25519 and Falcon-1024 keys
+    ///
+    /// # Panics
+    /// Panics if Falcon signing fails (e.g. malformed private key).
+    /// Use [`Ed25519Falcon1024::try_sign`] for a fallible variant.
     pub fn sign(
         ed25519_sk: &Ed25519SigningKey,
         falcon_sk: &FalconPrivateKey,
@@ -455,6 +470,20 @@ impl Ed25519Falcon1024 {
             ed25519_sig,
             falcon_sig,
         }
+    }
+
+    /// Sign with both Ed25519 and Falcon-1024 keys, returning an error on failure.
+    pub fn try_sign(
+        ed25519_sk: &Ed25519SigningKey,
+        falcon_sk: &FalconPrivateKey,
+        message: &[u8],
+    ) -> Result<Self> {
+        let ed25519_sig = ed25519_sk.sign(message);
+        let falcon_sig = falcon_sign(message, falcon_sk)?;
+        Ok(Self {
+            ed25519_sig,
+            falcon_sig,
+        })
     }
 
     /// Verify both signatures - both MUST be valid
@@ -479,6 +508,10 @@ impl Ed25519Falcon1024 {
 
 impl Ed25519Falcon512 {
     /// Sign with both Ed25519 and Falcon-512 keys
+    ///
+    /// # Panics
+    /// Panics if Falcon-512 signing fails (e.g. malformed private key).
+    /// Use [`Ed25519Falcon512::try_sign`] for a fallible variant.
     pub fn sign(
         ed25519_sk: &Ed25519SigningKey,
         falcon_sk: &Falcon512PrivateKey,
@@ -490,6 +523,20 @@ impl Ed25519Falcon512 {
             ed25519_sig,
             falcon_sig,
         }
+    }
+
+    /// Sign with both Ed25519 and Falcon-512 keys, returning an error on failure.
+    pub fn try_sign(
+        ed25519_sk: &Ed25519SigningKey,
+        falcon_sk: &Falcon512PrivateKey,
+        message: &[u8],
+    ) -> Result<Self> {
+        let ed25519_sig = ed25519_sk.sign(message);
+        let falcon_sig = falcon512_sign(message, falcon_sk)?;
+        Ok(Self {
+            ed25519_sig,
+            falcon_sig,
+        })
     }
 
     /// Verify both signatures - both MUST be valid
@@ -515,6 +562,10 @@ impl Ed25519Falcon512 {
 
 impl Ed448Falcon1024 {
     /// Sign with both Ed448 and Falcon-1024 keys
+    ///
+    /// # Panics
+    /// Panics if Falcon signing fails (e.g. malformed private key).
+    /// Use [`Ed448Falcon1024::try_sign`] for a fallible variant.
     pub fn sign(ed448_sk: &Ed448SigningKey, falcon_sk: &FalconPrivateKey, message: &[u8]) -> Self {
         let ed448_sig = ed448_sk.sign(message);
         let falcon_sig = falcon_sign(message, falcon_sk).expect("Falcon signing failed");
@@ -522,6 +573,20 @@ impl Ed448Falcon1024 {
             ed448_sig,
             falcon_sig,
         }
+    }
+
+    /// Sign with both Ed448 and Falcon-1024 keys, returning an error on failure.
+    pub fn try_sign(
+        ed448_sk: &Ed448SigningKey,
+        falcon_sk: &FalconPrivateKey,
+        message: &[u8],
+    ) -> Result<Self> {
+        let ed448_sig = ed448_sk.sign(message);
+        let falcon_sig = falcon_sign(message, falcon_sk)?;
+        Ok(Self {
+            ed448_sig,
+            falcon_sig,
+        })
     }
 
     /// Verify both signatures - both MUST be valid
@@ -683,6 +748,7 @@ impl HybridSigningKeyBundle {
         )?;
         let ed25519_sk = Ed25519SigningKey::from_bytes(&ed25519_seed);
         let ed25519_pk = ed25519_sk.verifying_key();
+        ed25519_seed.zeroize();
 
         // Falcon-1024 — derive seed with domain separation, then run Falcon keygen
         let mut falcon_seed = [0u8; 32];
@@ -694,6 +760,7 @@ impl HybridSigningKeyBundle {
         )?;
         let (falcon1024_pk, falcon1024_sk) =
             falcon_keygen(&falcon_seed).map_err(|e| CryptoError::Pqc(e.to_string()))?;
+        falcon_seed.zeroize();
 
         Ok(Self {
             ed25519: (ed25519_sk, ed25519_pk),
@@ -705,8 +772,17 @@ impl HybridSigningKeyBundle {
     }
 
     /// Sign with the canonical Ed25519 + Falcon-1024 hybrid
+    ///
+    /// # Panics
+    /// Panics if Falcon signing fails. Use [`HybridSigningKeyBundle::try_sign_hybrid`]
+    /// for a fallible variant.
     pub fn sign_hybrid(&self, message: &[u8]) -> Ed25519Falcon1024 {
         Ed25519Falcon1024::sign(&self.ed25519.0, &self.falcon1024.0, message)
+    }
+
+    /// Sign with the canonical Ed25519 + Falcon-1024 hybrid, returning an error on failure.
+    pub fn try_sign_hybrid(&self, message: &[u8]) -> Result<Ed25519Falcon1024> {
+        Ed25519Falcon1024::try_sign(&self.ed25519.0, &self.falcon1024.0, message)
     }
 
     /// Get the Ed25519 verifying key
@@ -732,18 +808,26 @@ impl HybridSigningKeyBundle {
     /// many messages with the same (seed, domain), use this to avoid
     /// re-deriving the bundle on every call.
     ///
-    /// The cache holds at most one bundle per (seed, domain) pair and lives for
-    /// the duration of the process. Drop it via [`bundle_cache_clear`] if you
-    /// need to force re-derivation.
+    /// The cache is bounded by [`bundle_cache_configure`]. Expired and oldest
+    /// entries are evicted automatically on each access. Use
+    /// [`bundle_cache_clear`] to force full eviction.
     pub fn from_seed_cached(master_seed: &[u8; 32], domain: &str) -> Result<Arc<Self>> {
-        let key = (*master_seed, domain.to_string());
-        let mut cache = bundle_cache()
-            .bundle_cache
-            .lock()
-            .expect("bundle cache poisoned");
-        if let Some(bundle) = cache.get(&key) {
-            return Ok(bundle.clone());
+        let key = bundle_cache_key(master_seed, domain);
+        let cache = bundle_cache();
+        let mut entries = match cache.entries.lock() {
+            Ok(entries) => entries,
+            Err(poisoned) => poisoned.into_inner(),
+        };
+
+        // Evict expired entries before lookup so a stale hit is impossible.
+        cache.evict_expired_locked(&mut entries);
+
+        if let Some(entry) = entries.get(&key) {
+            return Ok(entry.bundle.clone());
         }
+
+        // Evict oldest if at capacity.
+        cache.evict_oldest_locked(&mut entries);
 
         #[allow(non_local_definitions)]
         impl std::fmt::Debug for HybridSigningKeyBundle {
@@ -776,28 +860,93 @@ impl HybridSigningKeyBundle {
             }
         }
         let bundle = Arc::new(Self::from_seed(master_seed, domain)?);
-        cache.insert(key, bundle.clone());
+        entries.insert(key, CacheEntry::new(bundle.clone()));
         Ok(bundle)
     }
 }
 
-/// Process-wide cache for [`HybridSigningKeyBundle`], keyed by (seed, domain).
+/// A cached bundle with insertion timestamp for TTL and FIFO eviction.
+struct CacheEntry {
+    bundle: Arc<HybridSigningKeyBundle>,
+    inserted_at: Instant,
+}
+
+impl CacheEntry {
+    fn new(bundle: Arc<HybridSigningKeyBundle>) -> Self {
+        Self {
+            bundle,
+            inserted_at: Instant::now(),
+        }
+    }
+}
+
+/// Default maximum number of cached bundles before FIFO eviction kicks in.
+pub const DEFAULT_BUNDLE_CACHE_MAX_ENTRIES: usize = 8;
+
+/// Process-wide cache for [`HybridSigningKeyBundle`], keyed by a
+/// domain-separated digest of `(seed, domain)`.
 ///
-/// Process-global (shared across all threads) so that repeated derivation of the
-/// same (seed, domain) — e.g. many `#[test]` threads, or a server handling many
-/// sign requests — pays the ~5s Falcon-1024 keygen only once. A single
-/// `std::sync::Mutex` guards the map; the bundles themselves are `Arc` and cheap
-/// to clone on cache hit.
+/// The digest prevents the cache index from retaining a second raw copy of the
+/// caller's master seed. The cache is bounded by a maximum entry count and an
+/// optional TTL. When an entry is evicted, the cache drops its `Arc` clone; if
+/// no other `Arc` clones exist outside the cache, the bundle's key material is
+/// zeroized via the `Drop` implementations of the individual key types
+/// (Falcon, Ed25519, Ed448). Callers that retain `Arc` clones past eviction
+/// keep the key material alive until their last clone is dropped — this is a
+/// documented limitation of reference-counted caching.
 struct BundleCache {
-    bundle_cache: std::sync::Mutex<
-        std::collections::HashMap<([u8; 32], String), Arc<HybridSigningKeyBundle>>,
-    >,
+    entries: std::sync::Mutex<std::collections::HashMap<[u8; 32], CacheEntry>>,
+    max_entries: std::sync::Mutex<usize>,
+    ttl: std::sync::Mutex<Option<Duration>>,
+}
+
+fn bundle_cache_key(master_seed: &[u8; 32], domain: &str) -> [u8; 32] {
+    let mut input = Vec::with_capacity(32 + 8 + domain.len());
+    input.extend_from_slice(master_seed);
+    input.extend_from_slice(&(domain.len() as u64).to_le_bytes());
+    input.extend_from_slice(domain.as_bytes());
+    blake3::derive_key("origin-crypto-sdk/bundle-cache/v1", &input)
 }
 
 impl BundleCache {
     fn new() -> Self {
         Self {
-            bundle_cache: std::sync::Mutex::new(std::collections::HashMap::new()),
+            entries: std::sync::Mutex::new(std::collections::HashMap::new()),
+            max_entries: std::sync::Mutex::new(DEFAULT_BUNDLE_CACHE_MAX_ENTRIES),
+            ttl: std::sync::Mutex::new(None),
+        }
+    }
+
+    /// Remove entries whose TTL has elapsed. Caller must hold the entries lock.
+    fn evict_expired_locked(&self, entries: &mut std::collections::HashMap<[u8; 32], CacheEntry>) {
+        let ttl = match self.ttl.lock() {
+            Ok(ttl) => *ttl,
+            Err(poisoned) => *poisoned.into_inner(),
+        };
+        let Some(ttl) = ttl else {
+            return;
+        };
+        let now = Instant::now();
+        entries.retain(|_, entry| now.duration_since(entry.inserted_at) < ttl);
+    }
+
+    /// Evict the oldest entry if the cache is at or above capacity.
+    /// Caller must hold the entries lock.
+    fn evict_oldest_locked(&self, entries: &mut std::collections::HashMap<[u8; 32], CacheEntry>) {
+        let max = match self.max_entries.lock() {
+            Ok(max) => *max,
+            Err(poisoned) => *poisoned.into_inner(),
+        };
+        if entries.len() < max {
+            return;
+        }
+        // FIFO eviction: find and remove the entry with the earliest insertion time.
+        if let Some(oldest_key) = entries
+            .iter()
+            .min_by_key(|(_, entry)| entry.inserted_at)
+            .map(|(key, _)| *key)
+        {
+            entries.remove(&oldest_key);
         }
     }
 }
@@ -809,15 +958,63 @@ fn bundle_cache() -> &'static BundleCache {
     BUNDLE_CACHE.get_or_init(BundleCache::new)
 }
 
+/// Configure the process-wide bundle cache bounds.
+///
+/// Sets the maximum number of cached bundles and an optional time-to-live.
+/// Entries that exceed the TTL are evicted on the next cache access. When the
+/// cache exceeds `max_entries`, the oldest entry is evicted (FIFO).
+///
+/// Calling this clears the existing cache so stale entries under the old policy
+/// do not persist. Call once at process startup before any `from_seed_cached`
+/// call for deterministic behavior.
+///
+/// # Fork safety
+///
+/// After a `fork()`, the child process inherits the parent's cache contents
+/// including private key material. The child must call [`bundle_cache_clear`]
+/// (or [`bundle_cache_configure`]) before using `from_seed_cached` to avoid
+/// operating on stale key material from the parent.
+///
+/// # Panics
+/// This function does not panic. If the internal locks are poisoned, the
+/// previous values are recovered and overwritten.
+pub fn bundle_cache_configure(max_entries: usize, ttl: Option<Duration>) {
+    let cache = bundle_cache();
+    match cache.entries.lock() {
+        Ok(mut entries) => entries.clear(),
+        Err(poisoned) => poisoned.into_inner().clear(),
+    }
+    match cache.max_entries.lock() {
+        Ok(mut current) => *current = max_entries.max(1),
+        Err(poisoned) => *poisoned.into_inner() = max_entries.max(1),
+    }
+    match cache.ttl.lock() {
+        Ok(mut current) => *current = ttl,
+        Err(poisoned) => *poisoned.into_inner() = ttl,
+    }
+}
+
 /// Clear the process-wide bundle cache. Useful for tests or memory-constrained
 /// environments.
 pub fn bundle_cache_clear() {
     if let Some(cache) = BUNDLE_CACHE.get() {
-        cache
-            .bundle_cache
-            .lock()
-            .expect("bundle cache poisoned")
-            .clear();
+        match cache.entries.lock() {
+            Ok(mut entries) => entries.clear(),
+            Err(poisoned) => poisoned.into_inner().clear(),
+        }
+    }
+}
+
+/// Return the current number of entries in the process-wide bundle cache.
+/// Intended for diagnostics and tests.
+pub fn bundle_cache_len() -> usize {
+    if let Some(cache) = BUNDLE_CACHE.get() {
+        match cache.entries.lock() {
+            Ok(entries) => entries.len(),
+            Err(poisoned) => poisoned.into_inner().len(),
+        }
+    } else {
+        0
     }
 }
 
@@ -834,6 +1031,18 @@ pub fn falcon1024_keygen(seed: &[u8; 32]) -> Result<(FalconPublicKey, FalconPriv
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Mutex to serialize tests that mutate the process-global bundle cache.
+    /// Without this, parallel test threads interfere via the shared static.
+    static CACHE_TEST_GUARD: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+    /// Whether to run expensive cache tests (eviction, TTL, concurrent, lifecycle).
+    /// Each cache test triggers Falcon-1024 keygen (~5s per call). Set
+    /// `ORIGIN_FULL_TESTS=1` in CI to enable them. In fast dev mode, only
+    /// the basic cache hit/clear tests run.
+    fn run_expensive_cache_tests() -> bool {
+        std::env::var("ORIGIN_FULL_TESTS").as_deref() == Ok("1")
+    }
 
     #[test]
     fn test_blake3_hash() {
@@ -1072,6 +1281,7 @@ mod tests {
     /// The cache must produce the same keys as the non-cached path.
     #[test]
     fn test_hybrid_signing_key_bundle_cache_consistency() {
+        let _guard = CACHE_TEST_GUARD.lock().unwrap();
         bundle_cache_clear();
         let seed = [42u8; 32];
         let b1 = HybridSigningKeyBundle::from_seed(&seed, "test-domain").unwrap();
@@ -1086,6 +1296,7 @@ mod tests {
     /// Two calls to `from_seed_cached` should return Arc to the same instance.
     #[test]
     fn test_hybrid_signing_key_bundle_cache_returns_same_arc() {
+        let _guard = CACHE_TEST_GUARD.lock().unwrap();
         bundle_cache_clear();
         let seed = [42u8; 32];
         let b1 = HybridSigningKeyBundle::from_seed_cached(&seed, "cache-test")
@@ -1095,6 +1306,207 @@ mod tests {
 
         // Both Arcs point to the same allocation
         assert!(Arc::ptr_eq(&b1, &b2));
+    }
+
+    /// The cache must respect a max-entries cap and evict the oldest entry
+    /// (FIFO) when full, so that key material does not accumulate unbounded.
+    #[test]
+    fn test_bundle_cache_evicts_oldest_at_capacity() {
+        if !run_expensive_cache_tests() {
+            return;
+        }
+        let _guard = CACHE_TEST_GUARD.lock().unwrap();
+        bundle_cache_clear();
+        bundle_cache_configure(2, None);
+        assert_eq!(bundle_cache_len(), 0);
+
+        let s1 =
+            HybridSigningKeyBundle::from_seed_cached(&[1u8; 32], "evict-a").expect("first insert");
+        assert_eq!(bundle_cache_len(), 1);
+
+        let _s2 =
+            HybridSigningKeyBundle::from_seed_cached(&[2u8; 32], "evict-b").expect("second insert");
+        assert_eq!(bundle_cache_len(), 2);
+
+        // Third insert should evict the oldest (s1's entry).
+        let _s3 =
+            HybridSigningKeyBundle::from_seed_cached(&[3u8; 32], "evict-c").expect("third insert");
+        assert_eq!(bundle_cache_len(), 2);
+
+        // s1's Arc is still alive (we hold it), but re-caching should produce a
+        // new Arc because the old entry was evicted.
+        let s1_again = HybridSigningKeyBundle::from_seed_cached(&[1u8; 32], "evict-a")
+            .expect("re-insert after eviction");
+        assert!(!Arc::ptr_eq(&s1, &s1_again));
+
+        // Restore defaults for other tests.
+        bundle_cache_clear();
+        bundle_cache_configure(DEFAULT_BUNDLE_CACHE_MAX_ENTRIES, None);
+    }
+
+    /// The cache must evict expired entries on access when a TTL is configured.
+    #[test]
+    fn test_bundle_cache_evicts_expired_entries_on_ttl() {
+        if !run_expensive_cache_tests() {
+            return;
+        }
+        let _guard = CACHE_TEST_GUARD.lock().unwrap();
+        bundle_cache_clear();
+        bundle_cache_configure(8, Some(Duration::from_millis(50)));
+
+        let seed = [99u8; 32];
+        let _b = HybridSigningKeyBundle::from_seed_cached(&seed, "ttl-test").expect("insert");
+        assert_eq!(bundle_cache_len(), 1);
+
+        // Wait for TTL to elapse.
+        std::thread::sleep(Duration::from_millis(60));
+
+        // A new lookup should trigger eviction and re-derivation.
+        let b2 = HybridSigningKeyBundle::from_seed_cached(&seed, "ttl-test")
+            .expect("re-derive after TTL");
+        assert_eq!(bundle_cache_len(), 1);
+
+        // The re-derived bundle should have the same public keys.
+        let b_ref = HybridSigningKeyBundle::from_seed(&seed, "ttl-test").unwrap();
+        assert_eq!(b2.ed25519_pk().to_bytes(), b_ref.ed25519_pk().to_bytes());
+
+        // Restore defaults.
+        bundle_cache_clear();
+        bundle_cache_configure(DEFAULT_BUNDLE_CACHE_MAX_ENTRIES, None);
+    }
+
+    /// `bundle_cache_configure` must clear existing entries on policy change.
+    #[test]
+    fn test_bundle_cache_configure_clears_existing_entries() {
+        if !run_expensive_cache_tests() {
+            return;
+        }
+        let _guard = CACHE_TEST_GUARD.lock().unwrap();
+        bundle_cache_clear();
+        let _b = HybridSigningKeyBundle::from_seed_cached(&[5u8; 32], "cfg-clear").expect("insert");
+        assert_eq!(bundle_cache_len(), 1);
+
+        bundle_cache_configure(4, None);
+        assert_eq!(bundle_cache_len(), 0);
+
+        // Restore defaults.
+        bundle_cache_configure(DEFAULT_BUNDLE_CACHE_MAX_ENTRIES, None);
+    }
+
+    /// Multiple threads hitting the cache concurrently must all get valid,
+    /// consistent bundles without panicking or corrupting the cache.
+    #[test]
+    fn test_bundle_cache_concurrent_access() {
+        if !run_expensive_cache_tests() {
+            return;
+        }
+        let _guard = CACHE_TEST_GUARD.lock().unwrap();
+        bundle_cache_clear();
+        bundle_cache_configure(4, None);
+
+        let seed = [77u8; 32];
+        let domain = "concurrent-test";
+
+        // Pre-populate so threads hit the cache (not the slow keygen path).
+        let expected =
+            HybridSigningKeyBundle::from_seed_cached(&seed, domain).expect("pre-populate");
+        let expected_ed_pk = expected.ed25519_pk().to_bytes();
+
+        let threads: Vec<_> = (0..8)
+            .map(|_| {
+                std::thread::spawn(move || {
+                    let bundle =
+                        HybridSigningKeyBundle::from_seed_cached(&seed, domain).expect("thread");
+                    bundle.ed25519_pk().to_bytes()
+                })
+            })
+            .collect();
+
+        for thread in threads {
+            let ed_pk = thread.join().expect("thread panicked");
+            assert_eq!(ed_pk, expected_ed_pk);
+        }
+
+        // All threads got the same cached Arc.
+        assert_eq!(bundle_cache_len(), 1);
+
+        // Restore defaults.
+        bundle_cache_clear();
+        bundle_cache_configure(DEFAULT_BUNDLE_CACHE_MAX_ENTRIES, None);
+    }
+
+    /// Concurrent inserts of different keys must not exceed the configured cap.
+    #[test]
+    fn test_bundle_cache_concurrent_inserts_respect_cap() {
+        if !run_expensive_cache_tests() {
+            return;
+        }
+        let _guard = CACHE_TEST_GUARD.lock().unwrap();
+        bundle_cache_clear();
+        bundle_cache_configure(3, None);
+
+        let threads: Vec<_> = (0..6)
+            .map(|i| {
+                let seed = [i as u8 + 1; 32];
+                std::thread::spawn(move || {
+                    HybridSigningKeyBundle::from_seed_cached(&seed, "cap-test")
+                        .expect("concurrent insert")
+                })
+            })
+            .collect();
+
+        for thread in threads {
+            let _ = thread.join().expect("thread panicked");
+        }
+
+        // Cache must not exceed the configured max.
+        assert!(bundle_cache_len() <= 3);
+
+        // Restore defaults.
+        bundle_cache_clear();
+        bundle_cache_configure(DEFAULT_BUNDLE_CACHE_MAX_ENTRIES, None);
+    }
+
+    /// Full cache lifecycle: configure → insert → verify → clear → re-insert
+    /// → verify → restore defaults. Exercises the public management API
+    /// end-to-end and confirms that clear + re-insert produces a fresh Arc.
+    #[test]
+    fn test_bundle_cache_lifecycle() {
+        if !run_expensive_cache_tests() {
+            return;
+        }
+        let _guard = CACHE_TEST_GUARD.lock().unwrap();
+
+        // Start clean.
+        bundle_cache_clear();
+        bundle_cache_configure(4, None);
+        assert_eq!(bundle_cache_len(), 0);
+
+        // Insert.
+        let seed = [33u8; 32];
+        let b1 = HybridSigningKeyBundle::from_seed_cached(&seed, "lifecycle").expect("insert");
+        assert_eq!(bundle_cache_len(), 1);
+
+        // Cache hit returns the same Arc.
+        let b1_again =
+            HybridSigningKeyBundle::from_seed_cached(&seed, "lifecycle").expect("cache hit");
+        assert!(Arc::ptr_eq(&b1, &b1_again));
+
+        // Clear empties the cache.
+        bundle_cache_clear();
+        assert_eq!(bundle_cache_len(), 0);
+
+        // Re-insert after clear produces a new Arc (not the old one).
+        let b2 = HybridSigningKeyBundle::from_seed_cached(&seed, "lifecycle")
+            .expect("re-insert after clear");
+        assert!(!Arc::ptr_eq(&b1, &b2));
+
+        // Public keys are still deterministic.
+        assert_eq!(b1.ed25519_pk().to_bytes(), b2.ed25519_pk().to_bytes());
+
+        // Restore defaults.
+        bundle_cache_clear();
+        bundle_cache_configure(DEFAULT_BUNDLE_CACHE_MAX_ENTRIES, None);
     }
 
     #[test]

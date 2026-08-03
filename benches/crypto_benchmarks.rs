@@ -578,6 +578,154 @@ fn benchmark_hybrid_kdf(c: &mut Criterion) {
     group.finish();
 }
 
+/// Benchmark the 4 SHAKE KEM hashing variants:
+/// 1. NIST reference (SHA-2-512 with domain separation)
+/// 2. SHAKE128 (experimental, behind feature flag)
+/// 3. SHAKE256 two-call (experimental, behind feature flag)
+/// 4. SHAKE256 single-absorb (experimental, behind feature flag)
+fn benchmark_ntru_kem_hash(c: &mut Criterion) {
+    let mut group = c.benchmark_group("ntru_kem_hash");
+
+    // Test data: realistic r_enc (191 bytes) and cache (32 bytes)
+    let r_enc = [0xABu8; 191];
+    let cache = [0xCDu8; 32];
+
+    // 1. NIST reference: HashConfirm (3 SHA-512 calls)
+    group.bench_function("confirm_nist_sha2_512", |b| {
+        b.iter(|| {
+            origin_crypto_sdk::pqc::ntru_prime::kem_hashing::hash_confirm(
+                black_box(&r_enc),
+                black_box(&cache),
+            )
+        })
+    });
+
+    // 2. NIST reference: HashSession (2 SHA-512 calls)
+    let confirm = origin_crypto_sdk::pqc::ntru_prime::kem_hashing::hash_confirm(&r_enc, &cache);
+    group.bench_function("session_nist_sha2_512", |b| {
+        b.iter(|| {
+            origin_crypto_sdk::pqc::ntru_prime::kem_hashing::hash_session(
+                black_box(1),
+                black_box(&r_enc),
+                black_box(&confirm),
+            )
+        })
+    });
+
+    // 3. NIST reference: Hash4 (1 SHA-512 call over 1158-byte pk)
+    let pk = [0x42u8; 1158];
+    group.bench_function("hash4_nist_sha2_512", |b| {
+        b.iter(|| origin_crypto_sdk::pqc::ntru_prime::kem_hashing::hash4(black_box(&pk)))
+    });
+
+    // SHAKE variants (only compiled when features are enabled)
+    #[cfg(feature = "ntru-shake128")]
+    {
+        group.bench_function("confirm_shake128", |b| {
+            b.iter(|| {
+                origin_crypto_sdk::pqc::ntru_prime::kem_hashing::shake128_kem::hash_confirm(
+                    black_box(&r_enc),
+                    black_box(&cache),
+                )
+            })
+        });
+
+        group.bench_function("session_shake128", |b| {
+            b.iter(|| {
+                origin_crypto_sdk::pqc::ntru_prime::kem_hashing::shake128_kem::hash_session(
+                    black_box(1),
+                    black_box(&r_enc),
+                    black_box(&confirm),
+                )
+            })
+        });
+
+        group.bench_function("hash4_shake128", |b| {
+            b.iter(|| {
+                origin_crypto_sdk::pqc::ntru_prime::kem_hashing::shake128_kem::hash4(black_box(&pk))
+            })
+        });
+    }
+
+    #[cfg(feature = "ntru-shake256")]
+    {
+        group.bench_function("confirm_shake256", |b| {
+            b.iter(|| {
+                origin_crypto_sdk::pqc::ntru_prime::kem_hashing::shake256_kem::hash_confirm(
+                    black_box(&r_enc),
+                    black_box(&cache),
+                )
+            })
+        });
+
+        group.bench_function("session_shake256", |b| {
+            b.iter(|| {
+                origin_crypto_sdk::pqc::ntru_prime::kem_hashing::shake256_kem::hash_session(
+                    black_box(1),
+                    black_box(&r_enc),
+                    black_box(&confirm),
+                )
+            })
+        });
+
+        group.bench_function("hash4_shake256", |b| {
+            b.iter(|| {
+                origin_crypto_sdk::pqc::ntru_prime::kem_hashing::shake256_kem::hash4(black_box(&pk))
+            })
+        });
+
+        // Single-absorb mode: produces both confirm and session in one call
+        group.bench_function("confirm_and_session_shake256_single", |b| {
+            b.iter(|| {
+                origin_crypto_sdk::pqc::ntru_prime::kem_hashing::shake256_kem::hash_confirm_and_session(
+                    black_box(&r_enc),
+                    black_box(&cache),
+                )
+            })
+        });
+    }
+
+    #[cfg(feature = "ntru-blake3")]
+    {
+        group.bench_function("confirm_blake3", |b| {
+            b.iter(|| {
+                origin_crypto_sdk::pqc::ntru_prime::kem_hashing::blake3_kem::hash_confirm(
+                    black_box(&r_enc),
+                    black_box(&cache),
+                )
+            })
+        });
+
+        group.bench_function("session_blake3", |b| {
+            b.iter(|| {
+                origin_crypto_sdk::pqc::ntru_prime::kem_hashing::blake3_kem::hash_session(
+                    black_box(1),
+                    black_box(&r_enc),
+                    black_box(&confirm),
+                )
+            })
+        });
+
+        group.bench_function("hash4_blake3", |b| {
+            b.iter(|| {
+                origin_crypto_sdk::pqc::ntru_prime::kem_hashing::blake3_kem::hash4(black_box(&pk))
+            })
+        });
+
+        // Single-absorb mode: produces both confirm and session in one BLAKE3 call
+        group.bench_function("confirm_and_session_blake3_single", |b| {
+            b.iter(|| {
+                origin_crypto_sdk::pqc::ntru_prime::kem_hashing::blake3_kem::hash_confirm_and_session(
+                    black_box(&r_enc),
+                    black_box(&cache),
+                )
+            })
+        });
+    }
+
+    group.finish();
+}
+
 criterion_group!(
     benches,
     benchmark_aead,
@@ -587,6 +735,7 @@ criterion_group!(
     benchmark_slhdsa,
     benchmark_mldsa,
     benchmark_ntru,
+    benchmark_ntru_kem_hash,
     benchmark_poly_mul,
     benchmark_round3,
     benchmark_serpent,

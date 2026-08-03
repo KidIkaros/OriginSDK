@@ -140,7 +140,7 @@ impl Falcon512Signer {
         Self { sk, pk }
     }
 
-    /// Sign a message. Returns a ~666-byte Falcon-512 signature.
+    /// Sign a message. Returns a ~809-byte Falcon-512 signature (CT format).
     pub fn sign(&self, message: &[u8]) -> Result<Vec<u8>, crate::error::CryptoError> {
         crate::pqc::falcon512::sign(message, &self.sk)
             .map(|s| s.0)

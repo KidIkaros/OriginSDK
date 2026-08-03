@@ -23,6 +23,13 @@
 //! scalar multiplication are being developed with correctness and
 //! constant-time properties as primary goals.
 //!
+//! # Experimental
+//!
+//! This is a custom implementation that has not undergone independent
+//! cryptographic review. Use the external AEAD APIs (`aead` module) for
+//! production workloads. This module is provided for research and
+//! environments requiring zero external crypto dependencies.
+//!
 //! # References
 //! - SafeCurves: <https://safecurves.cr.yp.to/>
 //! - Original paper: Bernstein, Chuengsatiansup, Lange. "Curve41417:

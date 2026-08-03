@@ -109,6 +109,8 @@
 // Public modules (matching the README map exactly)
 // ──────────────────────────────────────────────────────────────────────
 
+/// Algorithm identifiers for downgrade resistance.
+pub mod algorithm_id;
 pub mod error;
 /// Error types and `Result` alias.
 pub mod types;
@@ -246,7 +248,7 @@ pub use primitives::tier;
 pub use error::{CryptoError as Error, Result as StdResult};
 
 // Encryption
-pub use aead::XChaCha20Poly1305;
+pub use aead::{try_generate_key, try_generate_nonce, XChaCha20Poly1305};
 
 // KDF
 pub use kdf::hkdf::{derive_subkeys, hkdf_sha3_256};
@@ -258,12 +260,24 @@ pub use kdf::mac::hmac_sha3_256;
 // DRBG
 pub use drbg::ChaCha20Drbg;
 
+/// Fill a buffer with bytes from the SDK's operating-system CSPRNG.
+///
+/// This is the stable downstream randomness boundary. It is fallible so
+/// callers can handle an unavailable or failed operating-system entropy source
+/// without inheriting a panic from the SDK.
+pub fn fill_random(dest: &mut [u8]) -> Result<()> {
+    internal::getrandom::fill(dest).map_err(|error| CryptoError::Io(std::io::Error::other(error)))
+}
+
 // Seed handling
 pub use seed::{derive_child_seed, derive_signing_keys, derive_verifying_keys, SeedHandle};
 
 // Hybrid bundle (canonical PQ-hybrid signing)
 pub use signing::hybrid::falcon1024_keygen;
-pub use signing::hybrid::HybridSigningKeyBundle;
+pub use signing::hybrid::{
+    bundle_cache_clear, bundle_cache_configure, bundle_cache_len, HybridSigningKeyBundle,
+    DEFAULT_BUNDLE_CACHE_MAX_ENTRIES,
+};
 pub use signing::hybrid::{skein1024, skein512};
 
 // PQC direct access — use `pqc::{falcon1024, falcon512, ed448, ...}::module` for raw types.

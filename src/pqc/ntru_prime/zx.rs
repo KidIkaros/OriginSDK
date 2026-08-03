@@ -6,38 +6,16 @@
 
 pub mod encoding {
     use super::super::constants::P;
+    use super::super::encode;
 
-    pub fn encode(f: [i8; P]) -> [u8; 191] {
-        let mut c = [0u8; 191];
-        let mut j = 0;
-        for i in 0..190 {
-            let mut c0 = f[j] + 1;
-            c0 += (f[j + 1] + 1) << 2;
-            c0 += (f[j + 2] + 1) << 4;
-            c0 += (f[j + 3] + 1) << 6;
-            c[i] = c0 as u8;
-            j += 4;
-        }
-        c[190] = (f[760] + 1) as u8;
-        c
+    /// Encode a Small (ternary) polynomial into NIST wire format (191 bytes).
+    pub fn encode(f: [i8; P]) -> [u8; encode::SMALL_BYTES] {
+        encode::small_encode(&f)
     }
 
+    /// Decode NIST wire format (191 bytes) into a Small (ternary) polynomial.
     pub fn decode(c: &[u8]) -> [i8; P] {
-        let mut f = [0i8; P];
-        let mut j = 0;
-        for i in 0..190 {
-            let mut c0 = c[i];
-            f[j] = ((c0 & 3) as i8) - 1;
-            c0 >>= 2;
-            f[j + 1] = ((c0 & 3) as i8) - 1;
-            c0 >>= 2;
-            f[j + 2] = ((c0 & 3) as i8) - 1;
-            c0 >>= 2;
-            f[j + 3] = ((c0 & 3) as i8) - 1;
-            j += 4;
-        }
-        f[760] = ((c[190] & 3) as i8) - 1;
-        f
+        encode::small_decode(c)
     }
 }
 

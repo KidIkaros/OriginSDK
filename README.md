@@ -216,20 +216,41 @@ Apache-2.0 — see [LICENSE](LICENSE).
 
 ## API Stability
 
-**Pre-1.0 notice**: This crate is at version 0.6.6. Per [Cargo's SemVer guidance](https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html#pre-1-0), anything below 1.0 may contain breaking changes in minor releases.
+**Pre-1.0 notice**: This crate is at version 0.6.7. Per [Cargo's SemVer guidance](https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html#pre-1-0), anything below 1.0 may contain breaking changes in minor releases.
 
 **Stable** (breaking changes will require a major version bump):
 - `CryptoError` variants and their `Display` output
-- `HybridSigningKeyBundle` API
+- `HybridSigningKeyBundle` API (`from_seed`, `from_seed_cached`, `sign_hybrid`, `verify`)
+- `XChaCha20Poly1305::encrypt_aad` / `decrypt_aad` signatures
 - `ChaCha20Blake3::encrypt` / `decrypt` signatures
 - `Argon2id::derive_key` signature
+- `fill_random` (public RNG boundary)
+- `algorithm_id::AlgorithmId` enum variants and numeric values
+- `algorithm_id::DowngradePolicy` API
 
 **Unstable** (may change in minor releases):
 - The exact set of items in `prelude::*`
-- Low-level PQC module APIs (`pqc::falcon1024`, `pqc::ed448`, etc.)
-- `test_utils` API — stabilizing in 0.5
+- Low-level PQC module APIs (`pqc::falcon1024`, `pqc::ed448`, `pqc::ntru_prime`, `pqc::curve41417`)
+- `test_utils` API
+- `blob` module internal format (v2 format is frozen, but API may change)
+- `drbg` module API
+- `ec_schnorr` module API
+- `stealth` module API
+- `ocra` module API
+
+**Experimental** (custom implementations, not for production use):
+- `pqc::ntru_prime` — custom NTRU Prime KEM
+- `pqc::curve41417` — custom Ed41417
+- `primitives::chacha20` — native ChaCha20 (use `aead` module for production)
+- `primitives::poly1305` — native Poly1305 (use `aead` module for production)
+- `drbg` — custom ChaCha20-DRBG
+- `signing::hybrid` — hybrid compositions (novel, needs formal analysis)
+- `blob` — custom persistence format
+- `ec_schnorr` — custom secp256k1 arithmetic
 
 **Frozen** (will not change):
 - Wire formats of `HybridSignatureOutput` byte representations
-- AEAD ciphertext format (32-byte auth tag appended to ciphertext)
+- AEAD ciphertext format (16-byte Poly1305 tag appended to ciphertext)
 - Domain separation labels for `HybridSigningKeyBundle::from_seed`
+- Seed Blob v2 format (`ORGB` magic, 94 bytes)
+- `AlgorithmId` numeric assignments (stable, will not be reused)

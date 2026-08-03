@@ -113,10 +113,22 @@ impl XNonce {
     }
 
     /// Generate a random nonce.
+    ///
+    /// # Panics
+    /// Panics if the operating-system entropy source is unavailable or fails.
+    /// Use [`XNonce::try_random`] for a fallible variant.
     pub fn random() -> Self {
         let mut bytes = [0u8; Self::LEN];
         crate::internal::getrandom::fill(&mut bytes).expect("failed to generate random nonce");
         Self(bytes)
+    }
+
+    /// Generate a random nonce, returning an error on RNG failure.
+    pub fn try_random() -> Result<Self> {
+        let mut bytes = [0u8; Self::LEN];
+        crate::internal::getrandom::fill(&mut bytes)
+            .map_err(|error| CryptoError::Io(std::io::Error::other(error)))?;
+        Ok(Self(bytes))
     }
 
     /// Create from a byte slice. Returns error if not exactly 24 bytes.
@@ -171,10 +183,22 @@ impl CNonce {
     }
 
     /// Generate a random nonce.
+    ///
+    /// # Panics
+    /// Panics if the operating-system entropy source is unavailable or fails.
+    /// Use [`CNonce::try_random`] for a fallible variant.
     pub fn random() -> Self {
         let mut bytes = [0u8; Self::LEN];
         crate::internal::getrandom::fill(&mut bytes).expect("failed to generate random nonce");
         Self(bytes)
+    }
+
+    /// Generate a random nonce, returning an error on RNG failure.
+    pub fn try_random() -> Result<Self> {
+        let mut bytes = [0u8; Self::LEN];
+        crate::internal::getrandom::fill(&mut bytes)
+            .map_err(|error| CryptoError::Io(std::io::Error::other(error)))?;
+        Ok(Self(bytes))
     }
 
     /// Create from a byte slice. Returns error if not exactly 12 bytes.

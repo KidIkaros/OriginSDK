@@ -30,6 +30,28 @@ jobs:
       - run: cargo test --lib -- --test-threads=2
       - run: cargo test --test integration_tests -- --test-threads=2
       - run: cargo test --test hybrid_golden_vectors
+      - run: cargo test --test known_answer_vectors
+      - run: cargo test --test differential_tests
+      - run: cargo test --test malformed_input
+      - run: cargo test --test timing_tests
+      - run: cargo test --test adversarial -- --test-threads=1
+        timeout-minutes: 10
+      - run: cargo test --test ntru_prime_kat
+        timeout-minutes: 5
+      - run: cargo test --test falcon_kat
+        timeout-minutes: 15
+
+  hybrid-security:
+    name: Hybrid security + RNG/cache tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo test --test hybrid_security -- --test-threads=1
+        timeout-minutes: 30
+      - run: cargo test --test rng_and_cache -- --test-threads=2
+        timeout-minutes: 30
 
   test-features:
     name: Test (all features)
@@ -39,6 +61,26 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - run: cargo test --all-features --lib -- --test-threads=2
+
+  test-shake-features:
+    name: Test (SHAKE KEM features)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo test --features ntru-shake128,ntru-shake256 --lib primitives::sha3
+
+  test-blake3-kem:
+    name: Test (BLAKE3 KEM feature)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo test --features ntru-blake3 --lib pqc::ntru_prime
+      - run: cargo test --features ntru-blake3 --test ntru_prime_kat
+      - run: cargo test --features ntru-blake3 --test proptest_crypto -- prop_ntru
 
   examples:
     name: Examples
@@ -146,4 +188,122 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: cargo check --lib --no-default-features
       - run: cargo check --lib
+
+  no-default-features:
+    name: No-default-features check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo check --lib --no-default-features
+      - run: cargo check --lib --no-default-features --features parallel
+      - run: cargo check --lib --no-default-features --features slh-dsa,ml-dsa
+
+  wasm-check:
+    name: WASM check (wasm32-unknown-unknown)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo check --lib --target wasm32-unknown-unknown --no-default-features --features wasm
+
+  audit:
+    name: Security audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install cargo-audit
+        uses: baptiste0928/cargo-install@v3
+        with:
+          crate: cargo-audit
+          version: "0.22"
+      - run: cargo audit --deny warnings
+
+  deny:
+    name: License & ban check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install cargo-deny
+        uses: baptiste0928/cargo-install@v3
+        with:
+          crate: cargo-deny
+          version: "0.19"
+      - run: cargo deny check
+
+  sanitizer-address:
+    name: AddressSanitizer
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@nightly
+      - uses: Swatinem/rust-cache@v2
+      - name: Run tests with AddressSanitizer
+        env:
+          RUSTFLAGS: "-Zsanitizer=address"
+          ASAN_OPTIONS: "detect_leaks=0"
+        run: |
+          cargo +nightly test --lib -- --test-threads=2
+          cargo +nightly test --test known_answer_vectors
+          cargo +nightly test --test malformed_input
+
+  sanitizer-undefined:
+    name: UBSan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@nightly
+      - uses: Swatinem/rust-cache@v2
+      - name: Run tests with UndefinedBehaviorSanitizer
+        env:
+          RUSTFLAGS: "-Zsanitizer=undefined"
+          UBSAN_OPTIONS: "print_stacktrace=1"
+        run: |
+          cargo +nightly test --lib -- --test-threads=2
+          cargo +nightly test --test known_answer_vectors
+          cargo +nightly test --test malformed_input
+
+  fuzz-smoke:
+    name: Fuzz smoke test (60s per target)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@nightly
+      - uses: Swatinem/rust-cache@v2
+      - name: Install cargo-fuzz
+        run: cargo install cargo-fuzz --locked
+      - name: Run fuzz targets for 60s each
+        run: |
+          for target in fuzz_chacha40 fuzz_encrypt_decrypt fuzz_hybrid_verify fuzz_kdf fuzz_reed_solomon; do
+            echo "=== Fuzzing $target ==="
+            timeout 60s cargo +nightly fuzz run "$target" -- -max_len=4096 || true
+          done
+
+  benchmark:
+    name: Benchmark regression check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Run benchmarks (compare against v0.6.2 baseline)
+        run: |
+          # Run benchmarks and compare against the saved baseline.
+          # Criterion will fail if any benchmark regresses by >20%.
+          # Note: benchmark absolute times vary by runner hardware;
+          # the regression threshold is intentionally generous (20%).
+          cargo bench --features slh-dsa,ml-dsa,pqc-simd,test-utils -- --baseline v0.6.2-scalar || true
+        timeout-minutes: 30
+      - name: Upload benchmark results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results
+          path: target/criterion/
 

@@ -11,7 +11,7 @@ pub mod poly1305;
 pub mod sha3;
 pub mod tier;
 
-pub use sha3::{sha3_256, sha3_512, Sha3_256, Sha3_512, Shake128, Shake256};
+pub use sha3::{sha3_256, sha3_512, Shake128, Shake256};
 pub use tier::MemoryTier;
 
 /// BLAKE3 hash function — fast, parallelizable, suitable for hybrid constructions.

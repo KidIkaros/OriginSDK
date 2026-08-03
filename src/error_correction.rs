@@ -423,6 +423,8 @@ impl ReedSolomonCodec {
                 };
                 let e = GaloisField::mul(
                     syndromes[pivot],
+                    // SAFETY: pivot was found because h(m, pivot) != 0, so the
+                    // inverse exists. This is a proven internal invariant.
                     GaloisField::inv(h(m, pivot)).expect("h(m, pivot) != 0 by construction"),
                 );
                 if e == 0 {

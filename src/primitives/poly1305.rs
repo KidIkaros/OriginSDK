@@ -18,6 +18,13 @@
 //!
 //! - RFC 8439 §2.5: Poly1305 specification
 //! - DJB's Poly1305-AES specification
+//!
+//! # Experimental
+//!
+//! This is a custom native implementation. While it passes RFC 8439
+//! known-answer vectors, it has not undergone independent cryptographic
+//! review. For production workloads, prefer the external AEAD API
+//! (`aead` module) which uses the battle-tested `chacha20poly1305` crate.
 
 /// Poly1305 tag size in bytes (128 bits)
 pub const POLY1305_TAG_SIZE: usize = 16;

@@ -15,6 +15,14 @@
 //! - RFC 8439: ChaCha20 and Poly1305 for IETF Protocols
 //! - DJB's ChaCha specification
 //! - draft-irtf-cfrg-xchacha: XChaCha20-Poly1305
+//!
+//! # Experimental
+//!
+//! This is a custom native implementation. While it passes RFC 8439 and
+//! draft-irtf-cfrg-xchacha known-answer vectors and differential tests
+//! against the `chacha20poly1305` crate, it has not undergone independent
+//! cryptographic review. For production workloads, prefer the external
+//! AEAD API (`aead` module) which uses the battle-tested `chacha20poly1305` crate.
 
 /// ChaCha20 block size in bytes (512 bits = 64 bytes)
 pub const CHACHA20_BLOCK_SIZE: usize = 64;

@@ -12,8 +12,14 @@
 
 use argon2::Params;
 
+use crate::error::Result;
+
 /// Device memory tier — gates only the Argon2id KDF cost.
+///
+/// The `#[repr(u8)]` ensures stable discriminant values for serialization:
+/// Nano=0, Standard=1, Sovereign=2.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[repr(u8)]
 pub enum MemoryTier {
     /// IoT / Edge / RPi Zero: 8 MB, 2 iterations, 1 lane.
     Nano,
@@ -26,13 +32,26 @@ pub enum MemoryTier {
 
 impl MemoryTier {
     /// Return Argon2id parameters for this tier.
+    ///
+    /// # Panics
+    /// Panics if `output_len` is 0, which produces invalid Argon2 parameters.
+    /// Use [`MemoryTier::try_argon2_params`] for a fallible variant.
     pub fn argon2_params(self, output_len: usize) -> Params {
+        self.try_argon2_params(output_len)
+            .expect("valid Argon2 params")
+    }
+
+    /// Return Argon2id parameters for this tier, returning an error if the
+    /// parameters are invalid (e.g. `output_len` is 0).
+    pub fn try_argon2_params(self, output_len: usize) -> Result<Params> {
         let (m_cost, t_cost, p_cost) = match self {
             MemoryTier::Nano => (8 * 1024, 2, 1),        // 8 MB
             MemoryTier::Standard => (64 * 1024, 3, 2),   // 64 MB
             MemoryTier::Sovereign => (256 * 1024, 5, 4), // 256 MB
         };
-        Params::new(m_cost, t_cost, p_cost, Some(output_len)).expect("valid Argon2 params")
+        Params::new(m_cost, t_cost, p_cost, Some(output_len)).map_err(|e| {
+            crate::error::CryptoError::InvalidKey(format!("invalid Argon2 params: {:?}", e))
+        })
     }
 
     /// Human-readable label.

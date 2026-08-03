@@ -39,15 +39,22 @@ impl SeedHandle {
     /// * `seed` - Raw seed bytes (will be copied and zeroized on drop)
     /// * `ttl` - Optional time-to-live. None = never expires.
     pub fn new(seed: &[u8], ttl: Option<Duration>) -> Self {
+        Self::with_tier(seed, ttl, MemoryTier::default())
+    }
+
+    /// Create with explicit memory tier.
+    pub fn with_tier(seed: &[u8], ttl: Option<Duration>, tier: MemoryTier) -> Self {
         let seed_vec = seed.to_vec();
-        // mlock for Sovereign tier to prevent swapping
+
+        // Only the Sovereign tier requests memory locking. The result is
+        // intentionally best-effort because mlock limits vary by platform.
         #[cfg(unix)]
-        if !seed_vec.is_empty() {
+        if tier.should_lock() && !seed_vec.is_empty() {
             let _ = unsafe {
                 extern "C" {
                     fn mlock(addr: *const u8, len: usize) -> i32;
                 }
-                mlock(seed_vec.as_ptr(), seed_vec.len());
+                mlock(seed_vec.as_ptr(), seed_vec.capacity())
             };
         }
 
@@ -55,15 +62,8 @@ impl SeedHandle {
             seed: seed_vec,
             created: Instant::now(),
             ttl,
-            tier: MemoryTier::default(),
+            tier,
         }
-    }
-
-    /// Create with explicit memory tier.
-    pub fn with_tier(seed: &[u8], ttl: Option<Duration>, tier: MemoryTier) -> Self {
-        let mut handle = Self::new(seed, ttl);
-        handle.tier = tier;
-        handle
     }
 
     /// Check if this handle has expired.
@@ -139,10 +139,9 @@ impl Drop for SeedHandle {
         // Zeroize seed bytes
         self.seed.zeroize();
 
-        // munlock for Sovereign tier
+        // munlock pages previously requested by the Sovereign tier.
         #[cfg(unix)]
-        if !self.seed.is_empty() {
-            // seed is already zeroized, but munlock the pages
+        if self.tier.should_lock() && !self.seed.is_empty() {
             unsafe {
                 extern "C" {
                     fn munlock(addr: *const u8, len: usize) -> i32;
@@ -272,6 +271,20 @@ mod tests {
         let handle = SeedHandle::new(&seed, Some(Duration::from_secs(1)));
         assert!(!handle.is_expired());
         assert!(handle.remaining().unwrap() > Duration::ZERO);
+    }
+
+    #[test]
+    fn test_seed_handle_applies_requested_memory_tier() {
+        let seed = [42u8; 32];
+        assert_eq!(SeedHandle::new(&seed, None).tier(), MemoryTier::Standard);
+        assert_eq!(
+            SeedHandle::with_tier(&seed, None, MemoryTier::Nano).tier(),
+            MemoryTier::Nano
+        );
+        assert_eq!(
+            SeedHandle::with_tier(&seed, None, MemoryTier::Sovereign).tier(),
+            MemoryTier::Sovereign
+        );
     }
 
     #[test]

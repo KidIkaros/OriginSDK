@@ -3,12 +3,339 @@
 //! Integration tests for origin-crypto-sdk
 
 use origin_crypto_sdk::{
-    aead, aead::symmetric, error_correction, kdf, pqc::falcon1024, pqc::falcon512, pqc::ntru_prime,
+    aead,
+    aead::symmetric,
+    error_correction, kdf,
+    pqc::falcon1024,
+    pqc::falcon512,
+    pqc::ntru_prime,
+    signing::hybrid::{Ed25519Falcon1024, Ed25519Falcon512, Ed448Falcon1024},
+    tier::MemoryTier,
+    types::{CNonce, XNonce},
     CryptoError, Result,
 };
 
 // =============================================================================
+// Randomness Integration Tests
+// =============================================================================
+
+#[test]
+fn test_public_randomness_api_fills_empty_and_nonempty_buffers() {
+    let mut empty = [];
+    origin_crypto_sdk::fill_random(&mut empty).unwrap();
+
+    let mut bytes = [0u8; 64];
+    origin_crypto_sdk::fill_random(&mut bytes).unwrap();
+    assert_ne!(bytes, [0u8; 64]);
+}
+
+// =============================================================================
+// Fallible RNG API Tests
+// =============================================================================
+
+#[test]
+fn test_try_generate_nonce_succeeds() {
+    let nonce = aead::try_generate_nonce().unwrap();
+    assert_eq!(nonce.len(), 24);
+    assert_ne!(nonce, [0u8; 24]);
+}
+
+#[test]
+fn test_try_generate_key_succeeds() {
+    let key = aead::try_generate_key().unwrap();
+    assert_eq!(key.len(), 32);
+    assert_ne!(key, [0u8; 32]);
+}
+
+#[test]
+fn test_xnonce_try_random_succeeds() {
+    let nonce = XNonce::try_random().unwrap();
+    assert_eq!(nonce.as_bytes().len(), 24);
+    assert_ne!(nonce.as_bytes(), &[0u8; 24]);
+}
+
+#[test]
+fn test_cnonce_try_random_succeeds() {
+    let nonce = CNonce::try_random().unwrap();
+    assert_eq!(nonce.as_bytes().len(), 12);
+    assert_ne!(nonce.as_bytes(), &[0u8; 12]);
+}
+
+// =============================================================================
+// Fallible Signing API Tests
+// =============================================================================
+
+#[test]
+fn test_try_sign_ed25519_falcon1024_succeeds() {
+    let (falcon_pk, falcon_sk) = falcon1024::generate_keypair_from_seed(&[42u8; 32]).unwrap();
+    let ed_sk = ed25519_dalek::SigningKey::from_bytes(&[1u8; 32]);
+    let ed_pk = ed_sk.verifying_key();
+    let msg = b"fallible sign test";
+
+    let sig = Ed25519Falcon1024::try_sign(&ed_sk, &falcon_sk, msg).unwrap();
+    Ed25519Falcon1024::verify(&ed_pk, &falcon_pk, msg, &sig).unwrap();
+}
+
+#[test]
+fn test_try_sign_ed25519_falcon512_succeeds() {
+    let (falcon_sk, falcon_pk) = falcon512::generate_keypair([42u8; 32]);
+    let ed_sk = ed25519_dalek::SigningKey::from_bytes(&[1u8; 32]);
+    let ed_pk = ed_sk.verifying_key();
+    let msg = b"fallible sign test";
+
+    let sig = Ed25519Falcon512::try_sign(&ed_sk, &falcon_sk, msg).unwrap();
+    Ed25519Falcon512::verify(&ed_pk, &falcon_pk, msg, &sig).unwrap();
+}
+
+#[test]
+fn test_try_sign_ed448_falcon1024_succeeds() {
+    let (falcon_pk, falcon_sk) = falcon1024::generate_keypair_from_seed(&[42u8; 32]).unwrap();
+    let ed_sk = origin_crypto_sdk::pqc::ed448::SigningKey::from_bytes(&[1u8; 57]).unwrap();
+    let ed_pk = ed_sk.verifying_key();
+    let msg = b"fallible sign test";
+
+    let sig = Ed448Falcon1024::try_sign(&ed_sk, &falcon_sk, msg).unwrap();
+    Ed448Falcon1024::verify(&ed_pk, &falcon_pk, msg, &sig).unwrap();
+}
+
+// =============================================================================
+// Fallible Tier Params Test
+// =============================================================================
+
+#[test]
+fn test_try_argon2_params_rejects_zero_output_len() {
+    assert!(MemoryTier::Standard.try_argon2_params(0).is_err());
+    assert!(MemoryTier::Standard.try_argon2_params(32).is_ok());
+}
+
+// =============================================================================
+// Format Boundary Tests
+// =============================================================================
+
+#[test]
+fn test_falcon512_public_key_from_bytes_rejects_wrong_length() {
+    use origin_crypto_sdk::pqc::falcon512::Falcon512PublicKey;
+    assert!(Falcon512PublicKey::from_bytes(&[0u8; 100]).is_err());
+    assert!(Falcon512PublicKey::from_bytes(&[0u8; 897]).is_ok());
+}
+
+#[test]
+fn test_falcon512_private_key_from_bytes_rejects_wrong_length() {
+    use origin_crypto_sdk::pqc::falcon512::Falcon512PrivateKey;
+    assert!(Falcon512PrivateKey::from_bytes(&[0u8; 100]).is_err());
+    assert!(Falcon512PrivateKey::from_bytes(&[0u8; 1281]).is_ok());
+}
+
+#[test]
+fn test_falcon512_signature_from_bytes_rejects_oversized() {
+    use origin_crypto_sdk::pqc::falcon512::Falcon512Signature;
+    assert!(Falcon512Signature::from_bytes(&[0u8; 1000]).is_err());
+    assert!(Falcon512Signature::from_bytes(&[0u8; 100]).is_ok());
+}
+
+// =============================================================================
 // AEAD Integration Tests
+// =============================================================================
+
+// =============================================================================
+// Seed Blob Golden Vectors
+// =============================================================================
+//
+// These tests verify the v2 blob format structure and cross-version
+// compatibility. True byte-exact golden vectors are not possible because
+// Argon2id output depends on the argon2 crate version, but we verify:
+//   1. Structural layout (magic, version, tier at correct offsets)
+//   2. Field sizes and positions
+//   3. Round-trip correctness for v2
+//   4. v1 backward compatibility
+//   5. v1→v2 migration via rotate_blob
+//   6. Tamper detection (version, tier, truncation)
+
+#[test]
+fn golden_v2_blob_structure() {
+    use origin_crypto_sdk::blob;
+
+    let blob = blob::create_blob(b"golden-pw", MemoryTier::Nano, Some(&[0x42u8; 32])).unwrap();
+
+    // Structural assertions: verify every field is at the expected offset.
+    assert_eq!(
+        blob.len(),
+        blob::BLOB_V2_LEN,
+        "v2 blob must be exactly 94 bytes"
+    );
+    assert_eq!(
+        &blob[0..4],
+        blob::BLOB_MAGIC,
+        "offset 0: magic must be ORGB"
+    );
+    assert_eq!(
+        blob[4],
+        blob::BLOB_VERSION,
+        "offset 4: version must be 0x02"
+    );
+    assert_eq!(
+        blob[5],
+        MemoryTier::Nano as u8,
+        "offset 5: tier must be Nano (0)"
+    );
+    // salt: offset 6..22 (16 bytes) — must be non-zero (random)
+    assert!(
+        blob[6..22].iter().any(|&b| b != 0),
+        "offset 6: salt must be non-zero"
+    );
+    // nonce: offset 22..46 (24 bytes) — must be non-zero (random)
+    assert!(
+        blob[22..46].iter().any(|&b| b != 0),
+        "offset 22: nonce must be non-zero"
+    );
+    // ct+tag: offset 46..94 (48 bytes) — must be non-zero (encrypted)
+    assert!(
+        blob[46..94].iter().any(|&b| b != 0),
+        "offset 46: ct+tag must be non-zero"
+    );
+}
+
+#[test]
+fn golden_v2_blob_roundtrip_all_tiers() {
+    use origin_crypto_sdk::blob;
+
+    let tiers = [
+        MemoryTier::Nano,
+        MemoryTier::Standard,
+        MemoryTier::Sovereign,
+    ];
+    let seed = [0xABu8; 32];
+
+    for tier in tiers {
+        let blob = blob::create_blob(b"golden-rt", tier, Some(&seed)).unwrap();
+        assert_eq!(blob::detect_blob_version(&blob), Some(2));
+        assert_eq!(blob::blob_tier(&blob), Some(tier));
+
+        // v2 is self-describing: recover with any tier should work.
+        let recovered = blob::recover_seed(&blob, b"golden-rt", MemoryTier::Nano).unwrap();
+        assert_eq!(
+            recovered, seed,
+            "round-trip must preserve seed for {:?}",
+            tier
+        );
+    }
+}
+
+#[test]
+fn golden_v1_blob_backward_compat() {
+    use origin_crypto_sdk::aead::XChaCha20Poly1305;
+    use origin_crypto_sdk::blob;
+
+    // Construct a v1 blob manually (no magic, no version, no tier).
+    let pw = b"golden-v1-pw";
+    let seed = [0xCDu8; 32];
+    let salt = [0x11u8; 16];
+    let nonce = [0x22u8; 24];
+
+    // Derive key using Nano tier params via the public KDF builder.
+    let key = origin_crypto_sdk::kdf::Argon2idBuilder::new()
+        .memory_kib(8 * 1024) // 8 MB = Nano
+        .iterations(2)
+        .parallelism(1)
+        .output_len(32)
+        .derive(pw, &salt)
+        .unwrap();
+    let mut key_arr = [0u8; 32];
+    key_arr.copy_from_slice(&key);
+
+    // v1 AAD = salt only.
+    let ct = XChaCha20Poly1305::encrypt_aad(&key_arr, &nonce, &seed, &salt).unwrap();
+
+    let mut v1_blob = Vec::with_capacity(88);
+    v1_blob.extend_from_slice(&salt);
+    v1_blob.extend_from_slice(&nonce);
+    v1_blob.extend_from_slice(&ct);
+
+    // Verify structure.
+    assert_eq!(v1_blob.len(), 88);
+    assert_eq!(blob::detect_blob_version(&v1_blob), Some(1));
+    assert_eq!(blob::blob_tier(&v1_blob), None, "v1 has no embedded tier");
+
+    // Must be readable with the correct tier.
+    let recovered = blob::recover_seed(&v1_blob, pw, MemoryTier::Nano).unwrap();
+    assert_eq!(recovered, seed);
+
+    // Must fail with the wrong tier (different Argon2 params).
+    assert!(blob::recover_seed(&v1_blob, pw, MemoryTier::Standard).is_err());
+}
+
+#[test]
+fn golden_v1_to_v2_migration() {
+    use origin_crypto_sdk::aead::XChaCha20Poly1305;
+    use origin_crypto_sdk::blob;
+
+    let pw = b"migrate-pw";
+    let seed = [0xEFu8; 32];
+    let salt = [0x33u8; 16];
+    let nonce = [0x44u8; 24];
+
+    let key = origin_crypto_sdk::kdf::Argon2idBuilder::new()
+        .memory_kib(8 * 1024)
+        .iterations(2)
+        .parallelism(1)
+        .output_len(32)
+        .derive(pw, &salt)
+        .unwrap();
+    let mut key_arr = [0u8; 32];
+    key_arr.copy_from_slice(&key);
+
+    let ct = XChaCha20Poly1305::encrypt_aad(&key_arr, &nonce, &seed, &salt).unwrap();
+
+    let mut v1 = Vec::with_capacity(88);
+    v1.extend_from_slice(&salt);
+    v1.extend_from_slice(&nonce);
+    v1.extend_from_slice(&ct);
+
+    assert_eq!(blob::detect_blob_version(&v1), Some(1));
+
+    // Migrate v1 → v2.
+    let v2 = blob::rotate_blob(&v1, pw, b"new-migrate-pw", MemoryTier::Nano).unwrap();
+    assert_eq!(blob::detect_blob_version(&v2), Some(2));
+    assert_eq!(v2.len(), blob::BLOB_V2_LEN);
+
+    // Recover from v2 with the new passphrase.
+    let recovered = blob::recover_seed(&v2, b"new-migrate-pw", MemoryTier::Nano).unwrap();
+    assert_eq!(recovered, seed);
+}
+
+#[test]
+fn golden_v2_tamper_detection() {
+    use origin_crypto_sdk::blob;
+
+    let blob = blob::create_blob(b"tamper-pw", MemoryTier::Standard, Some(&[0x01u8; 32])).unwrap();
+
+    // Tamper: flip version byte.
+    let mut bad_version = blob.clone();
+    bad_version[4] = 0x99;
+    assert!(blob::recover_seed(&bad_version, b"tamper-pw", MemoryTier::Standard).is_err());
+
+    // Tamper: flip tier byte (AAD must catch this).
+    let mut bad_tier = blob.clone();
+    bad_tier[5] = MemoryTier::Sovereign as u8;
+    assert!(blob::recover_seed(&bad_tier, b"tamper-pw", MemoryTier::Standard).is_err());
+
+    // Tamper: flip a salt byte (AAD must catch this).
+    let mut bad_salt = blob.clone();
+    bad_salt[6] ^= 0xFF;
+    assert!(blob::recover_seed(&bad_salt, b"tamper-pw", MemoryTier::Standard).is_err());
+
+    // Tamper: flip a ciphertext byte.
+    let mut bad_ct = blob.clone();
+    bad_ct[50] ^= 0x01;
+    assert!(blob::recover_seed(&bad_ct, b"tamper-pw", MemoryTier::Standard).is_err());
+
+    // Truncate.
+    let truncated = &blob[..60];
+    assert!(blob::recover_seed(truncated, b"tamper-pw", MemoryTier::Standard).is_err());
+}
+
+// =============================================================================
+// AEAD Integration Tests (continued)
 // =============================================================================
 
 #[test]

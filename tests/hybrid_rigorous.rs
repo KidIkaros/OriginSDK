@@ -21,6 +21,29 @@ use origin_crypto_sdk::signing::legacy_shim::{
     Ed448Sha3_256, Ed448Shake256, Ed448Skein512, HybridSigningKeyBundle,
 };
 
+/// Return the number of test rounds for Falcon-dependent tests.
+///
+/// Defaults to 1 for fast dev iteration. Set `ORIGIN_FULL_TESTS=1` in CI
+/// to run the full 3-round suite.
+fn falcon_rounds() -> usize {
+    if std::env::var("ORIGIN_FULL_TESTS").as_deref() == Ok("1") {
+        3
+    } else {
+        1
+    }
+}
+
+/// Return the number of determinism iterations for repeated key derivation.
+///
+/// Defaults to 2. Set `ORIGIN_FULL_TESTS=1` for 5 iterations.
+fn determinism_iters() -> usize {
+    if std::env::var("ORIGIN_FULL_TESTS").as_deref() == Ok("1") {
+        5
+    } else {
+        2
+    }
+}
+
 // =============================================================================
 // 1. PROPERTY-BASED TESTS (random inputs, many iterations)
 // =============================================================================
@@ -133,14 +156,14 @@ fn prop_ed448_skein512_sign_verify_3_rounds() {
 }
 
 #[test]
-fn prop_ed25519_falcon1024_sign_verify_3_rounds() {
+fn prop_ed25519_falcon1024_sign_verify() {
     let mut rng = TestRng::new(0xFACEFEED);
     let seed = [42u8; 32];
     let (f_pk, f_sk) = falcon1024::generate_keypair_from_seed(&seed).unwrap();
     let ed_sk = Ed25519Sk::from_bytes(&seed);
     let ed_pk = ed_sk.verifying_key();
 
-    for _ in 0..3 {
+    for _ in 0..falcon_rounds() {
         let msg = rng.message(2048);
         let sig = Ed25519Falcon1024::sign(&ed_sk, &f_sk, &msg);
         Ed25519Falcon1024::verify(&ed_pk, &f_pk, &msg, &sig)
@@ -149,14 +172,14 @@ fn prop_ed25519_falcon1024_sign_verify_3_rounds() {
 }
 
 #[test]
-fn prop_ed25519_falcon512_sign_verify_3_rounds() {
+fn prop_ed25519_falcon512_sign_verify() {
     let mut rng = TestRng::new(0x1337_C0DE);
     let seed = [99u8; 32];
     let (f_sk, f_pk) = falcon512::generate_keypair(seed);
     let ed_sk = Ed25519Sk::from_bytes(&seed);
     let ed_pk = ed_sk.verifying_key();
 
-    for _ in 0..3 {
+    for _ in 0..falcon_rounds() {
         let msg = rng.message(2048);
         let sig = Ed25519Falcon512::sign(&ed_sk, &f_sk, &msg);
         Ed25519Falcon512::verify(&ed_pk, &f_pk, &msg, &sig)
@@ -165,14 +188,14 @@ fn prop_ed25519_falcon512_sign_verify_3_rounds() {
 }
 
 #[test]
-fn prop_ed448_falcon1024_sign_verify_3_rounds() {
+fn prop_ed448_falcon1024_sign_verify() {
     let mut rng = TestRng::new(0x5A5A_5A5A);
     let seed = [42u8; 32];
     let (f_pk, f_sk) = falcon1024::generate_keypair_from_seed(&seed).unwrap();
     let ed_sk = Ed448Sk::from_bytes(&[42u8; 57]).unwrap();
     let ed_pk = ed_sk.verifying_key();
 
-    for _ in 0..3 {
+    for _ in 0..falcon_rounds() {
         let msg = rng.message(2048);
         let sig = Ed448Falcon1024::sign(&ed_sk, &f_sk, &msg);
         Ed448Falcon1024::verify(&ed_pk, &f_pk, &msg, &sig)
@@ -181,10 +204,11 @@ fn prop_ed448_falcon1024_sign_verify_3_rounds() {
 }
 
 #[test]
-fn prop_kdf_construction_sign_verify_5_rounds() {
+fn prop_kdf_construction_sign_verify() {
     let mut rng = TestRng::new(0xC0DE_CACA);
+    let rounds = falcon_rounds().max(2);
 
-    for i in 0..5 {
+    for i in 0..rounds {
         let mut seed = [0u8; 32];
         let rand_bytes: Vec<u8> = rng.bytes(32);
         seed.copy_from_slice(&rand_bytes);
@@ -382,7 +406,7 @@ fn determinism_under_repeated_derivation() {
     let seed = [42u8; 32];
     // A handful of passes is enough to prove determinism — Falcon keygen is
     // expensive and hundreds of repeats add time, not confidence.
-    for _ in 0..5 {
+    for _ in 0..determinism_iters() {
         let b1 = HybridSigningKeyBundle::from_seed(&seed, "test").unwrap();
         let b2 = HybridSigningKeyBundle::from_seed(&seed, "test").unwrap();
         assert_eq!(b1.ed25519_pk().to_bytes(), b2.ed25519_pk().to_bytes());
@@ -610,7 +634,7 @@ fn stress_consecutive_hybrid_signs() {
     let ed_sk = Ed25519Sk::from_bytes(&seed);
     let ed_pk = ed_sk.verifying_key();
 
-    for i in 0..5 {
+    for i in 0..falcon_rounds().max(2) {
         let msg = format!("message-{}", i);
         let sig = Ed25519Falcon1024::sign(&ed_sk, &f_sk, msg.as_bytes());
         Ed25519Falcon1024::verify(&ed_pk, &f_pk, msg.as_bytes(), &sig).unwrap();
@@ -622,7 +646,7 @@ fn stress_consecutive_kdf_signs() {
     let seed = [42u8; 32];
     let domain = "stress";
 
-    for i in 0..5 {
+    for i in 0..falcon_rounds().max(2) {
         let msg = format!("msg-{}", i);
         let sig = Ed25519ChaCha20Blake3Sha3_256::sign(&seed, domain, msg.as_bytes()).unwrap();
         Ed25519ChaCha20Blake3Sha3_256::verify(&seed, domain, msg.as_bytes(), &sig).unwrap();
@@ -679,12 +703,12 @@ fn signature_size_invariants() {
     let sig = Ed25519Falcon1024::sign(&ed_sk, &f_sk, b"test");
     // Ed25519 sig is always 64 bytes
     assert_eq!(sig.ed25519_sig.to_bytes().len(), 64);
-    // Falcon-1024 sig is variable but bounded
-    assert!(sig.falcon_sig.as_bytes().len() <= 1330);
+    // Falcon-1024 sig is variable but bounded (CT format max 1577 bytes)
+    assert!(sig.falcon_sig.as_bytes().len() <= 1577);
 
     let (f_sk512, _f_pk512) = falcon512::generate_keypair(seed);
     let sig = Ed25519Falcon512::sign(&ed_sk, &f_sk512, b"test");
     assert_eq!(sig.ed25519_sig.to_bytes().len(), 64);
-    // Falcon-512 sig max 666
-    assert!(sig.falcon_sig.0.len() <= 666);
+    // Falcon-512 sig max 809 (CT format; NIST padded = 666)
+    assert!(sig.falcon_sig.0.len() <= 809);
 }

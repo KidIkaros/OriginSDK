@@ -266,7 +266,7 @@ to genuine reference-vector cross-checks.
 ### Not deeply re-derived (lower risk, thin wrappers — spot-checked only)
 Falcon-512/1024, ML-DSA, SLH-DSA, Ed448, `signing/*`, `aead/*`, `blob.rs`,
 `compression.rs`, `seed/*` all wrap external, independently-audited crates
-(`falcon-rust`, `ml-dsa`, `slh-dsa`, `ed448-goldilocks`). Plumbing looked
+(`falcon-rs`, `ml-dsa`, `slh-dsa`, `ed448-goldilocks`). Plumbing looked
 correct on inspection (key/seed sizes, domain separation, constant-time
 comparisons via `ct_eq` in `signing/hybrid.rs`) but were not put through the
 same reference-vector-derivation treatment as the Tier 1/2 modules above —

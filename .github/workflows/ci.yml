@@ -243,15 +243,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: rust-src
       - uses: Swatinem/rust-cache@v2
       - name: Run tests with AddressSanitizer
         env:
           RUSTFLAGS: "-Zsanitizer=address"
           ASAN_OPTIONS: "detect_leaks=0"
         run: |
-          cargo +nightly test --lib -- --test-threads=2
-          cargo +nightly test --test known_answer_vectors
-          cargo +nightly test --test malformed_input
+          cargo +nightly test -Zbuild-std --lib -- --test-threads=2
+          cargo +nightly test -Zbuild-std --test known_answer_vectors
+          cargo +nightly test -Zbuild-std --test malformed_input
 
   sanitizer-thread:
     name: ThreadSanitizer
@@ -259,15 +261,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: rust-src
       - uses: Swatinem/rust-cache@v2
-      - name: Run tests with UndefinedBehaviorSanitizer
+      - name: Run tests with ThreadSanitizer
         env:
           RUSTFLAGS: "-Zsanitizer=thread"
           TSAN_OPTIONS: "halt_on_error=1"
         run: |
-          cargo +nightly test --lib -- --test-threads=2
-          cargo +nightly test --test known_answer_vectors
-          cargo +nightly test --test malformed_input
+          cargo +nightly test -Zbuild-std --lib -- --test-threads=2
+          cargo +nightly test -Zbuild-std --test known_answer_vectors
+          cargo +nightly test -Zbuild-std --test malformed_input
 
   fuzz-smoke:
     name: Fuzz smoke test (60s per target)

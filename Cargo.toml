@@ -2,7 +2,7 @@
 
 [package]
 name = "origin-crypto-sdk"
-version = "0.7.1-rc.2"
+version = "0.7.1-rc.3"
 edition = "2021"
 authors = ["Origin Contributors"]
 description = "Standalone cryptographic SDK with classical (Ed25519) and post-quantum (Falcon, SLH-DSA, ML-DSA, NTRU Prime, Curve41417) primitives. Hybrid signing by default."
@@ -40,7 +40,7 @@ expect_used = "warn"
 # External crypto crates
 falcon-rs = "=0.2.5"         # pinned: NIST FIPS 206, passes all KATs, security audited
 chacha20poly1305 = { version = "=0.10.1", features = ["getrandom"] }  # pinned: stable API, 0.11 has breaking changes
-chacha20-blake3 = "0.9.11"  # ChaCha20-BLAKE3 AEAD (committing)
+chacha20-blake3 = "=0.9.12"  # ChaCha20-BLAKE3 AEAD (committing)
 argon2 = { version = "=0.5.3", features = ["password-hash"] }  # pinned: matches password-hash traits used internally
 sha2 = "=0.10.8"             # pinned: compatible with our Digest trait usage
 sha3 = "0.11"

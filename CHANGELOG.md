@@ -2,6 +2,15 @@
 
 All notable changes to origin-crypto-sdk will be documented in this file.
 
+## [0.7.1-rc.3] — 2026-08-03
+
+_MSFR and sanitizer workflow correction: pin the ChaCha20-BLAKE3 dependency
+for Rust 1.85 and build the standard library for sanitizer ABI consistency._
+
+### Changed
+- Pin `chacha20-blake3` to `0.9.12`, preserving the declared Rust 1.85 MSRV.
+- Build `std` with `-Zbuild-std` in nightly sanitizer jobs.
+
 ## [0.7.1-rc.2] — 2026-08-03
 
 _Corrected evidence-backed release candidate: security-fixed dependency graph,

@@ -5,7 +5,7 @@
 //! Parameter set for Streamlined NTRU Prime sntrup761
 //! (NIST reference implementation sizes, supercop-20201130)
 //!
-//! SK layout: Small(f)[191] || Small(gr)[191] || Rq(h)[1158] || rho[191] || cache[32]
+//! SK layout: Small(f) 191 bytes || Small(gr) 191 bytes || Rq(h) 1158 bytes || rho 191 bytes || cache 32 bytes
 
 /// Polynomial degree
 pub const P: usize = 761;

@@ -2,6 +2,25 @@
 
 All notable changes to origin-crypto-sdk will be documented in this file.
 
+## [0.7.1-rc.2] — 2026-08-03
+
+_Corrected evidence-backed release candidate: security-fixed dependency graph,
+validated documentation, sanitizer workflow, and signed-release asset workflow._
+
+### Changed
+- Upgrade `rand` to 0.8.7 and update the Ed448 dependency graph to remove the
+  yanked `crypto-bigint 0.7.3` path.
+- Remove the obsolete WASI advisory path from the locked dependency graph.
+- Correct rustdoc broken-link and bare-URL failures.
+- Replace the unsupported nightly undefined-sanitizer mode with ThreadSanitizer.
+- Add GitHub release assets for the crate, checksum, and SPDX SBOM; use GitHub
+  artifact attestation when repository visibility supports it.
+
+### Verification
+- `cargo audit --deny warnings` passes.
+- `cargo deny check advisories licenses bans sources` passes.
+- All-feature tests and documentation build pass.
+
 ## [0.7.1-rc.1] — 2026-08-03
 
 _Evidence-backed release candidate: SDK-owned randomness, NTRU CCA validation,

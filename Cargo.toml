@@ -2,7 +2,7 @@
 
 [package]
 name = "origin-crypto-sdk"
-version = "0.7.1-rc.1"
+version = "0.7.1-rc.2"
 edition = "2021"
 authors = ["Origin Contributors"]
 description = "Standalone cryptographic SDK with classical (Ed25519) and post-quantum (Falcon, SLH-DSA, ML-DSA, NTRU Prime, Curve41417) primitives. Hybrid signing by default."
@@ -57,11 +57,11 @@ ml-dsa = { version = "0.1.0", optional = true }
 flate2 = "1.0"
 
 # Utility crates — kept until their dependents are replaced
-rand = "=0.8.5"
+rand = "=0.8.7"
 digest = "0.11"
 ed25519-dalek = { version = "2", features = ["rand_core"] }
 ed448 = "0.5"
-ed448-goldilocks = { version = "0.14.0-pre.13", features = ["std", "signing", "pkcs8", "getrandom"] }
+ed448-goldilocks = { version = "=0.14.0-pre.15", features = ["std", "signing", "pkcs8", "getrandom"] }
 elliptic-curve = "0.13"
 signature = "2"
 subtle = "2.6.1"
@@ -117,7 +117,7 @@ rustdoc-args = ["--cfg", "docsrs"]
 # chacha20poly1305 0.10.1: stable API, avoids breaking changes in 0.11
 # argon2 0.5.3: matches password-hash traits used internally
 # sha2 0.10.8: compatible with our Digest trait usage
-# rand 0.8.5: avoids getrandom 0.3 migration in 0.9
+# rand 0.8.7: security-fixed 0.8 line while avoiding getrandom 0.3 migration in 0.9
 # unicode-normalization 0.1.25: NFKC checks for unicode_cipher input validation; pinned to match SDK pin-and-document policy
 
 [dev-dependencies]

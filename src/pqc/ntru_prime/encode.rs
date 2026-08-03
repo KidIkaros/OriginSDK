@@ -10,7 +10,7 @@
 //! - Rounded element: 1007 bytes (ciphertext polynomial)
 //! - Small element: 191 bytes (secret key components)
 //!
-//! Source: https://ntruprime.cr.yp.to/
+//! Source: <https://ntruprime.cr.yp.to/>
 
 use super::constants::{P, Q};
 use super::rq::modq;

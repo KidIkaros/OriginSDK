@@ -70,11 +70,6 @@ feature-depth = 1
 # A list of advisory IDs to ignore. Note that ignored advisories will still
 # output a note when they are encountered.
 ignore = [
-    # RUSTSEC-2026-0097: rand 0.8.5 unsound with custom logger
-    # Direct dep (falcon-rust removed in Phase 11). Pinned intentionally to avoid getrandom 0.3
-    # migration. The unsoundness requires a custom global logger which is not
-    # used in this crate.
-    { id = "RUSTSEC-2026-0097", reason = "requires custom global logger, not used here" },
 ]
 # If this is true, then cargo deny will use the git executable to fetch advisory database.
 # If this is false, then it uses a built-in git library.

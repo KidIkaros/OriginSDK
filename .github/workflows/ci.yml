@@ -253,8 +253,8 @@ jobs:
           cargo +nightly test --test known_answer_vectors
           cargo +nightly test --test malformed_input
 
-  sanitizer-undefined:
-    name: UBSan
+  sanitizer-thread:
+    name: ThreadSanitizer
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -262,8 +262,8 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: Run tests with UndefinedBehaviorSanitizer
         env:
-          RUSTFLAGS: "-Zsanitizer=undefined"
-          UBSAN_OPTIONS: "print_stacktrace=1"
+          RUSTFLAGS: "-Zsanitizer=thread"
+          TSAN_OPTIONS: "halt_on_error=1"
         run: |
           cargo +nightly test --lib -- --test-threads=2
           cargo +nightly test --test known_answer_vectors

@@ -7,7 +7,7 @@
 //!
 //! # Submodules
 //!
-//! - [`hkdf`] — HKDF-SHA3-256
+//! - [`hkdf`] — HKDF-SHA3-256 / HKDF-BLAKE3
 //! - [`mac`] — HMAC-SHA3-256
 
 pub mod hkdf;

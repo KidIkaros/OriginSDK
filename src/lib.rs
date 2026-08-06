@@ -252,11 +252,11 @@ pub use error::{CryptoError as Error, Result as StdResult};
 pub use aead::{try_generate_key, try_generate_nonce, XChaCha20Poly1305};
 
 // KDF
-pub use kdf::hkdf::{derive_subkeys, hkdf_sha3_256};
+pub use kdf::hkdf::{derive_subkeys, derive_subkeys_blake3, hkdf_blake3, hkdf_sha3_256};
 pub use kdf::Argon2id;
 
 // MAC
-pub use kdf::mac::hmac_sha3_256;
+pub use kdf::mac::{hmac_blake3, hmac_sha3_256};
 
 // DRBG
 pub use drbg::ChaCha20Drbg;

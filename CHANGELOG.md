@@ -2,6 +2,29 @@
 
 All notable changes to origin-crypto-sdk will be documented in this file.
 
+## [0.7.1-rc.5] — 2026-08-06
+
+_Add HKDF-BLAKE3 as a faster, non-NIST alternative to HKDF-SHA3-256._
+
+BLAKE3 (RFC 7693) is not NIST-approved. It is added here as a parallel
+variant of the existing HKDF surface, not a replacement, and stays ungated
+for now. A future `experimental` feature will collect this and other
+non-NIST constructions behind a single opt-in flag (roadmap item — not
+enabled in this release).
+
+### Added
+- `hkdf_blake3` and `derive_subkeys_blake3` in `kdf::hkdf` — RFC 5869
+  HKDF over HMAC-BLAKE3, same 32-byte output as HKDF-SHA3-256.
+- `hmac_blake3` and `hmac_blake3_multi` in `internal::hmac` — standard
+  HMAC construction over BLAKE3's 64-byte block (interops with
+  `hmac.new(key, data, blake3.blake3)`), not BLAKE3 `keyed_hash`/`derive_key`.
+- Reference-vector tests cross-checked against Python `hmac`/`hkdf` over
+  BLAKE3 (catches wrong block size or T(i) chaining, not just self-consistency).
+
+### Performance
+- `derive_subkeys` is ~7.3× faster with BLAKE3 vs SHA3-256 (release
+  build, 50000 iterations: 2.23 µs vs 16.28 µs).
+
 ## [0.7.1-rc.4] — 2026-08-03
 
 _MSRV correction: disable the `std` feature on `chacha20-blake3` to avoid

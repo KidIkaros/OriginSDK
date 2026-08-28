@@ -2,6 +2,35 @@
 
 All notable changes to origin-crypto-sdk will be documented in this file.
 
+## [0.7.1-rc.6] — 2026-08-27
+
+_Add ML-KEM-768 (FIPS 203) as the hybrid-KEM counterpart to NTRU Prime._
+
+ML-KEM-768 (Kyber) and NTRU Prime are different lattice families
+(NTRU lattices vs Module-LWE). Having both in the SDK enables hybrid
+key encapsulation with algorithm diversity: a cryptanalytic break of
+one family does not cascade to the other. Blueprint for origin-tools
+consumers (STOA) combining both shared secrets via HKDF.
+
+### Added
+- `pqc::ml_kem` module behind the new `ml-kem` feature — thin SDK-shaped
+  wrapper over the RustCrypto `ml-kem` crate (masked NTT, side-channel
+  resistant; the implementation validated in Signet).
+- `MlKem768Kem::generate_keypair_from_seed(&[u8; 64])` — deterministic
+  keypair from the FIPS 203 `KeyGen_internal` seed (`d || z`), enabling
+  HKDF derivation from childseeds.
+- `encapsulate` / `decapsulate` with 32-byte shared secrets; wrong-key
+  decapsulation yields the implicit-rejection secret (tested).
+- Wire forms: `EncapsulationKey` (1184 B, safe to transmit),
+  `Ciphertext` (1088 B) with byte round-trips.
+
+### Design notes
+- Storage form is the 64-byte seed (`d || z`), per the seeds-as-keys
+  rule; the deprecated 2400-byte expanded dk form is deliberately unused.
+- `Debug` impls never leak key material.
+- Dependency pinned `ml-kem = "=0.3.2"` per the SDK pin-and-document
+  policy. Feature-gated (`ml-kem`) — default build unchanged.
+
 ## [0.7.1-rc.5] — 2026-08-06
 
 _Add HKDF-BLAKE3 as a faster, non-NIST alternative to HKDF-SHA3-256._

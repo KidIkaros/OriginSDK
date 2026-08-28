@@ -52,6 +52,7 @@ cipher = { version = "0.4", features = ["block-padding"] }
 # Post-quantum signatures (optional)
 slh-dsa = { version = "0.2.0-rc.5", optional = true }
 ml-dsa = { version = "0.1.0", optional = true }
+ml-kem = { version = "=0.3.2", optional = true, features = ["zeroize", "getrandom"] }  # pinned: FIPS 203 KEM, masked NTT (RustCrypto), validated in Signet
 
 # Compression
 flate2 = "1.0"
@@ -97,6 +98,7 @@ parallel = ["dep:rayon"]
 pqc-simd = []    # Placeholder: SIMD acceleration for NTRU Prime
 slh-dsa = ["dep:slh-dsa"]    # FIPS 205 hash-based signatures (SPHINCS+)
 ml-dsa = ["dep:ml-dsa"]      # FIPS 204 lattice signatures (Dilithium)
+ml-kem = ["dep:ml-kem"]      # FIPS 203 lattice KEM (Kyber) — hybrid-KEM counterpart to ntru_prime
 test-utils = []    # Deterministic seeds, keys, and proptest strategies for downstream tests
 # NTRU Prime SHAKE hashing experiments (not NIST-compatible, for benchmarking only):
 ntru-shake128 = []  # Use SHAKE128 for KEM hashing instead of SHA-2-512

@@ -35,3 +35,6 @@ pub mod slhdsa;
 
 #[cfg(feature = "ml-dsa")]
 pub mod mldsa;
+
+#[cfg(feature = "ml-kem")]
+pub mod ml_kem;

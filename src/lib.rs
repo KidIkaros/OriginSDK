@@ -60,6 +60,7 @@
 //! - [`chacha40`] — Post-quantum hardened stream cipher (512-bit key, 40 rounds, dual-state)
 //! - [`chacha20`] — Standard ChaCha20 stream cipher (RFC 8439)
 //! - [`kdf`] — Key derivation (Argon2id, HKDF-SHA3-256)
+//! - [`compressed`] — Atomic compress-then-encrypt / decrypt-then-decompress container
 //! - [`pqc`] — Raw post-quantum primitives (advanced use)
 //! - [`ec_schnorr`] — secp256k1 Schnorr signatures (native, no external deps)
 //! - [`prelude`] — One-line import for common types
@@ -216,6 +217,9 @@ pub mod siphash;
 #[doc(hidden)]
 pub mod compression;
 
+/// Atomic compress-then-encrypt / decrypt-then-decompress container.
+pub mod compressed;
+
 /// Blob storage — internal utility.
 #[doc(hidden)]
 pub mod blob;
@@ -271,6 +275,9 @@ pub use kdf::mac::{hmac_blake3, hmac_sha3_256};
 
 // DRBG
 pub use drbg::ChaCha20Drbg;
+
+// Atomic compression
+pub use compressed::{compress_encrypt, decompress_decrypt, Compressor, DEFAULT_CHUNK_SIZE};
 
 /// Fill a buffer with bytes from the SDK's operating-system CSPRNG.
 ///

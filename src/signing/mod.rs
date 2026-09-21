@@ -52,6 +52,9 @@ pub mod classical;
 pub mod hybrid;
 pub mod postquantum;
 
+/// Hybrid-signature wire format (Ed25519 + Falcon-1024 serialization).
+pub mod wire;
+
 /// Legacy compatibility shim for code that used `origin_crypto_sdk::hybrid::*`.
 /// **Deprecated.** Use `signing::hybrid` directly instead.
 #[deprecated(note = "use signing::hybrid instead.")]

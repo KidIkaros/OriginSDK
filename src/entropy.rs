@@ -296,24 +296,33 @@ fn normal_cdf(z: f64) -> f64 {
 }
 
 /// Serial correlation between adjacent bytes.
+/// Single-pass over the data — no per-element allocation.
 fn compute_serial_correlation(data: &[u8]) -> f64 {
-    if data.len() <= 1 {
+    let n = data.len();
+    if n <= 1 {
         return 0.0;
     }
 
-    let n = data.len() as f64;
-    let mean: f64 = data.iter().map(|&b| b as f64).sum::<f64>() / n;
+    // Pass 1: mean
+    let mean: f64 = data.iter().map(|&b| b as f64).sum::<f64>() / n as f64;
 
+    // Pass 2: numerator and denominator from deviations on the fly.
+    // This avoids the Vec<f64> allocation that materialised one f64 per input
+    // byte (8 bytes of RSS per input byte) — which OOM-killed the process on
+    // multi-GB inputs.  (#…)
     let mut numerator = 0.0_f64;
     let mut denominator = 0.0_f64;
+    let mut prev_dev = 0.0_f64;
+    let mut first = true;
 
-    let deviations: Vec<f64> = data.iter().map(|&b| b as f64 - mean).collect();
-
-    for i in 0..deviations.len() {
-        denominator += deviations[i] * deviations[i];
-        if i > 0 {
-            numerator += deviations[i - 1] * deviations[i];
+    for &b in data {
+        let dev = b as f64 - mean;
+        denominator += dev * dev;
+        if !first {
+            numerator += prev_dev * dev;
         }
+        first = false;
+        prev_dev = dev;
     }
 
     if denominator == 0.0 {

@@ -2,6 +2,55 @@
 
 All notable changes to origin-crypto-sdk will be documented in this file.
 
+## [0.7.1-rc.7] — 2026-09-21
+
+_Add X25519 key agreement (RFC 7748) as a first-class public surface, and re-export the Ed25519 signing types._
+
+Closes the documented public-API gap behind `algorithm_id 0x0602`: the identifier was reserved
+but no key-agreement API existed, so downstream crates (origin-channel's Noise handshake) had
+to keep a temporary `dh.rs` seam importing `x25519_dalek` directly. With this release, key
+agreement comes from the single crypto provider like every other primitive.
+
+### Added
+- `x25519` module — `X25519KeyPair` (from CSPRNG via `generate`, or deterministic
+  `from_seed` using HKDF-BLAKE3 with the domain-separated info
+  `origin-crypto-sdk:x25519:v1`), `X25519PublicKey` (32-byte wire form), and
+  `X25519SharedSecret` (32 bytes; zeroize-on-drop).
+- Crate-root and prelude re-exports: `X25519KeyPair`, `X25519PublicKey`,
+  `X25519SharedSecret` — the counterpart to `XChaCha20Poly1305`.
+- Hardened DH semantics: an **all-zero shared secret is rejected**
+  (`InvalidKey`) instead of silently returned — all-zero/low-order peer keys
+  cannot yield a known constant (matches OpenSSL / Go / python-cryptography
+  behavior; RFC 7748 leaves this choice to implementers). All-zero secret
+  scalars are rejected at construction.
+- `signing::hybrid` now re-exports `Ed25519Signature`, `Ed25519SigningKey`,
+  `Ed25519VerifyingKey` (`pub use ed25519_dalek::…`), surfaced at the crate
+  root, so consumers parse wire-format keys/signatures without importing
+  `ed25519-dalek` themselves.
+
+### Verification
+- RFC 7748 §5.2 test vectors 1–2 (raw scalar mult) and §6.1 (full key
+  agreement, both directions), byte-exact.
+- Golden vectors cross-checked against Python `cryptography` 46.0.5 (OpenSSL
+  backend) — independent implementation, per the standing cross-check rule.
+- Adversarial: all-zero peer key and low-order peer point (u = 1) rejected;
+  wrong-key DH differs from honest DH; zero scalar rejected; Debug redaction
+  of secrets; zeroize-on-drop verified by inspecting real heap memory.
+- Integration tests exercise the crate-root surface, wire round-trips, a
+  Noise-shaped handshake with HKDF-BLAKE3 key binding, and the 0x0602
+  algorithm-id binding.
+
+### Dependency
+- `x25519-dalek = "=2.0.1"` (pinned, `static_secrets` + `zeroize` features) —
+  the audited dalek family, same curve25519-dalek 4.x backend already in the
+  tree via `ed25519-dalek 2`. Feature-gated `static_secrets` explicitly opted
+  into: our identity design requires long-lived static keys, and the scalar
+  is clamped and zeroized at the SDK boundary.
+
+### Compatibility
+- Additive release; no existing public API changed. Origin-tools consumers
+  may now migrate `origin-channel/src/dh.rs` to this surface (separate change).
+
 ## [0.7.1-rc.6] — 2026-08-27
 
 _Add ML-KEM-768 (FIPS 203) as the hybrid-KEM counterpart to NTRU Prime._

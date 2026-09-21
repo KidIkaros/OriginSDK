@@ -55,6 +55,7 @@
 //!   - [`signing::classical`] — Ed25519 (no PQ dependencies)
 //!   - [`signing::postquantum`] — Falcon-512/1024, SLH-DSA, ML-DSA
 //!   - [`signing::hybrid`] — Recommended default. Ed25519 + PQ combined.
+//! - [`x25519`] — X25519 key agreement (RFC 7748); the counterpart to signing.
 //! - [`aead`] / [`chacha20_blake3`] — Symmetric encryption (committing & non-committing)
 //! - [`chacha40`] — Post-quantum hardened stream cipher (512-bit key, 40 rounds, dual-state)
 //! - [`chacha20`] — Standard ChaCha20 stream cipher (RFC 8439)
@@ -151,6 +152,13 @@ pub mod pqc;
 /// new applications. It pairs Ed25519 with a post-quantum primitive so
 /// the signature remains unforgeable even if one primitive is broken.
 pub mod signing;
+
+// ── Key agreement ──
+/// X25519 Diffie-Hellman key agreement (RFC 7748, `algorithm_id 0x0602`).
+///
+/// The key-agreement counterpart to the signing surfaces: byte-array
+/// interchange, seed-based deterministic derivation, zeroize-on-drop.
+pub mod x25519;
 
 // ── Randomness & DRBG ──
 pub mod drbg;
@@ -255,6 +263,9 @@ pub use aead::{try_generate_key, try_generate_nonce, XChaCha20Poly1305};
 pub use kdf::hkdf::{derive_subkeys, derive_subkeys_blake3, hkdf_blake3, hkdf_sha3_256};
 pub use kdf::Argon2id;
 
+// Key agreement
+pub use x25519::{X25519KeyPair, X25519PublicKey, X25519SharedSecret};
+
 // MAC
 pub use kdf::mac::{hmac_blake3, hmac_sha3_256};
 
@@ -280,6 +291,8 @@ pub use signing::hybrid::{
     DEFAULT_BUNDLE_CACHE_MAX_ENTRIES,
 };
 pub use signing::hybrid::{skein1024, skein512};
+// Ed25519 type aliases (for parsing wire-format keys/signatures without direct ed25519_dalek import)
+pub use signing::hybrid::{Ed25519Signature, Ed25519SigningKey, Ed25519VerifyingKey};
 
 // PQC direct access — use `pqc::{falcon1024, falcon512, ed448, ...}::module` for raw types.
 // Re-exports at crate root are intentionally omitted to keep the surface clean.

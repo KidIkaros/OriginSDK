@@ -35,6 +35,9 @@ pub use crate::error::{CryptoError, Result};
 pub use crate::aead::XChaCha20Poly1305;
 pub use crate::chacha20_blake3::ChaCha20Blake3;
 
+// ── Key agreement ──
+pub use crate::x25519::{X25519KeyPair, X25519PublicKey, X25519SharedSecret};
+
 // ── KDF ──
 pub use crate::kdf::hkdf::{derive_subkeys, hkdf_sha3_256};
 pub use crate::kdf::Argon2id;

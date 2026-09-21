@@ -100,7 +100,12 @@ use crate::pqc::falcon512::{
     Falcon512Signature,
 };
 use crate::primitives::{blake3, sha3_256, Shake128, Shake256};
-use ed25519_dalek::{
+// ============================================================================
+// Public re-exports: allow consumers to parse Ed25519 keys/signatures without
+// importing ed25519_dalek directly (keeps the "single crypto provider" discipline).
+// ============================================================================
+
+pub use ed25519_dalek::{
     Signature as Ed25519Signature, Signer, SigningKey as Ed25519SigningKey, Verifier,
     VerifyingKey as Ed25519VerifyingKey,
 };

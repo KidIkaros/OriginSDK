@@ -2,6 +2,78 @@
 
 All notable changes to origin-crypto-sdk will be documented in this file.
 
+## [0.7.1-rc.10] — 2026-09-24
+
+_Design-audit remediation, NIST KAT execution with real spec fixes, and replacement
+of the hand-rolled secp256k1 arithmetic with the audited `k256` crate._
+
+### Changed (breaking)
+- **secp256k1 arithmetic is now `k256 0.14`** (RustCrypto, fiat-crypto field code,
+  constant-time by construction). The vendored `internal::secp256k1` module (~1500
+  lines of custom field/scalar/point arithmetic) is removed. Byte-equivalence with
+  the vendored implementation was verified before removal: `from_repr` accept/reject
+  parity including ≥n and boundary scalars, identical compressed SEC1 generator-mul
+  encodings, cross-decoding, and mod-n reduction parity.
+- **`ec_schnorr::prove` signature:** `prove(secret_key, public_key, message)` →
+  `prove(secret_key, message)`. The public key is derived internally (`P = x·G`);
+  a caller-supplied pk could be mismatched, producing a proof that can never
+  verify. Honest callers get byte-identical challenges.
+- **`ec_schnorr::batch_verify`:** `&[Vec<u8>]` args → `&[impl AsRef<[u8]>]` —
+  accepts Vecs, slices, and arrays (backward-compatible at call sites).
+- **NTRU shared secrets change** for identical ciphertexts vs rc.9: `hash_session`
+  now commits to the full 1039-byte ciphertext (`H_b(H3(r)‖ct)`) per the NIST
+  submission, not the 32-byte confirm field. Required for wire compatibility —
+  see Fixed.
+
+### Fixed (security/correctness)
+- **NTRU `hash_session` spec deviation:** committed only to the 32-byte confirm
+  field instead of the full ciphertext — every shared secret was incompatible
+  with every other sntrup761 implementation. Found by executing the official
+  KATs; now 100/100 decapsulation vectors pass byte-exact.
+- **NTRU `random_tsmall` signed sort:** tagged draws were sorted as `i32`; the
+  reference uses `crypto_sort_uint32`. Keygen now reproduces NIST pk/sk/ct/ss
+  byte-for-byte across all 100 seeded vectors.
+- **Constant-time sweep (Phase 12.1):** `x25519` all-zero checks → `ct_eq`;
+  `GaloisField::mul` → branchless mask form; NTRU decap CCA select → arithmetic
+  mask; `zx::min_max` (crypto_sort) → branchless swap; the former vendored
+  secp256k1 was made branchless before being replaced by `k256`.
+- **Fuzz infrastructure:** `libfuzzer-sys` was built with `default-features=false`,
+  stripping `link_libfuzzer` — no target ever linked a `main`, and CI's `|| true`
+  hid it. Fixed manifest + CI job.
+- **CI benchmark job:** removed `|| true` masking and a phantom Criterion baseline.
+- **NTRU migration cache:** migrated private keys now use the feature-selected
+  hash backend for the `H4(pk)` cache field, not unconditional SHA-2 (migrated
+  keys would have failed every CCA check under `ntru-blake3`/`ntru-shake*`).
+
+### Added
+- **Official NIST `sntrup761` KAT execution** (`tests/ntru_prime_kat.rs`): NIST
+  AES-256-CTR DRBG replayed through the `RngCore` generic API — 100/100
+  decapsulation vectors, 100/100 seeded keygen+encapsulation vectors byte-exact,
+  cross-roundtrip with foreign keys. Gated off non-NIST hash backends.
+- **`pqc::ntru_prime::migrate`** — 0.6.x→0.7.x key migration (`f`/`gr` carry over,
+  `h` re-encoded, fresh `rho`, backend-correct cache) + `origin-crypto migrate
+  ntru-pk|ntru-sk` CLI.
+- **Golden vectors** for all SDK-owned formats (`tests/format_golden_vectors.rs`)
+  and downstream tools formats (origin-tools: SEAL, channel, CombinedSignature).
+- **Docs:** `docs/CONSTANT_TIME.md`, `docs/BENCHMARKS.md` (61-measure baseline),
+  `docs/MIGRATION_0_6_TO_0_7.md`, `docs/DESIGN_AUDIT.md`, `AUDIT_PACKAGE.md`
+  (external-review package), standards posture in `SECURITY.md`.
+- **Timing tests:** NTRU decap valid-vs-invalid (CCA boundary), Schnorr key-density.
+- **Fuzz targets:** `fuzz_ntru_prime`, `fuzz_falcon`, `fuzz_blob` (+52k exec/s on
+  Falcon after hoisting keygen to `LazyLock`).
+
+### Internal
+- Design-audit remediation (8 steps): sealed `internal/` layer, split
+  `signing/hybrid` into a module dir, `BundleCache` ownable value type, error &
+  boundary hygiene, long-function decomposition, functional-design pass, public
+  API rationalization, guardrails + roadmap integration.
+
+### Verification
+- 439 lib tests + all integration binaries green; 100/100 official NIST KATs
+  byte-exact; 6 timing smoke tests; golden vectors for every SDK-owned format.
+- Still **experimental, pre-1.0, not independently audited** — see `SECURITY.md`
+  and `AUDIT_PACKAGE.md` before any production use.
+
 ## [0.7.1-rc.7] — 2026-09-21
 
 _Add X25519 key agreement (RFC 7748) as a first-class public surface, and re-export the Ed25519 signing types._

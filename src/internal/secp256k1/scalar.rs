@@ -156,13 +156,10 @@ impl Scalar {
         res.conditional_add_n(borrow)
     }
 
-    /// Negation: (-self) mod n.
+    /// Negation: (-self) mod n (branchless: `0 - self` borrows exactly
+    /// when self != 0, and `sub` adds n back on borrow).
     pub fn neg(&self) -> Self {
-        if self.is_zero().is_true() {
-            *self
-        } else {
-            Self::from_limbs(N).sub(self)
-        }
+        Self::ZERO.sub(self)
     }
 
     /// Check if zero.
@@ -178,6 +175,11 @@ impl Scalar {
     }
 
     /// Exponentiation by a 256-bit exponent.
+    ///
+    /// CT note: the `& 1` conditional multiply branches on the
+    /// *exponent*, which is always the public constant `n - 2` here
+    /// (`invert`). Secret data flows only through `mul`. Do not call
+    /// this with a secret exponent.
     fn pow(&self, exp: &[u64; 4]) -> Self {
         let mut result = Self::ONE;
         let mut base = *self;
@@ -204,41 +206,39 @@ impl Scalar {
             borrow = u64::from(b) | u64::from(n_carry);
         }
         let mut result = self.limbs;
+        // Branchless select: gte_n depends on secret limbs.
+        let mask = 0u64.wrapping_sub(u64::from(u8::from(gte_n) & 1));
         for i in 0..4 {
-            if gte_n.is_true() {
-                result[i] = sub_result[i];
-            }
+            result[i] ^= mask & (result[i] ^ sub_result[i]);
         }
         Self::from_limbs(result)
     }
 
-    /// Conditionally add n when borrow is set.
+    /// Conditionally add n when borrow is set (branchless: the addend
+    /// is N masked by `borrow != 0`, so the add always executes).
     fn conditional_add_n(&self, borrow: u64) -> Self {
-        if borrow == 0 {
-            *self
-        } else {
-            let mut result = [0u64; 4];
-            let mut carry = 0u64;
-            for i in 0..4 {
-                let (sum1, c1) = self.limbs[i].overflowing_add(N[i]);
-                let (sum2, c2) = sum1.overflowing_add(carry);
-                result[i] = sum2;
-                carry = u64::from(c1) | u64::from(c2);
-            }
-            Self::from_limbs(result)
+        let mask = 0u64.wrapping_sub(u64::from(borrow != 0));
+        let mut result = [0u64; 4];
+        let mut carry = 0u64;
+        for i in 0..4 {
+            let (sum1, c1) = self.limbs[i].overflowing_add(N[i] & mask);
+            let (sum2, c2) = sum1.overflowing_add(carry);
+            result[i] = sum2;
+            carry = u64::from(c1) | u64::from(c2);
         }
+        Self::from_limbs(result)
     }
 
-    /// Check if self >= n.
+    /// Check if self >= n (constant-time borrow chain).
     fn is_gte_n(&self) -> Choice {
-        for i in (0..4).rev() {
-            if self.limbs[i] > N[i] {
-                return Choice::from_bool(true);
-            } else if self.limbs[i] < N[i] {
-                return Choice::from_bool(false);
-            }
+        // self >= n iff subtracting n produces no borrow.
+        let mut borrow = 0u64;
+        for i in 0..4 {
+            let (d, b1) = self.limbs[i].overflowing_sub(N[i]);
+            let (_d, b2) = d.overflowing_sub(borrow);
+            borrow = u64::from(b1) | u64::from(b2);
         }
-        Choice::from_bool(true)
+        Choice::from_bool(borrow == 0)
     }
 }
 
@@ -271,43 +271,52 @@ fn product_512(a: &[u64; 4], b: &[u64; 4]) -> [u64; 8] {
 /// Reduce a 512-bit value (little-endian limbs) modulo n, returning 256-bit plain limbs.
 /// Folds the high 256 bits in using 2^256 mod n = R256, iterating until the high part vanishes.
 /// Uses carry-aware 257-bit arithmetic so no bits are lost.
+/// Reduce a 512-bit value (little-endian limbs) modulo n, returning 256-bit plain limbs.
+/// Folds the high 256 bits in using 2^256 mod n = R256.
+///
+/// Constant-time: R256 < 2^129, so each fold shrinks the high half by
+/// ~127 bits and **four** unconditional folds guarantee the high half is
+/// zero for every input — no data-dependent iteration count. The fold
+/// uses raw [`product_512`] rather than `Scalar::mul` so the routine is
+/// non-recursive (`mul` itself reduces through this function).
 fn reduce_512(t: &[u64; 8]) -> [u64; 4] {
-    let mut limbs = *t;
-    loop {
-        let hi = [limbs[4], limbs[5], limbs[6], limbs[7]];
-        if hi == [0, 0, 0, 0] {
-            break;
-        }
-        let lo = Scalar::from_limbs([limbs[0], limbs[1], limbs[2], limbs[3]]);
-        let hi_s = Scalar::from_limbs(hi);
-        // hi * (2^256 mod n) = hi * R256, as a 256-bit value mod n.
-        let hi_r = hi_s.mul(&Scalar::from_limbs(R256));
-        // 257-bit sum w = lo + hi_r (both < 2^256, so sum < 2^257).
-        let mut w = [0u64; 5];
-        let mut c: u64 = 0;
+    let mut cur = *t;
+    for _ in 0..4 {
+        let hi = [cur[4], cur[5], cur[6], cur[7]];
+        let p = product_512(&hi, &R256); // hi * R256, full 512 bits
+                                         // cur ≡ lo + hi*R256 (mod n); reassemble as
+                                         // (lo + p_lo mod 2^256) + (p_hi + carry)·2^256
+        let mut next = [0u64; 8];
+        let mut carry: u64 = 0;
         for i in 0..4 {
-            let (s1, c1) = lo.limbs[i].overflowing_add(hi_r.limbs[i]);
-            let (s2, c2) = s1.overflowing_add(c);
-            w[i] = s2;
-            c = u64::from(c1) | u64::from(c2);
+            let (s1, c1) = cur[i].overflowing_add(p[i]);
+            let (s2, c2) = s1.overflowing_add(carry);
+            next[i] = s2;
+            carry = u64::from(c1) | u64::from(c2);
         }
-        w[4] = c;
-        let red = reduce_257(&w);
-        limbs = [red[0], red[1], red[2], red[3], 0, 0, 0, 0];
+        let mut c128 = u128::from(carry);
+        for k in 4..8 {
+            c128 += u128::from(p[k]);
+            next[k] = c128 as u64;
+            c128 >>= 64;
+        }
+        cur = next;
     }
-    reduce_257(&[limbs[0], limbs[1], limbs[2], limbs[3], 0])
+    reduce_257(&[cur[0], cur[1], cur[2], cur[3], cur[4]])
 }
 
 /// Reduce a 257-bit little-endian value (limbs[4] is 0 or 1) modulo n.
+/// Reduce a ≤257-bit value modulo n.
+///
+/// Constant-time: both conditional subtractions are computed
+/// unconditionally and selected by mask — `w[4] != 0` and the limb
+/// comparisons all depend on secret-derived values.
 fn reduce_257(w: &[u64; 5]) -> [u64; 4] {
-    let ge = if w[4] == 1 {
-        true
-    } else {
-        is_gte4(&[w[0], w[1], w[2], w[3]], &N)
-    };
-    if !ge {
-        return [w[0], w[1], w[2], w[3]];
-    }
+    // ge: value >= n iff the 5th limb is nonzero or low limbs >= n.
+    let ge = (w[4] != 0) | is_gte4(&[w[0], w[1], w[2], w[3]], &N);
+    let mask = 0u64.wrapping_sub(u64::from(ge));
+
+    // r = w - N (5 limbs); selected when ge, else w is kept.
     let mut r = [0u64; 5];
     let mut borrow = 0u64;
     for i in 0..4 {
@@ -318,45 +327,55 @@ fn reduce_257(w: &[u64; 5]) -> [u64; 4] {
     }
     let (d4, _) = w[4].overflowing_sub(borrow);
     r[4] = d4;
-    if r[4] == 1 {
-        let mut r2 = [0u64; 5];
-        let mut borrow = 0u64;
-        for i in 0..4 {
-            let (d1, b1) = r[i].overflowing_sub(N[i]);
-            let (d2, b2) = d1.overflowing_sub(borrow);
-            r2[i] = d2;
-            borrow = u64::from(b1) | u64::from(b2);
-        }
-        let (d4b, _) = r[4].overflowing_sub(borrow);
-        r2[4] = d4b;
-        [r2[0], r2[1], r2[2], r2[3]]
-    } else {
-        [r[0], r[1], r[2], r[3]]
+
+    let mut sel = [0u64; 5];
+    for i in 0..5 {
+        sel[i] = w[i] ^ (mask & (w[i] ^ r[i]));
     }
+
+    // Second conditional subtract: needed when sel[4] != 0 (value still
+    // >= 2^256 > n). Computed unconditionally and mask-selected.
+    let ge2 = sel[4] != 0;
+    let mask2 = 0u64.wrapping_sub(u64::from(ge2));
+    let mut r2 = [0u64; 5];
+    let mut borrow2 = 0u64;
+    for i in 0..4 {
+        let (d1, b1) = sel[i].overflowing_sub(N[i]);
+        let (d2, b2) = d1.overflowing_sub(borrow2);
+        r2[i] = d2;
+        borrow2 = u64::from(b1) | u64::from(b2);
+    }
+    let (d4b, _) = sel[4].overflowing_sub(borrow2);
+    r2[4] = d4b;
+
+    let mut out = [0u64; 5];
+    for i in 0..5 {
+        out[i] = sel[i] ^ (mask2 & (sel[i] ^ r2[i]));
+    }
+    [out[0], out[1], out[2], out[3]]
 }
 
-/// Compare two 256-bit little-endian limb arrays: returns true if a >= b.
+/// Compare two 256-bit little-endian limb arrays (constant-time borrow
+/// chain): returns true if a >= b.
 fn is_gte4(a: &[u64; 4], b: &[u64; 4]) -> bool {
-    for i in (0..4).rev() {
-        if a[i] > b[i] {
-            return true;
-        } else if a[i] < b[i] {
-            return false;
-        }
+    let mut borrow = 0u64;
+    for i in 0..4 {
+        let (d1, b1) = a[i].overflowing_sub(b[i]);
+        let (_d2, b2) = d1.overflowing_sub(borrow);
+        borrow = u64::from(b1) | u64::from(b2);
     }
-    true
+    borrow == 0
 }
 
-/// Check if limbs represent value < n.
+/// Check if limbs represent value < n (constant-time borrow chain).
 fn is_lt_n(limbs: &[u64; 4]) -> Choice {
-    for i in (0..4).rev() {
-        if limbs[i] > N[i] {
-            return Choice::from_bool(false);
-        } else if limbs[i] < N[i] {
-            return Choice::from_bool(true);
-        }
+    let mut borrow = 0u64;
+    for i in 0..4 {
+        let (d1, b1) = limbs[i].overflowing_sub(N[i]);
+        let (_d2, b2) = d1.overflowing_sub(borrow);
+        borrow = u64::from(b1) | u64::from(b2);
     }
-    Choice::from_bool(false)
+    Choice::from_bool(borrow != 0)
 }
 
 #[cfg(test)]

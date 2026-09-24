@@ -10,11 +10,15 @@
 //! - Curve order n = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
 //! - Generator point G as defined in SECG standards
 //!
-//! CT-REVIEW(12.1): this is a hand-rolled curve implementation — field
-//! and scalar arithmetic must be verified constant-time (no
-//! secret-dependent branches, no compiler-inserted division or early
-//! exits) before any 1.0 release. External review should pay particular
-//! attention to `field.rs` reduction paths and `scalar.rs` inversion.
+//! CT note (Phase 12.1 sweep, resolved): scalar multiplication, point
+//! add/double, and the field/scalar reduction paths are now branchless
+//! (mask selects, fixed trip counts, borrow-chain comparisons). Remaining
+//! data-dependent branches operate only on *public* values: `pow`'s
+//! square-and-multiply on the fixed public exponents (p-2, n-2,
+//! (p+1)/4), point decoding of untrusted input, and `verify`'s
+//! malformed-input early returns. External review (Phase 13) should
+//! still verify compiler codegen — hand-rolled curve arithmetic gets no
+//! upstream assurance.
 
 mod field;
 mod point;

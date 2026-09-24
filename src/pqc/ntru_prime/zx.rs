@@ -27,10 +27,19 @@ pub mod random {
         rng.next_u32() as i32
     }
 
+    /// Branchless min/max swap — the sort runs over random values whose
+    /// ordering determines secret coefficient positions, so the compare
+    /// must not leak through a branch (matches the reference
+    /// `crypto_sort_int32` masking approach).
     fn min_max(arr: &mut [i32], x: usize, y: usize) {
-        if arr[y] < arr[x] {
-            arr.swap(x, y);
-        }
+        let a = arr[x];
+        let b = arr[y];
+        // mask = all-ones iff b < a (i64 subtraction can't overflow for
+        // i32 inputs)
+        let mask = (((b as i64) - (a as i64)) >> 63) as i32;
+        let delta = (a ^ b) & mask;
+        arr[x] = a ^ delta;
+        arr[y] = b ^ delta;
     }
 
     fn sort(x: &mut [i32], n: usize) {

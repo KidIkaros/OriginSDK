@@ -340,6 +340,29 @@ placed during Step 6 are *new* tracked items for Phase 12.1 — they
 record sites whose constant-time behavior must be verified, not open
 audit findings.
 
+## Phase 12.1 — constant-time sweep (executed)
+
+The marked sites were swept ahead of schedule; results:
+
+- **Fixed:** `x25519` all-zero checks → `ct_eq`; `GaloisField::mul` →
+  branchless 8-iteration mask form; NTRU decap `if all_match` →
+  arithmetic mask; `zx::random::min_max` (crypto_sort) → branchless
+  i64-sign-mask swap; `internal::secp256k1` fully branchless —
+  `point::mul` double-and-add → select, `add`/`double` special cases →
+  unconditional formula + select, `is_gte_{p,n}`/`is_lt_n`/`is_gte4` →
+  borrow chains, `conditional_add_{p,n}` → masked adds, REDC carry
+  propagation → fixed trip count, `reduce_512` → non-recursive 4-fold
+  (also fixed a stack-overflow path in the fold), `reduce_257` →
+  mask-select, `neg` → `ZERO.sub(self)`.
+- **Documented (public data only):** `pow` exponent bits, `exp`,
+  syndrome early-continue, decode/verify parse early-returns.
+- **Residual:** external codegen verification of `internal::secp256k1`
+  in Phase 13; `to_affine` identity check is public-observable state.
+
+Policy doc: `docs/CONSTANT_TIME.md`. New timing tests:
+`timing_ntru_decap_valid_vs_invalid`,
+`timing_schnorr_prove_key_density_independent` (6 total, all pass).
+
 The SDK remains **experimental** — this work improves internal evidence
 and structure; it is not a substitute for the independent cryptographic
 and Rust review in Phase 13.

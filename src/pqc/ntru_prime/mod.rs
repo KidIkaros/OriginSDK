@@ -211,10 +211,10 @@ impl NtruPrime {
     /// Uses CCA fallback: if re-encryption doesn't match the ciphertext,
     /// the session key is derived from `rho` (random secret in SK) instead
     /// of the recovered `r`, preventing adaptive chosen-ciphertext attacks.
-    // CT-REVIEW(12.1): the CCA mask select below must remain branchless
-    // (arithmetic mask, not `if`) — this is the decryption-failure
-    // oracle boundary. Verify `rq::round3`, `r3::mult`, and
-    // `count_weight` codegen during the Phase 12.1 sweep.
+    // CT note (Phase 12.1 sweep): the CCA failure-select below is
+    // arithmetic (`mask = all_match - 1`, `r ^ (mask & (r ^ rho))`) —
+    // no branch may ever depend on the decryption outcome, since this
+    // is the decryption-failure oracle boundary.
     pub fn decapsulate(ciphertext: &Ciphertext, sk: &PrivateKey) -> Result<SharedSecret> {
         // Extract SK components
         let f = zx::encoding::decode(&sk[SK_F_OFFSET..SK_GR_OFFSET]);
@@ -263,9 +263,12 @@ impl NtruPrime {
             crate::internal::subtle::ConstantTimeEq::ct_eq(confirm, &confirm_new).0 as i32;
 
         // mask = 0 if everything matches, -1 if any mismatch
+        // Branchless by construction: all_match ∈ {0, 1}, so
+        // all_match - 1 ∈ {-1, 0} — an `if` here would be a
+        // secret-dependent branch on the decryption outcome.
         let weight_match = crate::internal::subtle::Choice::from_bool(weight_ok).0 as i32;
         let all_match = c_match & confirm_match & weight_match;
-        let mask: i32 = if all_match == 1 { 0 } else { -1 };
+        let mask: i32 = all_match.wrapping_sub(1);
 
         // CCA fallback: if mask != 0, replace r_enc with rho
         // r_enc[i] ^= mask & (r_enc[i] ^ rho[i])
@@ -305,9 +308,10 @@ fn constant_time_eq(a: &[u8], b: &[u8]) -> i32 {
     is_zero as i32
 }
 
-// CT-REVIEW(12.1): `.abs()` on i8 is branchless on modern compilers
-// (verify codegen); the `w == W` check feeding the CCA mask in
-// `decapsulate` is the site that must stay branchless.
+// CT note (Phase 12.1 sweep): `i8::abs()` lowers to a branchless
+// sign-mask select and the `w == W` comparison feeding `decapsulate`'s
+// CCA mask is a setcc-style compare — no data-dependent branches. The
+// Phase 13 external review should still confirm codegen.
 fn count_weight(r: &[i8; P]) -> i32 {
     r.iter().map(|&x| x.abs() as i32).sum()
 }

@@ -245,16 +245,24 @@ impl ProjectivePoint {
     }
 
     /// Add another projective point
-    pub fn add(&self, other: &Self) -> Self {
-        // Special cases with identity
-        if other.is_identity().is_true() {
-            return *self;
+    /// Branchless select: `b` when `choice` is 1, `a` when 0.
+    fn conditional_select(a: &Self, b: &Self, choice: Choice) -> Self {
+        Self {
+            x: FieldElement::conditional_select(&a.x, &b.x, choice),
+            y: FieldElement::conditional_select(&a.y, &b.y, choice),
+            z: FieldElement::conditional_select(&a.z, &b.z, choice),
         }
-        if self.is_identity().is_true() {
-            return *other;
-        }
+    }
 
-        // Jacobian addition formula
+    /// Add another projective point.
+    ///
+    /// Constant-time: the general formula is always evaluated and the
+    /// special cases (identity operand, doubling, point-inverse pairs)
+    /// are resolved with [`conditional_select`](Self::conditional_select)
+    /// — no branch may depend on point values, since `add` runs inside
+    /// the secret-scalar multiplication loop.
+    pub fn add(&self, other: &Self) -> Self {
+        // Jacobian addition formula — computed unconditionally.
         let z1z1 = self.z.mul(&self.z);
         let z2z2 = other.z.mul(&other.z);
 
@@ -264,19 +272,9 @@ impl ProjectivePoint {
         let s1 = self.y.mul(&other.z).mul(&z2z2);
         let s2 = other.y.mul(&self.z).mul(&z1z1);
 
-        // The general formula below divides by h = u2 - u1, which is zero
-        // both when the points are equal (result should be self.double())
-        // and when they are inverses of each other (result should be the
-        // identity). Handle both cases explicitly before using the
-        // general formula.
-        if u1.ct_eq(&u2).is_true() {
-            return if s1.ct_eq(&s2).is_true() {
-                self.double()
-            } else {
-                Self::IDENTITY
-            };
-        }
-
+        // h = u2 - u1 is zero both when the points are equal (result
+        // should be self.double()) and when they are inverses (result
+        // should be the identity) — resolved by select, not branch.
         let h = u2.sub(&u1);
         let i = h.mul(&h).mul(&FieldElement::FOUR);
 
@@ -291,19 +289,32 @@ impl ProjectivePoint {
         let z1z2 = self.z.add(&other.z);
         let z3 = z1z2.mul(&z1z2).sub(&z1z1).sub(&z2z2).mul(&h);
 
-        Self {
+        let general = Self {
             x: x3,
             y: y3,
             z: z3,
-        }
+        };
+
+        let h_zero = u1.ct_eq(&u2);
+        let s_eq = s1.ct_eq(&s2);
+        let doubled = self.double();
+
+        // Select precedence mirrors the original early-return order:
+        // general < inverses→IDENTITY < equal→double < self==id→other
+        // < other==id→self (last match wins).
+        let mut sum = Self::conditional_select(&general, &Self::IDENTITY, h_zero & !s_eq);
+        sum = Self::conditional_select(&sum, &doubled, h_zero & s_eq);
+        sum = Self::conditional_select(&sum, other, self.is_identity());
+        Self::conditional_select(&sum, self, other.is_identity())
     }
 
-    /// Double this point
+    /// Double this point.
+    ///
+    /// Constant-time: the formula is always evaluated (it yields
+    /// `z3 = 2·y·z = 0`, i.e. the identity, for identity or `y == 0`
+    /// inputs anyway) and the result is normalized to the canonical
+    /// IDENTITY limbs via select — no data-dependent branch.
     pub fn double(&self) -> Self {
-        if self.is_identity().is_true() || self.y.ct_eq(&FieldElement::ZERO).is_true() {
-            return Self::IDENTITY;
-        }
-
         // Jacobian doubling formula
         let xx = self.x.mul(&self.x);
         let yy = self.y.mul(&self.y);
@@ -323,14 +334,25 @@ impl ProjectivePoint {
         let y3 = m.mul(&s.sub(&x3)).sub(&yyyy.mul(&FieldElement::EIGHT));
         let z3 = self.y.mul(&self.z).mul(&FieldElement::TWO);
 
-        Self {
+        let doubled = Self {
             x: x3,
             y: y3,
             z: z3,
-        }
+        };
+
+        // Normalize to canonical IDENTITY limbs when the input was the
+        // identity or has y == 0 (doubling a 2-torsion point — none exist
+        // on secp256k1's odd-order group, but the select keeps the
+        // contract total and branchless).
+        let degenerate = self.is_identity() | self.y.ct_eq(&FieldElement::ZERO);
+        Self::conditional_select(&doubled, &Self::IDENTITY, degenerate)
     }
 
     /// Scalar multiplication: k * P
+    ///
+    /// Constant-time double-and-add: every bit position performs the
+    /// same work (one double + one add + one branchless select), so
+    /// timing does not depend on the scalar's bit pattern.
     pub fn mul(&self, scalar: &Scalar) -> Self {
         let mut result = Self::IDENTITY;
         let addend = *self;
@@ -340,9 +362,9 @@ impl ProjectivePoint {
         for byte in scalar_bytes.iter() {
             for i in 0..8 {
                 result = result.double();
-                if ((byte >> (7 - i)) & 1) == 1 {
-                    result = result.add(&addend);
-                }
+                let sum = result.add(&addend);
+                let bit = Choice::from_bool(((byte >> (7 - i)) & 1) == 1);
+                result = Self::conditional_select(&result, &sum, bit);
             }
         }
 

@@ -185,13 +185,13 @@ impl FieldElement {
                 t[i + j] = prod as u64;
                 carry = prod >> 64;
             }
-            // Propagate remaining carry into higher limbs.
-            let mut k = i + 4;
-            while carry != 0 {
+            // Propagate remaining carry into the fixed high limbs.
+            // Fixed trip count (always to t[8]): a `while carry != 0`
+            // loop would leak operand-dependent timing.
+            for k in (i + 4)..9 {
                 let sum = u128::from(t[k]) + carry;
                 t[k] = sum as u64;
                 carry = sum >> 64;
-                k += 1;
             }
         }
 
@@ -202,16 +202,23 @@ impl FieldElement {
         // Using `add` (not `sub`) here is important: `sub` auto-corrects
         // underflow by adding P back, which would cancel this
         // correction whenever `result` is already < P.
-        if t[8] != 0 {
-            result = result.add(&Self::from_limbs(R));
-        }
+        // Branchless: mask R's limbs by (t[8] != 0) and add
+        // unconditionally — adding zero limbs is a value-preserving
+        // no-op modulo p (add's own reduction keeps the result < 2p).
+        let carry_mask = 0u64.wrapping_sub(u64::from(t[8] != 0));
+        let r_addend = Self::from_limbs([
+            R[0] & carry_mask,
+            R[1] & carry_mask,
+            R[2] & carry_mask,
+            R[3] & carry_mask,
+        ]);
+        result = result.add(&r_addend);
 
         // At this point result < 2p, so at most one subtraction of p
         // is needed, and it is guaranteed not to underflow.
-        if bool::from(result.is_gte_p()) {
-            result = result.sub(&Self::from_limbs(P));
-        }
-        result
+        // `sub` self-corrects underflow by adding P back, so calling it
+        // unconditionally is equivalent to "subtract iff result >= p".
+        result.sub(&Self::from_limbs(P))
     }
 
     /// Modular reduction to [0, p)
@@ -239,45 +246,41 @@ impl FieldElement {
             borrow = u64::from(b | carry);
         }
 
-        // Select between result and sub_result based on gte_p
+        // Select between result and sub_result based on gte_p —
+        // branchless mask select; gte_p depends on secret limbs.
+        let mask = 0u64.wrapping_sub(u64::from(u8::from(gte_p) & 1));
         for i in 0..4 {
-            result[i] = if gte_p.is_true() {
-                sub_result[i]
-            } else {
-                result[i]
-            };
+            result[i] ^= mask & (result[i] ^ sub_result[i]);
         }
 
         Self::from_limbs(result)
     }
 
-    /// Conditionally add p if borrow occurred
+    /// Conditionally add p if borrow occurred (branchless: the addend
+    /// is P masked by `borrow != 0`, so the add always executes).
     fn conditional_add_p(&self, borrow: u64) -> Self {
-        if borrow == 0 {
-            *self
-        } else {
-            let mut result = [0u64; 4];
-            let mut carry = 0u64;
-            for i in 0..4 {
-                let (sum, c1) = self.limbs[i].overflowing_add(P[i]);
-                let (sum2, c2) = sum.overflowing_add(carry);
-                result[i] = sum2;
-                carry = u64::from(c1) + u64::from(c2);
-            }
-            Self::from_limbs(result)
+        let mask = 0u64.wrapping_sub(u64::from(borrow != 0));
+        let mut result = [0u64; 4];
+        let mut carry = 0u64;
+        for i in 0..4 {
+            let (sum, c1) = self.limbs[i].overflowing_add(P[i] & mask);
+            let (sum2, c2) = sum.overflowing_add(carry);
+            result[i] = sum2;
+            carry = u64::from(c1) + u64::from(c2);
         }
+        Self::from_limbs(result)
     }
 
-    /// Check if self >= p
+    /// Check if self >= p (constant-time borrow chain)
     fn is_gte_p(&self) -> Choice {
-        for i in (0..4).rev() {
-            if self.limbs[i] > P[i] {
-                return Choice::from_bool(true);
-            } else if self.limbs[i] < P[i] {
-                return Choice::from_bool(false);
-            }
+        // self >= p iff subtracting p produces no borrow.
+        let mut borrow = 0u64;
+        for i in 0..4 {
+            let (d, b1) = self.limbs[i].overflowing_sub(P[i]);
+            let (_d, b2) = d.overflowing_sub(borrow);
+            borrow = u64::from(b1) | u64::from(b2);
         }
-        Choice::from_bool(true) // Equal
+        Choice::from_bool(borrow == 0)
     }
 
     /// Inversion: self^(-1) mod p using Fermat's little theorem
@@ -294,6 +297,12 @@ impl FieldElement {
     }
 
     /// Exponentiation: self^exp mod p
+    ///
+    /// CT note: the `exp & 1` conditional multiply branches on the
+    /// *exponent*, which is always a public constant here (p-2 for
+    /// `invert`, (p+1)/4 for `sqrt`). Secret data flows only through
+    /// `mul`, which is branchless. Do not call this with a secret
+    /// exponent.
     fn pow(&self, exp: &[u64; 4]) -> Self {
         let mut result = Self::ONE;
         let mut base = *self;
@@ -310,13 +319,11 @@ impl FieldElement {
         result
     }
 
-    /// Negation: -self mod p
+    /// Negation: -self mod p (branchless: `0 - self` borrows exactly
+    /// when self != 0, and `sub` adds p back on borrow — so neg(0) = 0
+    /// with no special case needed)
     pub fn neg(&self) -> Self {
-        if self.is_zero().is_true() {
-            *self
-        } else {
-            Self::from_limbs(P).sub(self)
-        }
+        Self::ZERO.sub(self)
     }
 
     /// Square root: sqrt(self) mod p
@@ -340,6 +347,18 @@ impl ConstantTimeEq for FieldElement {
             result &= u8::from(self.limbs[i] == other.limbs[i]);
         }
         Choice(result)
+    }
+}
+
+impl FieldElement {
+    /// Return `a` if `choice` is 0, `b` if `choice` is 1 — branchless.
+    pub fn conditional_select(a: &Self, b: &Self, choice: Choice) -> Self {
+        let mask = 0u64.wrapping_sub(u64::from(u8::from(choice) & 1));
+        let mut limbs = [0u64; 4];
+        for i in 0..4 {
+            limbs[i] = a.limbs[i] ^ (mask & (a.limbs[i] ^ b.limbs[i]));
+        }
+        Self::from_limbs(limbs)
     }
 }
 

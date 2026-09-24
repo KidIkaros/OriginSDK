@@ -141,11 +141,9 @@ impl X25519KeyPair {
     /// yields zero — a key that "works" but proves nothing.
     pub fn from_secret_key(secret: &[u8; SECRET_KEY_SIZE]) -> Result<Self> {
         let clamped = DalekSecret::from(*secret).to_bytes();
-        // CT-REVIEW(12.1): slice `==` short-circuits on first differing
-        // byte — a timing oracle for secret-byte prefixes. The all-zero
-        // case is ~2^-256 so the leak is negligible, but Phase 12.1
-        // should swap to `subtle::ConstantTimeEq`.
-        if clamped == [0u8; SECRET_KEY_SIZE] {
+        // All-zero check is constant-time: the scalar is secret, so the
+        // comparison must not short-circuit.
+        if bool::from(clamped.ct_eq(&[0u8; SECRET_KEY_SIZE])) {
             return Err(CryptoError::InvalidKey(
                 "X25519 secret scalar is all-zero (after clamping)".to_string(),
             ));
@@ -182,9 +180,7 @@ impl X25519KeyPair {
             &mut scalar,
         )
         .map_err(|e| CryptoError::Kdf(format!("X25519 seed derivation failed: {e}")))?;
-        // CT-REVIEW(12.1): same short-circuit caveat as in
-        // `from_secret_key` — candidate for `ConstantTimeEq`.
-        if scalar == [0u8; SECRET_KEY_SIZE] {
+        if bool::from(scalar.ct_eq(&[0u8; SECRET_KEY_SIZE])) {
             scalar.zeroize();
             return Err(CryptoError::InvalidKey(
                 "X25519 derived scalar is all-zero".to_string(),

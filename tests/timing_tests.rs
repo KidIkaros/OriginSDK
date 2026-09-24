@@ -223,3 +223,105 @@ fn timing_poly1305_content_independent() {
         ratio
     );
 }
+
+// ── NTRU Prime decapsulation: valid vs corrupted ciphertext ────────────
+//
+// The CCA fallback in `decapsulate` must not leak *whether* the ciphertext
+// decrypted correctly — the failure path is the decryption-failure oracle.
+// Valid and invalid ciphertexts should take similar time (both run the
+// full re-encryption + mask select; the mask is arithmetic, not a branch).
+
+#[test]
+fn timing_ntru_decap_valid_vs_invalid() {
+    use origin_crypto_sdk::drbg::ChaCha20Rng;
+    use origin_crypto_sdk::pqc::ntru_prime::NtruPrime;
+
+    let mut rng = ChaCha20Rng::from_seed([7u8; 32]);
+    let (pk, sk) = NtruPrime::generate_keypair(&mut rng);
+    let (ct, _ss) = NtruPrime::encapsulate(&pk, &mut rng);
+
+    // Corrupt one byte in the rounded-ciphertext region — forces the CCA
+    // fallback path (decryption failure) without a length/parse error.
+    let mut ct_bad = ct;
+    ct_bad[0] ^= 0x01;
+
+    let iters = 50;
+
+    let start = Instant::now();
+    for _ in 0..iters {
+        let _ = NtruPrime::decapsulate(&ct, &sk);
+    }
+    let valid_time = start.elapsed().as_nanos();
+
+    let start = Instant::now();
+    for _ in 0..iters {
+        let _ = NtruPrime::decapsulate(&ct_bad, &sk);
+    }
+    let invalid_time = start.elapsed().as_nanos();
+
+    let max = valid_time.max(invalid_time);
+    let min = valid_time.min(invalid_time);
+    let ratio = max as f64 / min as f64;
+
+    // Both paths run the same re-encryption; the CCA select is
+    // branchless. Allow 3x for jitter — a decryption-failure oracle
+    // would show a much larger gap.
+    assert!(
+        ratio < 3.0,
+        "NTRU decap valid-vs-invalid timing gap: valid={}ns invalid={}ns ratio={:.2}x",
+        valid_time,
+        invalid_time,
+        ratio
+    );
+}
+
+// ── Schnorr prove: scalar arithmetic vs secret-key bit density ────────
+//
+// `prove` runs secret scalars through `internal::secp256k1` — now
+// branchless (fixed-trip-count limb ops + mask selects). A sparse key
+// (mostly zeros) must not run measurably faster than a dense one.
+// (The random nonce still dominates each iteration; this is a smoke
+// test for the scalar paths, not a certified CT proof.)
+
+#[test]
+fn timing_schnorr_prove_key_density_independent() {
+    use origin_crypto_sdk::ec_schnorr::prove;
+
+    // Sparse secret (mostly zeros) vs dense secret (mostly 0xAB).
+    let mut sparse = [0u8; 32];
+    sparse[31] = 0x01;
+    let dense = [0xABu8; 32];
+
+    // The public key enters `prove` only as challenge-hash input —
+    // arbitrary fixed bytes are fine for a timing comparison.
+    let pk = [0x55u8; 33];
+    let msg = b"timing test message";
+
+    let iters = 100;
+
+    let start = Instant::now();
+    for _ in 0..iters {
+        let _ = prove(&sparse, &pk, msg);
+    }
+    let sparse_time = start.elapsed().as_nanos();
+
+    let start = Instant::now();
+    for _ in 0..iters {
+        let _ = prove(&dense, &pk, msg);
+    }
+    let dense_time = start.elapsed().as_nanos();
+
+    let max = sparse_time.max(dense_time);
+    let min = sparse_time.min(dense_time);
+    let ratio = max as f64 / min as f64;
+
+    // Allow 3x for jitter — a Hamming-weight-dependent leak in scalar
+    // or field arithmetic would show a much larger gap.
+    assert!(
+        ratio < 3.0,
+        "Schnorr prove timing depends on key density: sparse={}ns dense={}ns ratio={:.2}x",
+        sparse_time,
+        dense_time,
+        ratio
+    );
+}

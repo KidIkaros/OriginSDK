@@ -56,17 +56,28 @@ Only 2 items remain, both requiring external engagement:
 is the only remaining gate.
 
 #### 12.1 Constant-time review
-- [ ] Audit all NTRU Prime operations for timing side channels
-      (coefficient comparison, weight check, rounding)
-- [ ] Audit Falcon wrapper for timing leakage in verify path
-- [ ] Audit hybrid signing combiner for timing leakage
-- [ ] Document which operations are constant-time and which are not
-- [ ] Add timing tests for NTRU Prime encapsulate/decapsulate
-- [ ] Sweep every `// CT-REVIEW(12.1)` mark placed by the design-remediation
-      pass (grep for `CT-REVIEW`): `GaloisField::{mul,exp}`,
-      `correct_single_shard_errors`, `ntru_prime::decapsulate` +
-      `count_weight`, `x25519::{from_secret_key,from_seed}` `==` on scalars,
-      `ec_schnorr::prove`, and all of `internal::secp256k1`
+- [x] Audit all NTRU Prime operations for timing side channels
+      (coefficient comparison, weight check, rounding) — CCA mask select
+      made arithmetic, `crypto_sort` min_max made branchless, poly ops
+      verified fixed-bound
+- [x] Audit Falcon wrapper for timing leakage in verify path — thin
+      wrapper over `falcon-rs` FIPS 206 `FnDsaSignature::verify`; no
+      local secret-dependent branches (upstream boundary documented)
+- [x] Audit hybrid signing combiner for timing leakage — all digest
+      comparisons via `subtle::ConstantTimeEq`
+- [x] Document which operations are constant-time and which are not —
+      `docs/CONSTANT_TIME.md`
+- [x] Add timing tests for NTRU Prime encapsulate/decapsulate —
+      `timing_ntru_decap_valid_vs_invalid` (+ Schnorr key-density test)
+- [x] Sweep every `// CT-REVIEW(12.1)` mark placed by the design-remediation
+      pass: fixed — `x25519` `==`→`ct_eq` (2 sites), `GaloisField::mul`
+      branchless, NTRU CCA mask arithmetic, `internal::secp256k1` made
+      branchless (scalar mul, point add/double, `is_gte_*`/`is_lt_n`
+      borrow chains, masked `conditional_add_*`, fixed-trip REDC,
+      4-fold `reduce_512`, mask-select `reduce_257`); documented as
+      public-data-only — `GaloisField::exp`, syndrome early-continue,
+      `pow` public exponents, decode/parse early returns. Residual:
+      external codegen verification of hand-rolled secp256k1 (Phase 13)
 
 #### 12.2 Fuzzing expansion
 - [ ] Add libFuzzer targets for NTRU Prime decode/decapsulate

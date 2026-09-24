@@ -17,25 +17,22 @@ struct GaloisField;
 impl GaloisField {
     const PRIMITIVE_POLYNOMIAL: u8 = 0x1B;
 
-    /// Multiply two elements in GF(2^8) using polynomial reduction
-    // CT-REVIEW(12.1): `while b != 0` terminates early — iteration count
-    // depends on `b`'s Hamming weight, and `if (b & 1) != 0` is a
-    // data-dependent branch. Acceptable for non-secret shard data; flag
-    // if RS is ever applied over secrets.
+    /// Multiply two elements in GF(2^8) using polynomial reduction.
+    ///
+    /// Constant-time: always 8 iterations, both conditionals evaluated
+    /// as branchless masks — `b` may carry shard data, so neither the
+    /// loop bound nor the accumulation may depend on its value.
     pub fn mul(a: u8, b: u8) -> u8 {
         let mut result = 0u8;
         let mut a = a;
         let mut b = b;
 
-        while b != 0 {
-            if (b & 1) != 0 {
-                result ^= a;
-            }
-            let high_bit = (a & 0x80) != 0;
-            a <<= 1;
-            if high_bit {
-                a ^= Self::PRIMITIVE_POLYNOMIAL;
-            }
+        for _ in 0..8 {
+            // mask = 0xFF when the low bit of b is set, else 0x00
+            result ^= a & (0u8.wrapping_sub(b & 1));
+            // mask = 0xFF when a's high bit is set, else 0x00
+            let reduce = 0u8.wrapping_sub(a >> 7);
+            a = (a << 1) ^ (Self::PRIMITIVE_POLYNOMIAL & reduce);
             b >>= 1;
         }
 
@@ -43,8 +40,12 @@ impl GaloisField {
     }
 
     /// Exponentiation in GF(2^8)
-    // CT-REVIEW(12.1): square-and-multiply with a data-dependent
-    // `exp & 1` multiply — same caveat as `mul`.
+    ///
+    /// CT note: the `exp & 1` multiply and the `a == 0` early return are
+    /// data-dependent branches — but every call site passes *public*
+    /// values (Vandermonde matrix generation; `inv` on matrix pivots),
+    /// so no secret flows here. If that ever changes, this must be
+    /// rewritten branchlessly like [`mul`](Self::mul).
     pub fn exp(a: u8, n: u8) -> u8 {
         if a == 0 {
             return if n == 0 { 1 } else { 0 };
@@ -414,10 +415,13 @@ impl ReedSolomonCodec {
     /// erroring — see the method-level warning on [`decode`](Self::decode).
     /// Callers needing multi-shard tolerance must use `decode_shards`
     /// with explicit erasure information.
-    // CT-REVIEW(12.1): per-position early `continue` on clean syndromes
-    // and the hypothesis-search `break` leak "is this byte position
-    // corrupted?" via timing — public metadata for transport ECC, but
-    // flag for review if carried over secrets.
+    // CT note (Phase 12.1 sweep — accepted): the early `continue` on
+    // clean syndromes and the hypothesis-search `break` leak *which
+    // byte positions are corrupted* via timing. Corruption positions are
+    // observable metadata in every transport/backup scenario (an
+    // attacker who flipped bytes already knows where), so this is kept
+    // as a fast path. `GaloisField::mul` itself is now branchless, so
+    // shard *contents* don't leak — only positions do.
     fn correct_single_shard_errors(&self, shards: &mut [Vec<u8>]) -> Result<()> {
         let total_shards = self.data_shards + self.parity_shards;
         let shard_size = shards.first().map_or(0, Vec::len);

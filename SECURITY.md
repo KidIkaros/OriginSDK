@@ -28,11 +28,54 @@ The Origin Crypto SDK contains both external (battle-tested) and custom implemen
 | Ed41417 (Curve41417) | Custom | Based on Bernstein et al. CHES 2014 paper |
 | Native ChaCha20-Poly1305 | Custom | RFC 8439 reference, native Rust (zero-dep) |
 | Native Poly1305 | Custom | RFC 8439 §2.5, native Rust |
-| Hybrid KEM | Custom | Combines X25519 + NTRU + Ed41417 |
 | Hybrid signing | Custom | Combines Ed25519 + Falcon |
 | Seed Blob | Custom | XChaCha20-Poly1305 + Argon2id |
 | ChaCha20-DRBG | Custom | Auto-reseed after 16 MB |
 | SipHash-c-d | Custom | Compute hardener (not a security boundary) |
+
+## Standards Posture
+
+The SDK deliberately mixes NIST-wire-compatible and non-NIST constructions.
+Non-NIST choices are **design intent**, not oversight — but they divide into
+two honest categories.
+
+### NIST / standard-wire-compatible (interop is the goal)
+
+| Component | Standard |
+|-----------|----------|
+| sntrup761 (default backend) | NIST PQC submission wire format (supercop-20201130); 100/100 official KAT vectors byte-exact |
+| Falcon-512/1024 | FIPS 206 via `falcon-rs` |
+| ML-KEM-768 | FIPS 203 via `ml-kem` (optional) |
+| ML-DSA | FIPS 204 via `ml-dsa` (optional) |
+| SLH-DSA | FIPS 205 via `slh-dsa` (optional) |
+| Ed25519 | FIPS 186-5 EdDSA via `ed25519-dalek` |
+| Ed448 | FIPS 186-5 EdDSA via `ed448`/`ed448-goldilocks` (impl is pre-release) |
+| X25519 | RFC 7748 via `x25519-dalek` |
+| ChaCha20-Poly1305 | RFC 8439 (native + `chacha20poly1305` crate) |
+| SHA-2/SHA-3/HMAC/HKDF | FIPS 180/202, RFC 2104/5869 |
+| Argon2id | RFC 9106 |
+
+### Deliberately non-NIST (added properties or different goals)
+
+| Component | Rationale |
+|-----------|-----------|
+| ChaCha20-BLAKE3 AEAD | Committing AEAD (key+nonce committed in tag) — a property standard AEADs lack; BLAKE3 throughput |
+| Hybrid signing (Ed25519+Falcon, etc.) | Dual-algorithm robustness: stays secure if *either* half holds — exceeds any single NIST algorithm's assurance in PQ-transition threat models |
+| sntrup761 `ntru-blake3`/`ntru-shake*` backends | Non-wire-compatible by design (perf/experimentation); default remains NIST-compatible |
+| Argon2id Sovereign tier (256 MiB) | Exceeds RFC 9106 minimums for high-value seeds |
+| `unicode_cipher` recovery phrases | Deliberately **not** BIP-39: Unicode codepoint wordlist + SHA-3-256 checksum |
+| Skein-512/1024 | SHA-3 finalist, tree-hashing, non-NIST |
+| Serpent | AES finalist, non-NIST |
+| Ed41417 / Curve41417 | Published (CHES 2014) but nonstandard curve — *different, not proven stronger* |
+| SipHash-c-d | Custom parameter choice — compute hardener, not a security boundary |
+| ChaCha20-DRBG, secp256k1 internals | Custom implementations — *unreviewed, not claimed stronger* |
+
+**Honest caveat:** "stronger than NIST" holds for *compositions and
+parameters* (hybrid robustness, committing AEAD, larger memory-hard bounds)
+where the added property is definable. For individual custom
+implementations (Ed41417, secp256k1 internals, DRBG, NTRU Prime itself),
+non-NIST means *unreviewed* — superiority is not claimed without external
+analysis (Phase 13).
 
 ## Known Properties
 

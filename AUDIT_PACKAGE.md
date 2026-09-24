@@ -28,6 +28,13 @@
 > There is **no hybrid KEM construction** in this crate — the only
 > compositions are hybrid *signing* and the compressed container. Earlier
 > drafts of this document listed a "Hybrid KEM" row in error.
+>
+> **Standards posture:** non-NIST constructions in this crate are
+> *deliberate* — see `SECURITY.md` §"Standards Posture" for the per-item
+> rationale (e.g. committing AEAD, hybrid dual-algorithm robustness,
+> alternate NTRU hash backends). Reviewers should evaluate deviations as
+> design intent, not assume NIST-compatibility was the goal — while noting
+> that custom implementations are unreviewed, not claimed superior.
 
 ### 1.2 External dependencies (review integration, not implementation)
 

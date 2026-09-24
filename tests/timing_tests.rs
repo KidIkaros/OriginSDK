@@ -292,22 +292,19 @@ fn timing_schnorr_prove_key_density_independent() {
     sparse[31] = 0x01;
     let dense = [0xABu8; 32];
 
-    // The public key enters `prove` only as challenge-hash input —
-    // arbitrary fixed bytes are fine for a timing comparison.
-    let pk = [0x55u8; 33];
     let msg = b"timing test message";
 
     let iters = 100;
 
     let start = Instant::now();
     for _ in 0..iters {
-        let _ = prove(&sparse, &pk, msg);
+        let _ = prove(&sparse, msg);
     }
     let sparse_time = start.elapsed().as_nanos();
 
     let start = Instant::now();
     for _ in 0..iters {
-        let _ = prove(&dense, &pk, msg);
+        let _ = prove(&dense, msg);
     }
     let dense_time = start.elapsed().as_nanos();
 

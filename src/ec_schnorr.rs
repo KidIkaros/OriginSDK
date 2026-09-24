@@ -86,12 +86,16 @@ fn parse_non_identity_point(bytes: &[u8], err: fn(String) -> SchnorrError) -> Re
     Ok(point)
 }
 
-/// Create an EC-Schnorr proof of knowledge of the discrete log of `public_key`.
+/// Create an EC-Schnorr proof of knowledge of the discrete log of the
+/// public key corresponding to `secret_key`.
+///
+/// The public key is derived internally — a caller-supplied pk could be
+/// mismatched, producing a proof that can never verify.
 // CT note (Phase 12.1): scalar mul goes through k256's primeorder
 // implementation (fiat-crypto field arithmetic + complete formulas), which
 // is constant-time by construction. The `Scalar::from_repr` rejection on a
 // uniform nonce is fine (failure is ~2^-128 and reveals nothing about the key).
-pub fn prove(secret_key: &[u8; 32], public_key: &[u8], message: &[u8]) -> Result<EcSchnorrProof> {
+pub fn prove(secret_key: &[u8; 32], message: &[u8]) -> Result<EcSchnorrProof> {
     let x = scalar_from_repr(secret_key)
         .ok_or_else(|| CryptoError::InvalidKey("Invalid secret key scalar".into()))?;
 
@@ -103,12 +107,15 @@ pub fn prove(secret_key: &[u8; 32], public_key: &[u8], message: &[u8]) -> Result
         scalar_from_repr(&buf).ok_or(SchnorrError::RngFailed)?
     };
 
-    // R = r*G
+    // R = r*G, P = x*G
     let r_point = ProjectivePoint::GENERATOR * r;
     let r_compressed = r_point.to_affine().to_sec1_point(true);
+    let public_key = (ProjectivePoint::GENERATOR * x)
+        .to_affine()
+        .to_sec1_point(true);
 
     // e = H(R || P || message)
-    let challenge = compute_challenge(r_compressed.as_bytes(), public_key, message);
+    let challenge = compute_challenge(r_compressed.as_bytes(), public_key.as_bytes(), message);
 
     // s = r + e*x  (mod n)
     let s = r + challenge * x;
@@ -150,16 +157,16 @@ pub fn verify(proof: &EcSchnorrProof, public_key: &[u8], message: &[u8]) -> Resu
 /// Batch verify multiple EC-Schnorr proofs.
 pub fn batch_verify(
     proofs: &[EcSchnorrProof],
-    public_keys: &[Vec<u8>],
-    messages: &[Vec<u8>],
+    public_keys: &[impl AsRef<[u8]>],
+    messages: &[impl AsRef<[u8]>],
 ) -> Result<bool> {
     if proofs.len() != public_keys.len() || proofs.len() != messages.len() {
         return Err(CryptoError::InvalidParameter(
             "Mismatched input lengths for batch verify".into(),
         ));
     }
-    for (proof, (pk, msg)) in proofs.iter().zip(public_keys.iter().zip(messages)) {
-        if !verify(proof, pk, msg)? {
+    for (proof, (pk, msg)) in proofs.iter().zip(public_keys.iter().zip(messages.iter())) {
+        if !verify(proof, pk.as_ref(), msg.as_ref())? {
             return Ok(false);
         }
     }
@@ -219,7 +226,7 @@ mod tests {
         let seed = [42u8; 32];
         let (sk_bytes, pk_bytes) = generate_keypair(&seed);
         let message = b"test message for EC-Schnorr";
-        let proof = prove(&sk_bytes, &pk_bytes, message).unwrap();
+        let proof = prove(&sk_bytes, message).unwrap();
         assert!(verify(&proof, &pk_bytes, message).unwrap());
     }
 
@@ -227,7 +234,7 @@ mod tests {
     fn test_verify_wrong_message_fails() {
         let seed = [42u8; 32];
         let (sk_bytes, pk_bytes) = generate_keypair(&seed);
-        let proof = prove(&sk_bytes, &pk_bytes, b"original message").unwrap();
+        let proof = prove(&sk_bytes, b"original message").unwrap();
         assert!(!verify(&proof, &pk_bytes, b"different message").unwrap());
     }
 
@@ -235,7 +242,7 @@ mod tests {
     fn test_verify_wrong_public_key_fails() {
         let (sk1, pk1) = generate_keypair(&[42u8; 32]);
         let (_, pk2) = generate_keypair(&[99u8; 32]);
-        let proof = prove(&sk1, &pk1, b"test message").unwrap();
+        let proof = prove(&sk1, b"test message").unwrap();
         assert!(!verify(&proof, &pk2, b"test message").unwrap());
     }
 
@@ -263,7 +270,7 @@ mod tests {
         for i in 0..10u8 {
             let (sk, pk) = generate_keypair(&[i; 32]);
             let msg = format!("message {}", i).into_bytes();
-            proofs.push(prove(&sk, &pk, &msg).unwrap());
+            proofs.push(prove(&sk, &msg).unwrap());
             pks.push(pk);
             msgs.push(msg);
         }
@@ -278,12 +285,12 @@ mod tests {
         for i in 0..3u8 {
             let (sk, pk) = generate_keypair(&[i; 32]);
             let msg = format!("message {}", i).into_bytes();
-            proofs.push(prove(&sk, &pk, &msg).unwrap());
+            proofs.push(prove(&sk, &msg).unwrap());
             pks.push(pk);
             msgs.push(msg);
         }
         let (sk, pk) = generate_keypair(&[99u8; 32]);
-        proofs.push(prove(&sk, &pk, b"correct message").unwrap());
+        proofs.push(prove(&sk, b"correct message").unwrap());
         pks.push(pk);
         msgs.push(b"wrong message".to_vec());
         assert!(!batch_verify(&proofs, &pks, &msgs).unwrap());
@@ -293,7 +300,7 @@ mod tests {
     fn test_empty_message() {
         let seed = [42u8; 32];
         let (sk_bytes, pk_bytes) = generate_keypair(&seed);
-        let proof = prove(&sk_bytes, &pk_bytes, b"").unwrap();
+        let proof = prove(&sk_bytes, b"").unwrap();
         assert!(verify(&proof, &pk_bytes, b"").unwrap());
     }
 
@@ -302,7 +309,7 @@ mod tests {
         let seed = [42u8; 32];
         let (sk_bytes, pk_bytes) = generate_keypair(&seed);
         let message = vec![0xABu8; 1_000_000];
-        let proof = prove(&sk_bytes, &pk_bytes, &message).unwrap();
+        let proof = prove(&sk_bytes, &message).unwrap();
         assert!(verify(&proof, &pk_bytes, &message).unwrap());
     }
 }

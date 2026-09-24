@@ -514,9 +514,7 @@ fn benchmark_hybrid_kdf(c: &mut Criterion) {
 
     // HKDF subkey derivation
     group.bench_function("derive_hybrid_keys", |b| {
-        b.iter(|| {
-            derive_hybrid_keys(black_box(&master_seed), black_box(domain), 32, 32, 32).unwrap()
-        })
+        b.iter(|| derive_hybrid_keys(black_box(&master_seed), black_box(domain)).unwrap())
     });
 
     // Bundle from_seed

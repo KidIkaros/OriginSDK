@@ -123,3 +123,45 @@ silently dropped.
 
 **Wire-format guarantee:** every step is structure-only. `hybrid_golden_vectors`,
 `known_answer_vectors`, `ntru_prime_kat`, `falcon_kat` are the tripwires.
+
+---
+
+## Disposition log
+
+### Step 1 — layer sealing (commit `fbc215f`)
+
+Resolved: CA-1 (`internal` → `pub(crate)`, bin migrated to `fill_random`),
+CA-2 (`docs/ARCHITECTURE.md` records the layer rules), CA-3 (`x25519` imports
+`crate::kdf::hkdf::*` directly), CA-4 (`HashAlgorithm`/`compute_hmac` moved to
+`kdf::mac`; `drbg::otp` re-exports for compat), CA-5 (`internal/mlock.rs`),
+CC-4 (`once_cell::Lazy` → `std::sync::LazyLock` in `ntru_prime/tables.rs`),
+FD-2 (`LazyLock` unified). Bonus dead-code removal surfaced by sealing:
+`internal::hex` (+10 dead tests), `internal::secp256k1` mirror constants
+(+1 dead test), `internal::zeroize::Zeroizing` shim.
+
+### Step 2 — `signing/hybrid.rs` decomposition
+
+Resolved: CC-1 (six non-KDF constructions now share
+`verify_sig_and_digest`; three signature hybrids share `both_must_verify`;
+KDF construction shares `ct_eq_or_failed` — ~400 lines of copy-paste gone),
+CC-2 (`impl Debug for HybridSigningKeyBundle` hoisted to top level in
+`hybrid/bundle.rs`; `#[allow(non_local_definitions)]` deleted), CC-8
+(`derive_hybrid_keys` now returns `HybridSubkeys` — named `[u8; 32]` fields
+`ed25519`/`chacha20`/`hash`, magic-length params and the `(Vec, Vec, Vec)`
+triple gone; call sites migrated), GOF-1 (combinator functions chosen over
+trait objects — no `dyn`, preserving the crate's no-`dyn` stance).
+
+New structure: `src/signing/hybrid/{mod,combinators,constructions,kdf,
+bundle,cache,tests}.rs`. `mod.rs` keeps every previously public name at
+`signing::hybrid::*` via `pub use` (verified by `legacy_shim`'s wildcard
+re-export and all external test suites passing unchanged except the
+`derive_hybrid_keys` call sites, which used the migrated API).
+
+Verification: 457 lib tests, `hybrid_golden_vectors` (15),
+`hybrid_rigorous` (37), `hybrid_security` (11), `falcon_kat` (20),
+`integration_tests` (33), `rng_and_cache` (20) — all green; derived bytes
+byte-identical (golden vectors), wire format untouched.
+
+Not done here (deferred per plan): `BundleCache` remains the process-global
+`BUNDLE_CACHE` behind the same public functions — its ownable-type redesign
+is Step 3 (GOF-2/FD-1).

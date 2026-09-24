@@ -260,11 +260,11 @@ fn golden_skein1024_hello() {
 #[test]
 fn golden_derive_hybrid_keys_deterministic() {
     let seed = [42u8; 32];
-    let (ed1, ch1, h1) = derive_hybrid_keys(&seed, "domain1", 32, 32, 32).unwrap();
-    let (ed2, ch2, h2) = derive_hybrid_keys(&seed, "domain1", 32, 32, 32).unwrap();
-    assert_eq!(ed1, ed2);
-    assert_eq!(ch1, ch2);
-    assert_eq!(h1, h2);
+    let k1 = derive_hybrid_keys(&seed, "domain1").unwrap();
+    let k2 = derive_hybrid_keys(&seed, "domain1").unwrap();
+    assert_eq!(k1.ed25519, k2.ed25519);
+    assert_eq!(k1.chacha20, k2.chacha20);
+    assert_eq!(k1.hash, k2.hash);
 }
 
 #[test]

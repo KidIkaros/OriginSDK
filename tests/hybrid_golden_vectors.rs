@@ -267,16 +267,25 @@ fn golden_derive_hybrid_keys_label_separation() {
     use origin_crypto_sdk::signing::legacy_shim::derive_hybrid_keys;
 
     let seed = [42u8; 32];
-    let (ed1, ch1, h1) = derive_hybrid_keys(&seed, "domain", 32, 32, 32).unwrap();
+    let k1 = derive_hybrid_keys(&seed, "domain").unwrap();
 
     // The 3 derived subkeys must all be different
-    assert_ne!(ed1, ch1, "Ed25519 subkey should differ from chacha subkey");
-    assert_ne!(ed1, h1, "Ed25519 subkey should differ from hash subkey");
-    assert_ne!(ch1, h1, "Chacha subkey should differ from hash subkey");
+    assert_ne!(
+        k1.ed25519, k1.chacha20,
+        "Ed25519 subkey should differ from chacha subkey"
+    );
+    assert_ne!(
+        k1.ed25519, k1.hash,
+        "Ed25519 subkey should differ from hash subkey"
+    );
+    assert_ne!(
+        k1.chacha20, k1.hash,
+        "Chacha subkey should differ from hash subkey"
+    );
 
     // Same input must give same output (determinism)
-    let (ed2, ch2, h2) = derive_hybrid_keys(&seed, "domain", 32, 32, 32).unwrap();
-    assert_eq!(ed1, ed2);
-    assert_eq!(ch1, ch2);
-    assert_eq!(h1, h2);
+    let k2 = derive_hybrid_keys(&seed, "domain").unwrap();
+    assert_eq!(k1.ed25519, k2.ed25519);
+    assert_eq!(k1.chacha20, k2.chacha20);
+    assert_eq!(k1.hash, k2.hash);
 }

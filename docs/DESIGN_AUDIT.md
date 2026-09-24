@@ -363,6 +363,37 @@ Policy doc: `docs/CONSTANT_TIME.md`. New timing tests:
 `timing_ntru_decap_valid_vs_invalid`,
 `timing_schnorr_prove_key_density_independent` (6 total, all pass).
 
+## Phase 12.2 — fuzzing expansion (targets landed, sustained runs pending)
+
+Three new libFuzzer targets added: `fuzz_ntru_prime` (malformed and
+mutated ciphertexts into decapsulate; valid round-trip),
+`fuzz_falcon` (`from_bytes` parsers + verify on arbitrary bytes; sign
+round-trip), `fuzz_blob` (`detect_blob_version`/`blob_tier`/
+`recover_seed`/`rotate_blob` on arbitrary input). All registered in
+`fuzz/Cargo.toml` and the CI `fuzz-smoke` job.
+
+**Infrastructure bug found and fixed:** `fuzz/Cargo.toml` built
+`libfuzzer-sys` with `default-features = false`, which disables the
+`link_libfuzzer` feature — the C++ libFuzzer runtime (which provides
+`main`) was never compiled, so **every** fuzz target failed at link
+time (`undefined symbol: main`). The CI smoke job's `|| true` masked
+this entirely — the job had never actually fuzzed anything. Fixed by
+restoring default features; the CI loop now uses libFuzzer's own
+`-max_total_time` and drops `|| true`, so crashes, hangs, and build
+errors fail the job.
+
+Fixed key material (keypairs, valid signatures) is hoisted into
+`LazyLock` statics so per-input cost is the parse/decrypt surface, not
+keygen; `recover_seed`/`rotate_blob` run at `MemoryTier::Nano` since
+the attack surface is tier-independent.
+
+Smoke verification (30s/target, ASAN+sanitizer coverage): all 8
+targets run clean — `fuzz_ntru_prime` 619 execs (bounded by real
+encapsulate/decap per run), `fuzz_falcon` 52,386, `fuzz_blob` 1,477
+(deep valid-header corpus; libFuzzer independently rediscovered the
+`"ORGB"` blob magic via CMP hints). No crashes. The 24h+
+sustained-fuzzing item remains unchecked in the roadmap.
+
 The SDK remains **experimental** — this work improves internal evidence
 and structure; it is not a substitute for the independent cryptographic
 and Rust review in Phase 13.

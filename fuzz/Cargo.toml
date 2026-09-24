@@ -12,7 +12,6 @@ origin-crypto-sdk = { path = ".." }
 
 [dependencies.libfuzzer-sys]
 version = "0.4"
-default-features = false
 
 [[bin]]
 name = "fuzz_encrypt_decrypt"
@@ -33,3 +32,15 @@ path = "fuzz_targets/fuzz_chacha40.rs"
 [[bin]]
 name = "fuzz_reed_solomon"
 path = "fuzz_targets/fuzz_reed_solomon.rs"
+
+[[bin]]
+name = "fuzz_ntru_prime"
+path = "fuzz_targets/fuzz_ntru_prime.rs"
+
+[[bin]]
+name = "fuzz_falcon"
+path = "fuzz_targets/fuzz_falcon.rs"
+
+[[bin]]
+name = "fuzz_blob"
+path = "fuzz_targets/fuzz_blob.rs"

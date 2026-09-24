@@ -29,8 +29,7 @@ fuzz_target!(|data: &[u8]| {
         let mut out = vec![0u8; output_len];
         hkdf_sha3_256(ikm, Some(salt), info, &mut out).map_err(|_| ())?;
         Ok(out)
-    })()
-    {
+    })() {
         let mut out2 = vec![0u8; output_len];
         let _ = hkdf_sha3_256(ikm, Some(salt), info, &mut out2);
         // Determinism

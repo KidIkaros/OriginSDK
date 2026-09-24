@@ -80,11 +80,25 @@ is the only remaining gate.
       external codegen verification of hand-rolled secp256k1 (Phase 13)
 
 #### 12.2 Fuzzing expansion
-- [ ] Add libFuzzer targets for NTRU Prime decode/decapsulate
-- [ ] Add libFuzzer targets for Falcon signature parsing
-- [ ] Add libFuzzer targets for blob deserialization
-- [ ] Add libFuzzer targets for hybrid signature verification
+- [x] Add libFuzzer targets for NTRU Prime decode/decapsulate
+      (`fuzz_ntru_prime`: malformed + mutated ciphertexts into decapsulate,
+      valid encapsulate/decapsulate round-trip)
+- [x] Add libFuzzer targets for Falcon signature parsing
+      (`fuzz_falcon`: arbitrary bytes into `Falcon512Signature`/`PublicKey`/
+      `PrivateKey::from_bytes`, parse + verify, sign round-trip)
+- [x] Add libFuzzer targets for blob deserialization
+      (`fuzz_blob`: `detect_blob_version`, `blob_tier`, `recover_seed`,
+      `rotate_blob` on arbitrary input)
+- [x] Add libFuzzer targets for hybrid signature verification
+      (pre-existing `fuzz_hybrid_verify`)
+- [x] Fix fuzz infrastructure: `libfuzzer-sys` was built with
+      `default-features = false`, which disables `link_libfuzzer` — no target
+      ever linked a `main`, and the CI job's `|| true` masked the failure.
+      Manifest fixed; CI smoke job now fails on crashes/hangs/build errors
+      instead of ignoring them
 - [ ] Run sustained fuzzing (24h+ per target) and document results
+      (30s smoke runs only so far: all 8 targets clean — ntru_prime 619,
+      falcon 52,386, blob 1,477 incl. "ORGB" magic discovery; no crashes)
 
 #### 12.3 Differential testing
 - [ ] NTRU Prime: differential test against liboqs/sntrup761

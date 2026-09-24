@@ -286,9 +286,11 @@ jobs:
         run: cargo install cargo-fuzz --locked
       - name: Run fuzz targets for 60s each
         run: |
-          for target in fuzz_chacha40 fuzz_encrypt_decrypt fuzz_hybrid_verify fuzz_kdf fuzz_reed_solomon; do
+          # libFuzzer exits 0 on clean -max_total_time expiry; a crash, hang
+          # (timeout kill → 124), or build error exits non-zero and fails the job.
+          for target in fuzz_chacha40 fuzz_encrypt_decrypt fuzz_hybrid_verify fuzz_kdf fuzz_reed_solomon fuzz_ntru_prime fuzz_falcon fuzz_blob; do
             echo "=== Fuzzing $target ==="
-            timeout 60s cargo +nightly fuzz run "$target" -- -max_len=4096 || true
+            timeout 120s cargo +nightly fuzz run "$target" -- -max_len=4096 -max_total_time=60
           done
 
   benchmark:

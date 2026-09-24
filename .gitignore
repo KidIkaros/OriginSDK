@@ -8,3 +8,4 @@ Cargo.lock
 .cogent-audit/
 .hermes/
 fuzz/target/
+fuzz/corpus/

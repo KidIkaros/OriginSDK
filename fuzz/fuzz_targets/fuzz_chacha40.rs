@@ -30,5 +30,8 @@ fuzz_target!(|data: &[u8]| {
     let mut wrong_key = key;
     wrong_key[0] ^= 0x01;
     let wrong_ct = chacha40_encrypt(&wrong_key, 0, &nonce, plaintext);
-    assert_ne!(wrong_ct, ciphertext, "wrong key should produce different ciphertext");
+    assert_ne!(
+        wrong_ct, ciphertext,
+        "wrong key should produce different ciphertext"
+    );
 });

@@ -68,14 +68,15 @@ two honest categories.
 | Serpent | AES finalist, non-NIST |
 | Ed41417 / Curve41417 | Published (CHES 2014) but nonstandard curve — *different, not proven stronger* |
 | SipHash-c-d | Custom parameter choice — compute hardener, not a security boundary |
-| ChaCha20-DRBG, secp256k1 internals | Custom implementations — *unreviewed, not claimed stronger* |
+| ChaCha20-DRBG | Custom implementation — *unreviewed, not claimed stronger* |
 
 **Honest caveat:** "stronger than NIST" holds for *compositions and
 parameters* (hybrid robustness, committing AEAD, larger memory-hard bounds)
 where the added property is definable. For individual custom
-implementations (Ed41417, secp256k1 internals, DRBG, NTRU Prime itself),
-non-NIST means *unreviewed* — superiority is not claimed without external
-analysis (Phase 13).
+implementations (Ed41417, DRBG, NTRU Prime itself), non-NIST means
+*unreviewed* — superiority is not claimed without external analysis
+(Phase 13). secp256k1 arithmetic is delegated to the audited `k256`
+crate rather than a custom implementation.
 
 ## Known Properties
 

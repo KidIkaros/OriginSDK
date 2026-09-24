@@ -266,9 +266,8 @@ marked, not changed, per the plan:
   mask-select must stay branchless; verify `round3`/`r3::mult` codegen
 - `x25519::{from_secret_key,from_seed}` — `==` on derived scalars
   short-circuits (negligible leak; swap to `ConstantTimeEq`)
-- `ec_schnorr::prove` — scalar ops delegate to vendored secp256k1
-- `internal::secp256k1` module docs — hand-rolled curve arithmetic
-  needs external CT verification pre-1.0
+- `ec_schnorr::prove` — scalar ops delegate to `k256` (fiat-crypto,
+  constant-time by construction); the composition layer still needs review
 
 Bonus dead code: `src/mmr.rs` (393-line Merkle Mountain Range) deleted —
 `pub(crate)` with zero callers; sealing in Step 1 hid it from dead-code
@@ -356,8 +355,10 @@ The marked sites were swept ahead of schedule; results:
   mask-select, `neg` → `ZERO.sub(self)`.
 - **Documented (public data only):** `pow` exponent bits, `exp`,
   syndrome early-continue, decode/verify parse early-returns.
-- **Residual:** external codegen verification of `internal::secp256k1`
-  in Phase 13; `to_affine` identity check is public-observable state.
+- **Residual:** ~~external codegen verification of `internal::secp256k1`~~
+  — resolved by replacing the vendored module with `k256 0.14`
+  (byte-equivalence verified before removal); `to_affine` identity check
+  is public-observable state.
 
 Policy doc: `docs/CONSTANT_TIME.md`. New timing tests:
 `timing_ntru_decap_valid_vs_invalid`,

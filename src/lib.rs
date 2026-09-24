@@ -62,7 +62,7 @@
 //! - [`kdf`] — Key derivation (Argon2id, HKDF-SHA3-256)
 //! - [`compressed`] — Atomic compress-then-encrypt / decrypt-then-decompress container
 //! - [`pqc`] — Raw post-quantum primitives (advanced use)
-//! - [`ec_schnorr`] — secp256k1 Schnorr signatures (native, no external deps)
+//! - [`ec_schnorr`] — secp256k1 Schnorr signatures (arithmetic via the `k256` crate)
 //! - [`prelude`] — One-line import for common types
 //!
 //! # Security defaults

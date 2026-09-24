@@ -277,8 +277,8 @@ fn timing_ntru_decap_valid_vs_invalid() {
 
 // ── Schnorr prove: scalar arithmetic vs secret-key bit density ────────
 //
-// `prove` runs secret scalars through `internal::secp256k1` — now
-// branchless (fixed-trip-count limb ops + mask selects). A sparse key
+// `prove` runs secret scalars through `k256`'s primeorder implementation
+// (fiat-crypto field arithmetic, constant-time by construction). A sparse key
 // (mostly zeros) must not run measurably faster than a dense one.
 // (The random nonce still dominates each iteration; this is a smoke
 // test for the scalar paths, not a certified CT proof.)

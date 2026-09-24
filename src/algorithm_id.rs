@@ -99,7 +99,7 @@ pub enum AlgorithmId {
     // ── Custom curves (0x07xx) ─────────────────────────────────────────
     /// Curve41417 (Ed41417)
     Ed41417 = 0x0701,
-    /// secp256k1 (custom arithmetic)
+    /// secp256k1 (arithmetic via `k256`)
     Secp256k1 = 0x0702,
 
     // ── DRBG (0x08xx) ──────────────────────────────────────────────────

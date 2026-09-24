@@ -76,8 +76,10 @@ is the only remaining gate.
       borrow chains, masked `conditional_add_*`, fixed-trip REDC,
       4-fold `reduce_512`, mask-select `reduce_257`); documented as
       public-data-only — `GaloisField::exp`, syndrome early-continue,
-      `pow` public exponents, decode/parse early returns. Residual:
-      external codegen verification of hand-rolled secp256k1 (Phase 13)
+      `pow` public exponents, decode/parse early returns. Residual
+      resolved post-sweep: `internal::secp256k1` replaced by `k256 0.14`
+      (fiat-crypto, externally maintained; byte-equivalence verified
+      before removal)
 
 #### 12.2 Fuzzing expansion
 - [x] Add libFuzzer targets for NTRU Prime decode/decapsulate

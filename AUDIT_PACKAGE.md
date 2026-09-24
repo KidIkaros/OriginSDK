@@ -13,7 +13,7 @@
 | NTRU Prime (sntrup761) | Custom, NIST wire format + KEM hashing | `src/pqc/ntru_prime/` | Medium — 100/100 official KAT vectors byte-exact (pk/sk/ct/ss); needs expert review |
 | NTRU Prime migration codec | Custom, ported 0.6.x Rq decoder | `src/pqc/ntru_prime/migrate.rs` | Low — decode/re-encode only, test-verified |
 | Ed41417 (Curve41417) | Custom, based on Bernstein et al. CHES 2014 | `src/pqc/curve41417/` | High — custom ECC |
-| secp256k1 arithmetic | Custom | `src/internal/secp256k1/` (+ `src/ec_schnorr.rs`) | High — custom ECC arithmetic; branchless rewrite in Phase 12.1, needs codegen verification |
+| EC-Schnorr composition | Custom Fiat-Shamir over `k256` arithmetic | `src/ec_schnorr.rs` | Medium — arithmetic delegated to audited `k256` (fiat-crypto, CT by construction); composition itself needs review |
 | Native ChaCha20-Poly1305 | Custom, RFC 8439 reference | `src/primitives/chacha20.rs`, `src/primitives/chacha20poly1305.rs` | Medium — standard algorithm, custom impl |
 | Native Poly1305 | Custom, RFC 8439 §2.5 | `src/primitives/poly1305.rs` | Medium — standard algorithm, custom impl |
 | ChaCha20-DRBG | Custom | `src/drbg/` | Medium — custom DRBG |
@@ -153,7 +153,7 @@ the fuzz loop (`fuzz_falcon` ≈52k runs/smoke).
 | No independent audit | Critical | This package prepared for review | Pending |
 | Custom NTRU Prime impl | Medium | 100/100 official KAT vectors byte-exact (Phase 12.3/4); two spec deviations found & fixed | KAT-verified; still needs expert review |
 | Custom Ed41417 impl | High | Based on published paper | Pending — needs expert review |
-| Custom secp256k1 arithmetic | High | Secret-dependent branches eliminated (Phase 12.1 branchless rewrite); previous defects fixed | Pending — needs codegen verification or `k256` substitution review |
+| Custom secp256k1 arithmetic | — | Resolved: vendored arithmetic replaced by `k256 0.14` (byte-equivalence verified vs vendored impl before removal: scalar repr/reduce parity, generator-mul SEC1 encoding, cross-decoding) | Closed — `k256` is externally maintained; EC-Schnorr composition remains in scope |
 | No Miri analysis | Medium | Unsafe code is minimal and scoped | Deferred |
 | Timing tests are smoke-only | Medium | 6 tests incl. CCA boundary; limits in `docs/CONSTANT_TIME.md` | Accepted |
 | Long-duration fuzzing not run | Medium | 60s/target smoke in CI; sustained deferred to hosted infra (OSS-Fuzz) | Deferred |
@@ -172,10 +172,10 @@ the fuzz loop (`fuzz_falcon` ≈52k runs/smoke).
    dispositions), `docs/MIGRATION_0_6_TO_0_7.md` (format migration),
    `docs/BENCHMARKS.md` (perf baseline), `FORMAT_REGISTRY.md` (wire formats).
 4. **Review** custom implementations listed in §1.1, focusing on:
-   - Correctness of arithmetic (NTRU Prime, Ed41417, secp256k1)
-   - Constant-time behavior — especially the Phase 12.1 branchless
-     secp256k1 rewrite (verify codegen, no residual secret-dependent
-     control flow)
+   - Correctness of arithmetic (NTRU Prime, Ed41417 — secp256k1 is now
+     `k256`, externally maintained)
+   - Constant-time behavior — `k256` uses fiat-crypto field arithmetic
+     (CT by construction); verify the EC-Schnorr composition layer instead
    - Key generation, signing, and verification paths
    - Hybrid composition binding (message, key, domain, algorithm)
    - NTRU CCA fallback path and `rho`-keyed failure derivation

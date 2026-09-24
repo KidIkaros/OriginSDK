@@ -20,7 +20,6 @@ pub mod hkdf;
 pub mod hmac;
 pub mod mlock;
 pub mod rng;
-pub mod secp256k1;
 pub mod sha3;
 pub mod subtle;
 pub mod zeroize;

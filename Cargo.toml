@@ -66,6 +66,7 @@ x25519-dalek = { version = "=2.0.1", features = ["static_secrets", "zeroize"] } 
 ed448 = "0.5"
 ed448-goldilocks = { version = "=0.14.0-pre.15", features = ["std", "signing", "pkcs8", "getrandom"] }
 elliptic-curve = "0.13"
+k256 = { version = "=0.14.0", default-features = false, features = ["arithmetic"] }  # pinned: audited RustCrypto secp256k1 — replaces hand-rolled internal::secp256k1 arithmetic
 signature = "2"
 subtle = "2.6.1"
 hex = "0.4"

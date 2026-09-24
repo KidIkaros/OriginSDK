@@ -25,8 +25,7 @@ name anything from a layer above it.
 │ Primitives (crate-private)                                   │
 │   primitives::* — crate-internal building blocks             │
 │   internal::*   — vendored implementations (sha3, hmac, hkdf,  │
-│                   rng, secp256k1, subtle, zeroize, getrandom,  │
-│                   mlock)                                     │
+│                   rng, subtle, zeroize, getrandom, mlock)    │
 ├─────────────────────────────────────────────────────────────┤
 │ Domain vocabulary (innermost — no inward deps)               │
 │   error, types, algorithm_id                                 │

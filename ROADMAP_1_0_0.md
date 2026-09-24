@@ -8,6 +8,20 @@
 ### Completed
 - NIST PQC compatibility: NTRU Prime (NIST encoding + CCA KEM), Falcon (FIPS 206)
 - 726 tests passing with `--all-features` (0 failures)
+- **Design audit + structural remediation** (pre-Phase-12, commits
+  `326a2ff`…`e7afb48`, see `docs/DESIGN_AUDIT.md`):
+  - Layer sealing: `internal`/`primitives` are `pub(crate)`; layer rules
+    documented in `docs/ARCHITECTURE.md`
+  - `signing/hybrid.rs` (1541 lines) split into a `hybrid/` module dir
+    with shared combinators; ~400 lines of copy-paste constructions gone
+  - `BundleCache` is an ownable value type (process-global kept as
+    convenience)
+  - Error/boundary hygiene: every RNG-panic site has a `try_*` variant;
+    error variants remapped (`Pqc`/`Serialization`/`AuthenticationFailed`)
+  - Long functions decomposed; `// CT-REVIEW(12.1)` marks placed at
+    every timing-sensitive site for Phase 12.1 to verify
+  - Public surface rationalized: doc-hidden utilities promoted to
+    documented experimental modules; `html_root_url`/README drift fixed
 - CCA-secure decapsulation (always returns Ok, pseudorandom on failure)
 - 7 property tests (proptest) for NTRU Prime
 - BLAKE3/SHAKE128/SHAKE256 KEM hash backends behind feature flags
@@ -48,6 +62,11 @@ is the only remaining gate.
 - [ ] Audit hybrid signing combiner for timing leakage
 - [ ] Document which operations are constant-time and which are not
 - [ ] Add timing tests for NTRU Prime encapsulate/decapsulate
+- [ ] Sweep every `// CT-REVIEW(12.1)` mark placed by the design-remediation
+      pass (grep for `CT-REVIEW`): `GaloisField::{mul,exp}`,
+      `correct_single_shard_errors`, `ntru_prime::decapsulate` +
+      `count_weight`, `x25519::{from_secret_key,from_seed}` `==` on scalars,
+      `ec_schnorr::prove`, and all of `internal::secp256k1`
 
 #### 12.2 Fuzzing expansion
 - [ ] Add libFuzzer targets for NTRU Prime decode/decapsulate

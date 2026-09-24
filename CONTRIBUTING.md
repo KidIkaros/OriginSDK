@@ -54,12 +54,11 @@ cargo clippy --all-features -- -D warnings
 
 All PRs must pass `cargo fmt` and `cargo clippy` with no warnings.
 
-> **Note on `deprecated` warnings**: The `signing_legacy` module is
-> marked `#[deprecated]` and will be removed in 0.5. Internal tests
-> in `src/signing_legacy.rs` exercise the deprecated API and will
-> emit `deprecated` lint warnings during `cargo test`. These are
-> intentional — the tests verify the deprecated path still works
-> during the deprecation window. They do not indicate a problem.
+> **Note on `deprecated` warnings**: The `signing::hybrid` module keeps a
+> deprecated `hkdf_combine` compatibility shim (audit CC-3) — use
+> `kdf::hkdf::hkdf_sha3_256(ikm, salt, info, out)` in new code.
+> The `legacy_shim` wildcard re-export also emits deprecation warnings
+> by design during the pre-1.0 window.
 
 ## Project Structure
 
@@ -70,19 +69,41 @@ src/
   types.rs            -- Seed, XNonce, CNonce newtypes
   prelude.rs          -- curated re-exports (~15 items)
   chacha20_blake3.rs  -- ChaCha20-BLAKE3 committing AEAD
-  aead.rs             -- XChaCha20-Poly1305 AEAD
-  kdf/                -- HKDF-SHA3-256, Argon2id
+  aead/               -- XChaCha20-Poly1305 AEAD (+ symmetric, streaming)
+  kdf/                -- HKDF-SHA3-256, Argon2id, MAC vocabulary
   signing/            -- classical, postquantum, hybrid constructions
+    hybrid/           -- combinators, constructions, kdf, bundle, cache
   pqc/                -- Falcon-1024, Falcon-512, ML-DSA, SLH-DSA, Ed448, Ed41417, NTRU Prime
-  seed.rs             -- Hierarchical seed derivation
-  entropy.rs          -- DRBG (ChaCha20-based)
-  blob.rs             -- Binary large object compression
-  stealth_*.rs        -- Stealth address utilities
-  internal/           -- subtle (CT eq), hmac, secp256k1
-examples/             -- 4 runnable examples
+  seed/               -- SeedHandle + hierarchical derivation (gen.rs)
+  entropy.rs          -- Entropy quality analysis
+  blob.rs             -- Seed-blob storage format (v1/v2)
+  error_correction.rs -- Reed-Solomon over GF(2^8)
+  compression.rs      -- DEFLATE helpers (used by compressed.rs)
+  compressed.rs       -- compress-then-encrypt container
+  siphash.rs          -- SipHash compute-hardener (entropy pipeline)
+  stealth/            -- Stealth address utilities
+  internal/           -- subtle (CT eq), hmac, hkdf, secp256k1, mlock, getrandom
+examples/             -- runnable examples
 tests/                -- integration, golden vectors, proptest, rigorous hybrid
 benches/              -- criterion benchmarks
+docs/                 -- ARCHITECTURE.md (layer rules), DESIGN_AUDIT.md
 ```
+
+### Architectural layer rules (enforced)
+
+`internal/` and `primitives/` are `pub(crate)` — **not** `#[doc(hidden)]
+pub`. The dependency direction is one-way:
+
+```
+public façade (lib.rs, prelude) → composition (aead, compressed, signing)
+  → schemes (pqc, ec_schnorr, x25519) → primitives → internal (vendored/unsafe)
+```
+
+- Never add `use crate::internal::…` outside `src/` internals — reach
+  deterministic RNG through `drbg::ChaCha20Rng` and OS entropy through
+  `fill_random`. The binary (`src/bin/`) follows the same rule.
+- Full rules: `docs/ARCHITECTURE.md`. Design-smell checklist used in
+  review: `docs/DESIGN_AUDIT.md`.
 
 ## Making Changes
 
@@ -129,6 +150,32 @@ if !bool::from(sig.hash.ct_eq(&expected)) {
 ```
 
 Never use `==` or `!=` for comparing secret-derived values.
+
+Sites whose constant-time behavior needs verification before 1.0 are
+marked `// CT-REVIEW(12.1)` — do not remove the marks; Phase 12.1 of
+`ROADMAP_1_0_0.md` resolves them. If you add a site with secret-dependent
+control flow, either use constant-time primitives or add the mark.
+
+### Panic + `try_*` pairs
+
+Functions that can fail on OS entropy or allocation expose a fallible
+`try_*` variant; the infallible form delegates to it and documents a
+`# Panics` contract. New fallible APIs follow the same pattern:
+
+```rust
+pub fn generate_key() -> [u8; 32] {
+    Self::try_generate_key().expect("OS entropy failure")
+}
+/// # Panics — see `generate_key`.
+pub fn try_generate_key() -> Result<[u8; 32]> { /* ... */ }
+```
+
+### State discipline
+
+Mutable state lives inside named types (`SeedHandle`, `ChaCha20Drbg`,
+`BundleCache`) — no bare `static`/`Mutex` at module scope without a
+documented reason. Process-global convenience state is allowed only as
+a thin layer over an ownable value type.
 
 ### Zeroize
 

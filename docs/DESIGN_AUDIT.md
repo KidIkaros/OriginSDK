@@ -310,3 +310,36 @@ Verification: 448 lib tests, `timing_tests` (4),
 
 Verification: 448 lib tests green; `cargo doc --no-deps` clean except
 pre-existing `-W unsafe-code` warnings.
+
+### Step 8 — guardrails & roadmap integration
+
+- `ROADMAP_1_0_0.md` records this remediation as completed pre-Phase-12
+  work; Phase 12.1 now explicitly lists the `// CT-REVIEW(12.1)` sweep
+  as a checklist item inheriting every mark placed in Step 6.
+- `CONTRIBUTING.md` gains: the architectural layer rules (dependency
+  direction, `pub(crate)` enforcement, `fill_random`/`ChaCha20Rng`
+  boundaries), the panic + `try_*` pair convention, the wrapped-state
+  discipline, the CT-REVIEW marking convention, and a refreshed project
+  structure reflecting the post-refactor layout.
+- Audit closed: every finding in the table above has a recorded
+  disposition — fixed (step noted), deferred (Phase 12.x via CT-REVIEW
+  marks), or won't-fix-with-rationale (as designed / no pattern needed).
+  Nothing silently dropped.
+
+## Final status
+
+| Severity | Total | Fixed | As-designed (no action) |
+|----------|-------|-------|-------------------------|
+| High     | 4     | 4     | 0                       |
+| Med      | 14    | 14    | 0                       |
+| Low      | 4     | 4     | 0                       |
+| — (dispositioned in-table) | 4 | — | 4 |
+
+All actionable findings are resolved. The `// CT-REVIEW(12.1)` marks
+placed during Step 6 are *new* tracked items for Phase 12.1 — they
+record sites whose constant-time behavior must be verified, not open
+audit findings.
+
+The SDK remains **experimental** — this work improves internal evidence
+and structure; it is not a substitute for the independent cryptographic
+and Rust review in Phase 13.

@@ -62,7 +62,31 @@ pub struct EntropyMetrics {
 /// Minimum recommended input size: 256 bytes for meaningful statistics.
 pub fn analyze(data: &[u8]) -> EntropyMetrics {
     if data.is_empty() {
-        return EntropyMetrics {
+        return EntropyMetrics::zero();
+    }
+
+    let n = data.len();
+    let freq = byte_frequencies(data);
+    let (shannon_entropy, min_entropy, collision_entropy) = entropy_stats(&freq, n);
+    let chi_squared = chi_squared_stat(&freq, n);
+
+    EntropyMetrics {
+        shannon_entropy,
+        min_entropy,
+        collision_entropy,
+        chi_squared,
+        chi_squared_p: chi2_p_value(chi_squared, 255),
+        serial_correlation: compute_serial_correlation(data),
+        longest_run: compute_longest_bit_run(data),
+        bit_bias: bit_bias(data),
+        unique_bytes: freq.iter().filter(|&&c| c > 0).count(),
+    }
+}
+
+impl EntropyMetrics {
+    /// The all-zero metrics returned for empty input.
+    fn zero() -> Self {
+        Self {
             shannon_entropy: 0.0,
             min_entropy: 0.0,
             collision_entropy: 0.0,
@@ -72,24 +96,25 @@ pub fn analyze(data: &[u8]) -> EntropyMetrics {
             longest_run: 0,
             bit_bias: 0.0,
             unique_bytes: 0,
-        };
+        }
     }
+}
 
-    let n = data.len();
-
-    // Byte frequency distribution
+/// Byte frequency distribution of `data` as a 256-bin histogram.
+fn byte_frequencies(data: &[u8]) -> [usize; 256] {
     let mut freq = [0usize; 256];
     for &b in data {
         freq[b as usize] += 1;
     }
+    freq
+}
 
-    let unique_bytes = freq.iter().filter(|&&c| c > 0).count();
-
-    // Shannon entropy: H = -sum(p_i * log2(p_i))
+/// Shannon, min-, and collision entropy computed from a byte histogram.
+fn entropy_stats(freq: &[usize; 256], n: usize) -> (f64, f64, f64) {
     let mut shannon = 0.0_f64;
     let mut max_freq = 0usize;
     let mut collision_sum = 0.0_f64;
-    for &count in &freq {
+    for &count in freq {
         if count > 0 {
             let p = count as f64 / n as f64;
             shannon -= p * p.log2();
@@ -102,43 +127,27 @@ pub fn analyze(data: &[u8]) -> EntropyMetrics {
 
     // Min-entropy: H_min = -log2(max(p_i))
     let min_entropy = -((max_freq as f64) / (n as f64)).log2();
-
     // Collision entropy: H_2 = -log2(sum(p_i^2))
     let collision_entropy = -collision_sum.log2();
 
-    // Chi-squared test
+    (shannon, min_entropy, collision_entropy)
+}
+
+/// Chi-squared uniformity statistic against the uniform distribution.
+fn chi_squared_stat(freq: &[usize; 256], n: usize) -> f64 {
     let expected = n as f64 / 256.0;
-    let chi_squared = freq
-        .iter()
+    freq.iter()
         .map(|&count| {
             let diff = count as f64 - expected;
             diff * diff / expected
         })
-        .sum::<f64>();
-    let chi_squared_p = chi2_p_value(chi_squared, 255);
+        .sum()
+}
 
-    // Serial correlation
-    let serial_correlation = compute_serial_correlation(data);
-
-    // Longest bit run
-    let longest_run = compute_longest_bit_run(data);
-
-    // Bit bias (fraction of 1 bits)
-    let total_bits = n * 8;
+/// Fraction of bits set to 1 (should be ~0.5 for uniform data).
+fn bit_bias(data: &[u8]) -> f64 {
     let ones: usize = data.iter().map(|b| b.count_ones() as usize).sum();
-    let bit_bias = ones as f64 / total_bits as f64;
-
-    EntropyMetrics {
-        shannon_entropy: shannon,
-        min_entropy,
-        collision_entropy,
-        chi_squared,
-        chi_squared_p,
-        serial_correlation,
-        longest_run,
-        bit_bias,
-        unique_bytes,
-    }
+    ones as f64 / (data.len() * 8) as f64
 }
 
 // ---------------------------------------------------------------------------

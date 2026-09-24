@@ -312,77 +312,10 @@ pub fn compress_encrypt(
 /// * `passphrase` — The passphrase (must match what was used for encryption)
 pub fn decompress_decrypt(container: &[u8], passphrase: &[u8]) -> Result<Vec<u8>> {
     // 1. Parse header.
-    if container.len() < HEADER_LEN {
-        return Err(CryptoError::Serialization(format!(
-            "container too short: {} bytes, need at least {}",
-            container.len(),
-            HEADER_LEN
-        )));
-    }
-
-    if &container[..4] != MAGIC {
-        return Err(CryptoError::Serialization("bad magic bytes".into()));
-    }
-
-    let version = container[4];
-    if version != VERSION {
-        return Err(CryptoError::Serialization(format!(
-            "unsupported version: {} (expected {})",
-            version, VERSION
-        )));
-    }
-
-    let tier_byte = container[5];
-    let tier = match tier_byte {
-        0 => MemoryTier::Nano,
-        1 => MemoryTier::Standard,
-        2 => MemoryTier::Sovereign,
-        _ => {
-            return Err(CryptoError::Serialization(format!(
-                "invalid tier byte: {}",
-                tier_byte
-            )))
-        }
-    };
-
-    let algo_byte = container[6];
-    let compressor = Compressor::from_byte(algo_byte).ok_or_else(|| {
-        CryptoError::Serialization(format!("unknown compressor byte: {}", algo_byte))
-    })?;
-
-    let salt: [u8; 16] = container[9..25]
-        .try_into()
-        .map_err(|_| CryptoError::Serialization("salt parse failed".into()))?;
-
-    let base_nonce: [u8; NONCE_SIZE] = container[25..49]
-        .try_into()
-        .map_err(|_| CryptoError::Serialization("nonce parse failed".into()))?;
-
-    let chunk_size = u32::from_be_bytes(
-        container[49..53]
-            .try_into()
-            .map_err(|_| CryptoError::Serialization("chunk_size field parse failed".into()))?,
-    ) as usize;
-    let num_chunks = u32::from_be_bytes(
-        container[53..57]
-            .try_into()
-            .map_err(|_| CryptoError::Serialization("num_chunks field parse failed".into()))?,
-    ) as usize;
-
-    let body = &container[HEADER_LEN..];
-
-    // Rebuild outer AAD.
-    let outer_aad = build_outer_aad(
-        &salt,
-        &base_nonce,
-        tier,
-        compressor,
-        chunk_size,
-        num_chunks as u32,
-    );
+    let hdr = ParsedHeader::parse(container)?;
 
     // 2. Derive key.
-    let key = derive_key(passphrase, &salt, tier)?;
+    let key = derive_key(passphrase, &hdr.salt, hdr.tier)?;
     let cipher = InnerCipher::new(key);
 
     // Zeroize key copy (cipher holds internal copy).
@@ -390,10 +323,119 @@ pub fn decompress_decrypt(container: &[u8], passphrase: &[u8]) -> Result<Vec<u8>
     key_zero.zeroize();
 
     // 3. Decrypt and authenticate each chunk (verify tags BEFORE decompressing).
+    let compressed = decrypt_chunks(&cipher, &hdr)?;
+
+    // 4. Decompress (only reached after all tags verified).
+    if compressed.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    decompress_data(&compressed, hdr.compressor)
+}
+
+/// Parsed container header fields plus the remaining body slice.
+struct ParsedHeader<'a> {
+    tier: MemoryTier,
+    compressor: Compressor,
+    salt: [u8; 16],
+    base_nonce: [u8; NONCE_SIZE],
+    chunk_size: usize,
+    num_chunks: usize,
+    body: &'a [u8],
+}
+
+impl ParsedHeader<'_> {
+    /// Parse the fixed-size header, returning the decoded fields and the
+    /// body slice that follows it.
+    fn parse(container: &[u8]) -> Result<ParsedHeader<'_>> {
+        if container.len() < HEADER_LEN {
+            return Err(CryptoError::Serialization(format!(
+                "container too short: {} bytes, need at least {}",
+                container.len(),
+                HEADER_LEN
+            )));
+        }
+
+        if &container[..4] != MAGIC {
+            return Err(CryptoError::Serialization("bad magic bytes".into()));
+        }
+
+        let version = container[4];
+        if version != VERSION {
+            return Err(CryptoError::Serialization(format!(
+                "unsupported version: {} (expected {})",
+                version, VERSION
+            )));
+        }
+
+        let tier_byte = container[5];
+        let tier = match tier_byte {
+            0 => MemoryTier::Nano,
+            1 => MemoryTier::Standard,
+            2 => MemoryTier::Sovereign,
+            _ => {
+                return Err(CryptoError::Serialization(format!(
+                    "invalid tier byte: {}",
+                    tier_byte
+                )))
+            }
+        };
+
+        let algo_byte = container[6];
+        let compressor = Compressor::from_byte(algo_byte).ok_or_else(|| {
+            CryptoError::Serialization(format!("unknown compressor byte: {}", algo_byte))
+        })?;
+
+        let salt: [u8; 16] = container[9..25]
+            .try_into()
+            .map_err(|_| CryptoError::Serialization("salt parse failed".into()))?;
+
+        let base_nonce: [u8; NONCE_SIZE] = container[25..49]
+            .try_into()
+            .map_err(|_| CryptoError::Serialization("nonce parse failed".into()))?;
+
+        let chunk_size = u32::from_be_bytes(
+            container[49..53]
+                .try_into()
+                .map_err(|_| CryptoError::Serialization("chunk_size field parse failed".into()))?,
+        ) as usize;
+        let num_chunks = u32::from_be_bytes(
+            container[53..57]
+                .try_into()
+                .map_err(|_| CryptoError::Serialization("num_chunks field parse failed".into()))?,
+        ) as usize;
+
+        Ok(ParsedHeader {
+            tier,
+            compressor,
+            salt,
+            base_nonce,
+            chunk_size,
+            num_chunks,
+            body: &container[HEADER_LEN..],
+        })
+    }
+}
+
+/// Authenticate and decrypt every chunk in `hdr.body`, returning the
+/// concatenated plaintext (still compressed). Every tag is verified —
+/// any mismatch, truncation, or trailing bytes yields
+/// `CryptoError::AuthenticationFailed` and nothing is decompressed.
+fn decrypt_chunks(cipher: &InnerCipher, hdr: &ParsedHeader<'_>) -> Result<Vec<u8>> {
+    let outer_aad = build_outer_aad(
+        &hdr.salt,
+        &hdr.base_nonce,
+        hdr.tier,
+        hdr.compressor,
+        hdr.chunk_size,
+        hdr.num_chunks as u32,
+    );
+
     let mut compressed = Vec::new();
     let mut offset = 0usize;
+    let body = hdr.body;
 
-    for i in 0..num_chunks {
+    for i in 0..hdr.num_chunks {
         // Read tag.
         if offset + CHUNK_TAG_SIZE > body.len() {
             return Err(CryptoError::AuthenticationFailed);
@@ -404,17 +446,17 @@ pub fn decompress_decrypt(container: &[u8], passphrase: &[u8]) -> Result<Vec<u8>
         offset += CHUNK_TAG_SIZE;
 
         // Determine ciphertext length for this chunk.
-        let is_last = i == num_chunks - 1;
+        let is_last = i == hdr.num_chunks - 1;
         let remaining = body.len() - offset;
         let ct_len = if is_last {
             remaining
         } else {
             // Non-final chunks should be exactly chunk_size bytes of ciphertext.
-            if remaining < chunk_size {
+            if remaining < hdr.chunk_size {
                 // Truncated or malformed — not enough data for the claimed chunk_size.
                 return Err(CryptoError::AuthenticationFailed);
             }
-            chunk_size
+            hdr.chunk_size
         };
 
         if offset + ct_len > body.len() {
@@ -424,7 +466,7 @@ pub fn decompress_decrypt(container: &[u8], passphrase: &[u8]) -> Result<Vec<u8>
         let mut chunk_ct = body[offset..offset + ct_len].to_vec();
         offset += ct_len;
 
-        let nonce = stream_nonce(&base_nonce, i as u64, is_last);
+        let nonce = stream_nonce(&hdr.base_nonce, i as u64, is_last);
         let chunk_aad = build_chunk_aad(&outer_aad, i as u64, is_last);
 
         cipher
@@ -439,12 +481,7 @@ pub fn decompress_decrypt(container: &[u8], passphrase: &[u8]) -> Result<Vec<u8>
         return Err(CryptoError::AuthenticationFailed);
     }
 
-    // 4. Decompress (only reached after all tags verified).
-    if compressed.is_empty() {
-        return Ok(Vec::new());
-    }
-
-    decompress_data(&compressed, compressor)
+    Ok(compressed)
 }
 
 #[cfg(test)]

@@ -145,59 +145,10 @@ pub fn try_generate_with_entropy(
     }
 
     let seed = match variant {
-        SeedVariant::Blake2bShake256 => {
-            // Round 1: keyed-BLAKE2b
-            let blake_hash = blake3::keyed_hash(&key_bytes, &msg_bytes);
-
-            // Round 2: SHAKE-256
-            let mut hasher = Shake256::default();
-            hasher.update(blake_hash.as_bytes());
-            hasher.update(&salt);
-            let mut reader = hasher.finalize_xof();
-            let mut out = [0u8; 32];
-            reader.read(&mut out);
-            out.to_vec()
-        }
-
-        SeedVariant::Blake2bSha3_256 => {
-            // Round 1: keyed-BLAKE2b
-            let blake_hash = blake3::keyed_hash(&key_bytes, &msg_bytes);
-
-            // Round 2: SHA3-256
-            let mut input = Vec::with_capacity(32 + 16);
-            input.extend_from_slice(blake_hash.as_bytes());
-            input.extend_from_slice(&salt);
-            sha3_256(&input).to_vec()
-        }
-
-        SeedVariant::Blake2bSha512 => {
-            // Round 1: keyed-BLAKE2b
-            let blake_hash = blake3::keyed_hash(&key_bytes, &msg_bytes);
-
-            // Round 2: SHA-512, truncate to 32 bytes (256 bits)
-            use sha2::{Digest, Sha512};
-            let mut hasher = Sha512::new();
-            hasher.update(blake_hash.as_bytes());
-            hasher.update(&salt);
-            let hash = hasher.finalize();
-            hash[..32].to_vec()
-        }
-
-        SeedVariant::Shake256Sha3_256 => {
-            // Round 1: SHAKE-256
-            let mut hasher = Shake256::default();
-            hasher.update(&key_bytes);
-            hasher.update(&msg_bytes);
-            let mut reader = hasher.finalize_xof();
-            let mut shake_out = [0u8; 32];
-            reader.read(&mut shake_out);
-
-            // Round 2: SHA3-256
-            let mut input = Vec::with_capacity(32 + 16);
-            input.extend_from_slice(&shake_out);
-            input.extend_from_slice(&salt);
-            sha3_256(&input).to_vec()
-        }
+        SeedVariant::Blake2bShake256 => chain_blake2b_shake256(&key_bytes, &msg_bytes, &salt),
+        SeedVariant::Blake2bSha3_256 => chain_blake2b_sha3_256(&key_bytes, &msg_bytes, &salt),
+        SeedVariant::Blake2bSha512 => chain_blake2b_sha512(&key_bytes, &msg_bytes, &salt),
+        SeedVariant::Shake256Sha3_256 => chain_shake256_sha3_256(&key_bytes, &msg_bytes, &salt),
     };
 
     // Wipe intermediate material
@@ -209,6 +160,68 @@ pub fn try_generate_with_entropy(
         salt: salt.to_vec(),
         variant,
     })
+}
+
+// ---------------------------------------------------------------------------
+// Per-variant hash chains — the construction table
+// ---------------------------------------------------------------------------
+
+/// keyed-BLAKE2b → SHAKE-256
+fn chain_blake2b_shake256(key: &[u8; 32], msg: &[u8], salt: &[u8; 16]) -> Vec<u8> {
+    // Round 1: keyed-BLAKE2b
+    let blake_hash = blake3::keyed_hash(key, msg);
+
+    // Round 2: SHAKE-256
+    let mut hasher = Shake256::default();
+    hasher.update(blake_hash.as_bytes());
+    hasher.update(salt);
+    let mut reader = hasher.finalize_xof();
+    let mut out = [0u8; 32];
+    reader.read(&mut out);
+    out.to_vec()
+}
+
+/// keyed-BLAKE2b → SHA3-256
+fn chain_blake2b_sha3_256(key: &[u8; 32], msg: &[u8], salt: &[u8; 16]) -> Vec<u8> {
+    // Round 1: keyed-BLAKE2b
+    let blake_hash = blake3::keyed_hash(key, msg);
+
+    // Round 2: SHA3-256
+    let mut input = Vec::with_capacity(32 + 16);
+    input.extend_from_slice(blake_hash.as_bytes());
+    input.extend_from_slice(salt);
+    sha3_256(&input).to_vec()
+}
+
+/// keyed-BLAKE2b → SHA-512 truncated to 32 bytes (256 bits)
+fn chain_blake2b_sha512(key: &[u8; 32], msg: &[u8], salt: &[u8; 16]) -> Vec<u8> {
+    // Round 1: keyed-BLAKE2b
+    let blake_hash = blake3::keyed_hash(key, msg);
+
+    // Round 2: SHA-512, truncate to 32 bytes (256 bits)
+    use sha2::{Digest, Sha512};
+    let mut hasher = Sha512::new();
+    hasher.update(blake_hash.as_bytes());
+    hasher.update(salt);
+    let hash = hasher.finalize();
+    hash[..32].to_vec()
+}
+
+/// SHAKE-256 → SHA3-256
+fn chain_shake256_sha3_256(key: &[u8; 32], msg: &[u8], salt: &[u8; 16]) -> Vec<u8> {
+    // Round 1: SHAKE-256
+    let mut hasher = Shake256::default();
+    hasher.update(key);
+    hasher.update(msg);
+    let mut reader = hasher.finalize_xof();
+    let mut shake_out = [0u8; 32];
+    reader.read(&mut shake_out);
+
+    // Round 2: SHA3-256
+    let mut input = Vec::with_capacity(32 + 16);
+    input.extend_from_slice(&shake_out);
+    input.extend_from_slice(salt);
+    sha3_256(&input).to_vec()
 }
 
 // ---------------------------------------------------------------------------

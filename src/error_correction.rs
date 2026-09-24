@@ -330,6 +330,14 @@ impl ReedSolomonCodec {
     /// `parity_shards`-way erasure recovery with a hard failure when too
     /// many shards are missing.
     pub fn decode(&self, encoded: &[u8]) -> Result<Vec<u8>> {
+        let (mut shards, original_len) = self.parse_encoded(encoded)?;
+        self.correct_single_shard_errors(&mut shards)?;
+        Ok(self.reassemble(&shards, original_len))
+    }
+
+    /// Split `encoded` into its `len(4 LE) ‖ shard_0 ‖ … ‖ shard_n` layout.
+    /// Returns `(shards, original_len)`.
+    fn parse_encoded(&self, encoded: &[u8]) -> Result<(Vec<Vec<u8>>, usize)> {
         let total_shards = self.data_shards + self.parity_shards;
 
         if encoded.len() < 4 {
@@ -348,7 +356,7 @@ impl ReedSolomonCodec {
             ));
         }
 
-        let mut shards: Vec<Vec<u8>> = encoded[4..]
+        let shards: Vec<Vec<u8>> = encoded[4..]
             .chunks(shard_size)
             .map(|s| s.to_vec())
             .collect();
@@ -361,34 +369,50 @@ impl ReedSolomonCodec {
             )));
         }
 
+        Ok((shards, original_len))
+    }
+
+    /// Concatenate the data shards and trim to `original_len`.
+    fn reassemble(&self, shards: &[Vec<u8>], original_len: usize) -> Vec<u8> {
+        let mut data = Vec::new();
+        for shard in shards.iter().take(self.data_shards) {
+            data.extend_from_slice(shard);
+        }
+        data.truncate(original_len);
+        data
+    }
+
+    /// Per-byte-position syndrome decoding over `shards` in place.
+    ///
+    /// For parity row `i`, the systematic code satisfies
+    /// `sum_k matrix[i][k] * data[k][j] XOR parity[i][j] == 0`. The
+    /// syndrome `syn[i]` is the (nonzero, if corrupted) left-hand side.
+    /// If exactly one shard `m` (data or parity) is corrupted at
+    /// position `j` with error value `e`, then `syn[i] == H(i, m) * e`
+    /// for every row `i`, where `H(i, m)` is `matrix[i][m]` for a data
+    /// shard or `1` for `m`'s own parity row (0 otherwise). Because the
+    /// Vandermonde columns are pairwise distinct field elements raised
+    /// to distinct powers, at most one `(m, e)` hypothesis is
+    /// consistent across *all* `parity_shards` equations when there is
+    /// truly only one corrupted shard — so this both locates and
+    /// corrects a single-shard error, unlike the previous heuristic
+    /// (which was a tautology: it "detected" every data shard as
+    /// corrupted on every mismatch, see the regression test below).
+    ///
+    /// Two or more simultaneously corrupted shards at the same byte
+    /// position can't be resolved by this single-error algebra (that
+    /// needs a full error-locator-polynomial decoder). For a code of
+    /// minimum distance 3 such a pattern is algebraically
+    /// indistinguishable from a valid single-error hypothesis, so this
+    /// decoder will apply a plausible-but-wrong correction rather than
+    /// erroring — see the method-level warning on [`decode`](Self::decode).
+    /// Callers needing multi-shard tolerance must use `decode_shards`
+    /// with explicit erasure information.
+    fn correct_single_shard_errors(&self, shards: &mut [Vec<u8>]) -> Result<()> {
+        let total_shards = self.data_shards + self.parity_shards;
+        let shard_size = shards.first().map_or(0, Vec::len);
         let matrix = Self::vandermonde_matrix(self.data_shards, self.parity_shards);
 
-        // Per-byte-position syndrome decoding.
-        //
-        // For parity row `i`, the systematic code satisfies
-        // `sum_k matrix[i][k] * data[k][j] XOR parity[i][j] == 0`. The
-        // syndrome `syn[i]` is the (nonzero, if corrupted) left-hand side.
-        // If exactly one shard `m` (data or parity) is corrupted at
-        // position `j` with error value `e`, then `syn[i] == H(i, m) * e`
-        // for every row `i`, where `H(i, m)` is `matrix[i][m]` for a data
-        // shard or `1` for `m`'s own parity row (0 otherwise). Because the
-        // Vandermonde columns are pairwise distinct field elements raised
-        // to distinct powers, at most one `(m, e)` hypothesis is
-        // consistent across *all* `parity_shards` equations when there is
-        // truly only one corrupted shard — so this both locates and
-        // corrects a single-shard error, unlike the previous heuristic
-        // (which was a tautology: it "detected" every data shard as
-        // corrupted on every mismatch, see the regression test below).
-        //
-        // Two or more simultaneously corrupted shards at the same byte
-        // position can't be resolved by this single-error algebra (that
-        // needs a full error-locator-polynomial decoder). For a code of
-        // minimum distance 3 such a pattern is algebraically
-        // indistinguishable from a valid single-error hypothesis, so this
-        // decoder will apply a plausible-but-wrong correction rather than
-        // erroring — see the method-level warning. Callers needing
-        // multi-shard tolerance must use `decode_shards` with explicit
-        // erasure information.
         let h = |m: usize, i: usize| -> u8 {
             if m < self.data_shards {
                 matrix[i][m]
@@ -457,19 +481,7 @@ impl ReedSolomonCodec {
                 }
             }
         }
-
-        // Reconstruct original data
-        let mut data = Vec::new();
-        for i in 0..self.data_shards {
-            data.extend_from_slice(&shards[i]);
-        }
-
-        // Trim to original length
-        if data.len() > original_len {
-            data.truncate(original_len);
-        }
-
-        Ok(data)
+        Ok(())
     }
 
     /// Parallel encode using rayon for improved performance on large data

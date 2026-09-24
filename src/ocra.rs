@@ -248,6 +248,17 @@ pub fn ocra(
     }
 
     // ── Build the data input M = C || Q || P || S || T ───────────────
+    let message = build_ocra_message(req);
+
+    // ── HMAC + RFC 4226 dynamic truncation ───────────────────────────
+    let hmac_result = compute_hmac(key, &message, algo);
+    let value = dynamic_truncate(&hmac_result, digits)?;
+
+    Ok(OcraResponse { value, digits })
+}
+
+/// Build the OCRA data input `M = C ‖ Q ‖ P ‖ S ‖ T` (RFC 6287 §7.1).
+fn build_ocra_message(req: &OcraRequest<'_>) -> Vec<u8> {
     let mut message: Vec<u8> =
         Vec::with_capacity(8 + SHA1_OUTPUT_LEN + SHA1_OUTPUT_LEN + req.session.len() + 8);
 
@@ -279,8 +290,11 @@ pub fn ocra(
         None => message.extend_from_slice(&[0u8; 8]),
     }
 
-    // ── HMAC + RFC 4226 dynamic truncation ───────────────────────────
-    let hmac_result = compute_hmac(key, &message, algo);
+    message
+}
+
+/// RFC 4226 §5.4 dynamic truncation + decimal reduction to `digits`.
+fn dynamic_truncate(hmac_result: &[u8], digits: u32) -> Result<u64> {
     if hmac_result.len() < 4 {
         return Err(CryptoError::InvalidParameter(
             "OCRA HMAC output too short".into(),
@@ -296,9 +310,7 @@ pub fn ocra(
         hmac_result[offset + 3],
     ]) & 0x7FFF_FFFF_u32;
     // Widen to u64 so that 10^digits doesn't overflow (digits=10 = 10_000_000_000).
-    let value = (truncated_u32 as u64) % 10u64.pow(digits);
-
-    Ok(OcraResponse { value, digits })
+    Ok((truncated_u32 as u64) % 10u64.pow(digits))
 }
 
 // ---------------------------------------------------------------------------

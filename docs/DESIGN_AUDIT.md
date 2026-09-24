@@ -210,3 +210,37 @@ Resolved: CC-3, CC-6 (partial, by design), CC-7, FD-3.
   `Some(entropy)` path only (a testing seam with no pinned vectors);
   the OS-RNG path is unchanged. Intermediate key/msg material is now
   zeroized instead of plain-dropped.
+
+### Step 5 — long-function decomposition
+
+Resolved: CC-5. All five functions decomposed into named helpers with
+single responsibilities; every public signature, error condition, and
+error message preserved. No wire-format or cryptographic changes.
+
+- `error_correction::decode` (145→4 lines of orchestration): split into
+  `parse_encoded` (length/shard validation + split),
+  `correct_single_shard_errors` (per-byte syndrome decode, in place),
+  and `reassemble` (concat + truncate). The bounded-distance warning and
+  the `GaloisField::inv` pivot invariant are documented on the helper.
+- `compressed::decompress_decrypt` (142→20): split into
+  `ParsedHeader::parse` (fixed-header decode → `ParsedHeader` struct)
+  and `decrypt_chunks` (per-chunk authenticate-then-decrypt loop).
+  Verify-before-decompress ordering preserved.
+- `seed::gen::generate_with_entropy` (~110→~60): the four `SeedVariant`
+  match arms extracted to `chain_blake2b_shake256`,
+  `chain_blake2b_sha3_256`, `chain_blake2b_sha512`,
+  `chain_shake256_sha3_256` — the construction table is now readable as
+  a table.
+- `ocra::ocra` (107→~45): split into `build_ocra_message`
+  (`M = C‖Q‖P‖S‖T` assembly) and `dynamic_truncate` (RFC 4226 §5.4
+  truncation + decimal reduction).
+- `entropy::analyze` (106→~20): split into `byte_frequencies`,
+  `entropy_stats` (Shannon/min/collision), `chi_squared_stat`,
+  `bit_bias`, and `EntropyMetrics::zero` for the empty-input early
+  return.
+
+Verification: 458 lib tests + all integration suites
+(`malformed_input` 20, `proptest_crypto` 30, `hybrid_golden_vectors` 15,
+`hybrid_rigorous` 37, `integration_tests` 33, `rng_and_cache` 20, and
+all remaining binaries) pass; 13 doc tests pass; `cargo fmt --check`
+clean; docs build shows only pre-existing `-W unsafe-code` warnings.

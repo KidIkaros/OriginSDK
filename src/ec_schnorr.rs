@@ -66,6 +66,10 @@ impl From<SchnorrError> for CryptoError {
 }
 
 /// Create an EC-Schnorr proof of knowledge of the discrete log of `public_key`.
+// CT-REVIEW(12.1): scalar mul/add rely on `internal::secp256k1` field
+// arithmetic being constant-time — verify codegen there; the
+// `Scalar::from_repr` rejection on a uniform nonce is fine (failure is
+// ~2^-128 and reveals nothing about the key).
 pub fn prove(secret_key: &[u8; 32], public_key: &[u8], message: &[u8]) -> Result<EcSchnorrProof> {
     let x = ct_option_to_option(Scalar::from_repr(secret_key))
         .ok_or_else(|| CryptoError::InvalidKey("Invalid secret key scalar".into()))?;
@@ -149,8 +153,8 @@ pub fn batch_verify(
             "Mismatched input lengths for batch verify".into(),
         ));
     }
-    for i in 0..proofs.len() {
-        if !verify(&proofs[i], &public_keys[i], &messages[i])? {
+    for (proof, (pk, msg)) in proofs.iter().zip(public_keys.iter().zip(messages)) {
+        if !verify(proof, pk, msg)? {
             return Ok(false);
         }
     }

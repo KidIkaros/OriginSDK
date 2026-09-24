@@ -244,3 +244,36 @@ Verification: 458 lib tests + all integration suites
 `hybrid_rigorous` 37, `integration_tests` 33, `rng_and_cache` 20, and
 all remaining binaries) pass; 13 doc tests pass; `cargo fmt --check`
 clean; docs build shows only pre-existing `-W unsafe-code` warnings.
+
+### Step 6 — functional-design pass
+
+Resolved: FD-4. `xor_combine` is now an iterator pipeline
+(`iter().zip().map().collect()`) — the inputs are post-verification
+public digests, so no CT requirement applies. `ec_schnorr::batch_verify`
+switched from index loop to `zip` iteration. Other index loops were
+reviewed and left as-is: cipher quarter-rounds, SipHash block loops,
+BIP-39-style bit packing, and RS GF arithmetic are kernel code where
+indexed form is clearer or CT-relevant.
+
+`// CT-REVIEW(12.1)` marks added at the sites Phase 12.1 must verify —
+marked, not changed, per the plan:
+
+- `error_correction::GaloisField::{mul,exp}` — data-dependent loop
+  bounds/branches (shard data is public metadata today)
+- `error_correction::correct_single_shard_errors` — syndrome
+  early-continue leaks corruption positions via timing
+- `pqc::ntru_prime::decapsulate` + `count_weight` — the CCA
+  mask-select must stay branchless; verify `round3`/`r3::mult` codegen
+- `x25519::{from_secret_key,from_seed}` — `==` on derived scalars
+  short-circuits (negligible leak; swap to `ConstantTimeEq`)
+- `ec_schnorr::prove` — scalar ops delegate to vendored secp256k1
+- `internal::secp256k1` module docs — hand-rolled curve arithmetic
+  needs external CT verification pre-1.0
+
+Bonus dead code: `src/mmr.rs` (393-line Merkle Mountain Range) deleted —
+`pub(crate)` with zero callers; sealing in Step 1 hid it from dead-code
+warnings. Its 10 unit tests went with it (448 lib tests now).
+
+Verification: 448 lib tests, `timing_tests` (4),
+`hybrid_golden_vectors` (15), `malformed_input` (20),
+`x25519_key_agreement` (5) — all green.

@@ -22,12 +22,7 @@ use crate::primitives::{Shake128, Shake256};
 
 /// Combine two hash outputs via XOR (simple combiner for non-KDF constructions)
 pub fn xor_combine(a: &[u8], b: &[u8]) -> Vec<u8> {
-    let len = std::cmp::min(a.len(), b.len());
-    let mut out = vec![0u8; len];
-    for i in 0..len {
-        out[i] = a[i] ^ b[i];
-    }
-    out
+    a.iter().zip(b.iter()).map(|(x, y)| x ^ y).collect()
 }
 
 /// Combine two hash outputs via concatenation

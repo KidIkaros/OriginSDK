@@ -18,6 +18,10 @@ impl GaloisField {
     const PRIMITIVE_POLYNOMIAL: u8 = 0x1B;
 
     /// Multiply two elements in GF(2^8) using polynomial reduction
+    // CT-REVIEW(12.1): `while b != 0` terminates early — iteration count
+    // depends on `b`'s Hamming weight, and `if (b & 1) != 0` is a
+    // data-dependent branch. Acceptable for non-secret shard data; flag
+    // if RS is ever applied over secrets.
     pub fn mul(a: u8, b: u8) -> u8 {
         let mut result = 0u8;
         let mut a = a;
@@ -39,6 +43,8 @@ impl GaloisField {
     }
 
     /// Exponentiation in GF(2^8)
+    // CT-REVIEW(12.1): square-and-multiply with a data-dependent
+    // `exp & 1` multiply — same caveat as `mul`.
     pub fn exp(a: u8, n: u8) -> u8 {
         if a == 0 {
             return if n == 0 { 1 } else { 0 };
@@ -408,6 +414,10 @@ impl ReedSolomonCodec {
     /// erroring — see the method-level warning on [`decode`](Self::decode).
     /// Callers needing multi-shard tolerance must use `decode_shards`
     /// with explicit erasure information.
+    // CT-REVIEW(12.1): per-position early `continue` on clean syndromes
+    // and the hypothesis-search `break` leak "is this byte position
+    // corrupted?" via timing — public metadata for transport ECC, but
+    // flag for review if carried over secrets.
     fn correct_single_shard_errors(&self, shards: &mut [Vec<u8>]) -> Result<()> {
         let total_shards = self.data_shards + self.parity_shards;
         let shard_size = shards.first().map_or(0, Vec::len);

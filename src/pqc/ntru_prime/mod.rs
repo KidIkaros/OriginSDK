@@ -211,6 +211,10 @@ impl NtruPrime {
     /// Uses CCA fallback: if re-encryption doesn't match the ciphertext,
     /// the session key is derived from `rho` (random secret in SK) instead
     /// of the recovered `r`, preventing adaptive chosen-ciphertext attacks.
+    // CT-REVIEW(12.1): the CCA mask select below must remain branchless
+    // (arithmetic mask, not `if`) — this is the decryption-failure
+    // oracle boundary. Verify `rq::round3`, `r3::mult`, and
+    // `count_weight` codegen during the Phase 12.1 sweep.
     pub fn decapsulate(ciphertext: &Ciphertext, sk: &PrivateKey) -> Result<SharedSecret> {
         // Extract SK components
         let f = zx::encoding::decode(&sk[SK_F_OFFSET..SK_GR_OFFSET]);
@@ -301,6 +305,9 @@ fn constant_time_eq(a: &[u8], b: &[u8]) -> i32 {
     is_zero as i32
 }
 
+// CT-REVIEW(12.1): `.abs()` on i8 is branchless on modern compilers
+// (verify codegen); the `w == W` check feeding the CCA mask in
+// `decapsulate` is the site that must stay branchless.
 fn count_weight(r: &[i8; P]) -> i32 {
     r.iter().map(|&x| x.abs() as i32).sum()
 }

@@ -598,14 +598,14 @@ fn benchmark_ntru_kem_hash(c: &mut Criterion) {
         })
     });
 
-    // 2. NIST reference: HashSession (2 SHA-512 calls)
-    let confirm = origin_crypto_sdk::pqc::ntru_prime::kem_hashing::hash_confirm(&r_enc, &cache);
+    // 2. NIST reference: HashSession (2 SHA-512 calls over r_enc + full ct)
+    let ct = [0x5Au8; 1039];
     group.bench_function("session_nist_sha2_512", |b| {
         b.iter(|| {
             origin_crypto_sdk::pqc::ntru_prime::kem_hashing::hash_session(
                 black_box(1),
                 black_box(&r_enc),
-                black_box(&confirm),
+                black_box(&ct),
             )
         })
     });
@@ -633,7 +633,7 @@ fn benchmark_ntru_kem_hash(c: &mut Criterion) {
                 origin_crypto_sdk::pqc::ntru_prime::kem_hashing::shake128_kem::hash_session(
                     black_box(1),
                     black_box(&r_enc),
-                    black_box(&confirm),
+                    black_box(&ct),
                 )
             })
         });
@@ -661,7 +661,7 @@ fn benchmark_ntru_kem_hash(c: &mut Criterion) {
                 origin_crypto_sdk::pqc::ntru_prime::kem_hashing::shake256_kem::hash_session(
                     black_box(1),
                     black_box(&r_enc),
-                    black_box(&confirm),
+                    black_box(&ct),
                 )
             })
         });
@@ -699,7 +699,7 @@ fn benchmark_ntru_kem_hash(c: &mut Criterion) {
                 origin_crypto_sdk::pqc::ntru_prime::kem_hashing::blake3_kem::hash_session(
                     black_box(1),
                     black_box(&r_enc),
-                    black_box(&confirm),
+                    black_box(&ct),
                 )
             })
         });

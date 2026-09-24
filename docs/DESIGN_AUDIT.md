@@ -433,3 +433,38 @@ the crate, so that roadmap item was rescoped.
 The SDK remains **experimental** — this work improves internal evidence
 and structure; it is not a substitute for the independent cryptographic
 and Rust review in Phase 13.
+
+## Phase 12.6 — persistence format migration
+
+`pqc::ntru_prime::migrate` ports the 0.6.x Rq codec (`v06_rq`, test-verified)
+so pre-NIST keys can be read: `migrate_public_key` re-encodes `h`
+(1218 → 1158 bytes); `migrate_private_key` carries `f`/`gr` verbatim (the
+0.6.x Small encoding is identical to the NIST one), re-encodes `h`, draws a
+fresh `rho`, and recomputes `cache = H4(pk)` under the **active** hash backend
+(same feature-selected `kem_hash` alias as the KEM — an earlier draft hashed
+the cache unconditionally with SHA-2, which would have silently broken every
+CCA check under `ntru-blake3`/`ntru-shake*`). Migrated keys round-trip under
+the 0.7.x scheme in tests. CLI surface: `origin-crypto migrate ntru-pk|ntru-sk`.
+
+Falcon migration is dispositioned **not possible**: `falcon-rs` 0.2.5 only
+accepts FIPS 206 wire keys and exposes no polynomial-level key builder, so
+submission-format (falcon-rust 0.1.2) keys cannot be re-encoded through the
+supported library — and old signatures are FIPS-206-incompatible anyway.
+Documented path: regenerate + re-sign. Ciphertexts and shared secrets are
+non-migratable by construction (ephemeral / session derivation changed).
+Full table and caveats: `docs/MIGRATION_0_6_TO_0_7.md`.
+
+## Phase 12.7 — benchmark baseline
+
+`docs/BENCHMARKS.md` records a full 61-benchmark Criterion baseline on the
+reference machine (i7-10750H, rustc 1.97.1) and documents the
+same-machine `--save-baseline`/`--baseline` comparison procedure. The CI
+`benchmark` job was fixed along the same lines as the fuzz job: `|| true`
+and the unresolvable `--baseline v0.6.2-scalar` reference were removed, so
+the job now fails on broken benchmark code and uploads `target/criterion/`
+as an artifact. Numeric regression gating is deferred — hosted-runner
+variance makes absolute-time thresholds produce false positives; gating
+needs a self-hosted runner or same-machine before/after comparison. The
+NTRU `hash_session` benchmarks were also corrected to feed realistic
+1039-byte ciphertext input after the 12.3 signature change (they had been
+measuring a 32-byte confirm).

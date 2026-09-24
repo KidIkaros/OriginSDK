@@ -300,13 +300,13 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-      - name: Run benchmarks (compare against v0.6.2 baseline)
+      - name: Run benchmarks
         run: |
-          # Run benchmarks and compare against the saved baseline.
-          # Criterion will fail if any benchmark regresses by >20%.
-          # Note: benchmark absolute times vary by runner hardware;
-          # the regression threshold is intentionally generous (20%).
-          cargo bench --features slh-dsa,ml-dsa,pqc-simd,test-utils -- --baseline v0.6.2-scalar || true
+          # Benchmarks must run cleanly — this catches broken bench code
+          # (e.g. API drift) which || true previously masked. Numeric
+          # regression gating requires a same-machine before/after
+          # comparison; see docs/BENCHMARKS.md for the recorded baseline.
+          cargo bench --features slh-dsa,ml-dsa,pqc-simd,test-utils
         timeout-minutes: 30
       - name: Upload benchmark results
         if: always()

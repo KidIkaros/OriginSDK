@@ -31,6 +31,7 @@
 
 pub mod constants;
 pub mod encode;
+pub mod migrate;
 #[cfg(feature = "test-utils")]
 #[allow(dead_code)]
 pub mod ntt;

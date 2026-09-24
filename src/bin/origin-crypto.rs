@@ -54,6 +54,8 @@ enum Commands {
     Derive(DeriveArgs),
     /// Seed operations
     Seed(SeedArgs),
+    /// Migrate 0.6.x key material to the 0.7.x NIST wire format
+    Migrate(MigrateArgs),
     /// Show version
     Version,
 }
@@ -163,6 +165,28 @@ enum SeedAction {
     },
 }
 
+#[derive(Parser)]
+struct MigrateArgs {
+    #[command(subcommand)]
+    action: MigrateAction,
+}
+
+#[derive(Subcommand)]
+enum MigrateAction {
+    /// Migrate a 0.6.x NTRU Prime public key (1218-byte input → 1158-byte output)
+    NtruPk {
+        /// Old public key hex or @file
+        #[arg(short, long)]
+        key: String,
+    },
+    /// Migrate a 0.6.x NTRU Prime private key (1600-byte input → 1763-byte output)
+    NtruSk {
+        /// Old private key hex or @file
+        #[arg(short, long)]
+        key: String,
+    },
+}
+
 #[derive(ValueEnum, Clone, Debug)]
 enum OutputFormat {
     Json,
@@ -182,6 +206,7 @@ fn main() -> CliResult<()> {
         Commands::Decrypt(args) => cmd_decrypt(args)?,
         Commands::Derive(args) => cmd_derive(args)?,
         Commands::Seed(args) => cmd_seed(args)?,
+        Commands::Migrate(args) => cmd_migrate(args)?,
     }
     Ok(())
 }
@@ -326,6 +351,23 @@ fn cmd_decrypt(args: DecryptArgs) -> CliResult<()> {
         args.output.display(),
         pt.len()
     );
+    Ok(())
+}
+
+fn cmd_migrate(args: MigrateArgs) -> CliResult<()> {
+    use origin_crypto_sdk::pqc::ntru_prime::migrate;
+    match args.action {
+        MigrateAction::NtruPk { key } => {
+            let old = read_input(&key)?;
+            let new = migrate::migrate_public_key(&old)?;
+            println!("{}", hex::encode(new));
+        }
+        MigrateAction::NtruSk { key } => {
+            let old = read_input(&key)?;
+            let new = migrate::migrate_private_key(&old, &mut rand::rngs::OsRng)?;
+            println!("{}", hex::encode(new));
+        }
+    }
     Ok(())
 }
 

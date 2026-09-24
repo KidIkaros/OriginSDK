@@ -148,17 +148,28 @@ is the only remaining gate.
       (deferred — see 12.3 note: submission format ≠ FIPS 206)
 
 #### 12.6 Persistence format migration
-- [ ] Add 0.6.7 → 0.7.0 migration tool for NTRU Prime keys
-      (re-encode old format to new NIST encoding)
-- [ ] Add 0.6.7 → 0.7.0 migration tool for Falcon keys
-      (re-sign with new falcon-rs format)
-- [ ] Document migration limitations (Falcon: old signatures can't be
-      re-verified, must re-sign)
+- [x] Add 0.6.7 → 0.7.0 migration tool for NTRU Prime keys —
+      `pqc::ntru_prime::migrate` (lib) + `origin-crypto migrate ntru-pk|ntru-sk`
+      (CLI). f/gr carry over verbatim; h is re-encoded; rho/cache regenerated
+- [x] Falcon keys: **not migratable** — `falcon-rs` only accepts FIPS 206 wire
+      keys and exposes no polynomial-level key builder, so submission-format
+      keys cannot be re-encoded. Path is regenerate + re-sign (documented)
+- [x] Document migration limitations — `docs/MIGRATION_0_6_TO_0_7.md`:
+      ciphertexts ephemeral, shared secrets not preserved (session derivation
+      changed), Falcon signatures must be re-signed
 
 #### 12.7 Performance regression baseline
-- [ ] Establish v0.7.0 benchmark baseline
-- [ ] Add benchmark regression CI job with thresholds
-- [ ] Document expected performance characteristics per platform
+- [x] Establish benchmark baseline — 61 Criterion benchmarks recorded on the
+      reference machine in `docs/BENCHMARKS.md` (v0.7.1-rc.9)
+- [x] Benchmark CI job fixed — removed `|| true` masking and the phantom
+      `v0.6.2-scalar` baseline reference; job now fails on broken bench code
+      and uploads `target/criterion/` as a `benchmark-results` artifact
+- [x] Document expected performance characteristics per platform —
+      `docs/BENCHMARKS.md` records reference hardware, per-group medians,
+      and same-machine comparison procedure
+- [ ] Numeric regression gating in CI — **deferred**: hosted runners vary too
+      much for absolute-time thresholds; requires a self-hosted runner or
+      same-machine before/after comparison (see `docs/BENCHMARKS.md`)
 
 ---
 

@@ -279,16 +279,30 @@ format registry. They are listed for completeness:
 | Reed-Solomon | N/A | N/A | ✅ | ❌ | ✅ | ✅ | ✅ (format_golden_vectors) |
 | ORGN Envelope | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Identity Blob | ✅ (ORGB) | ✅ (ORGB) | ✅ | ✅ (1 MiB boundary) | ✅ | ✅ | ✅ (SDK v2) |
-| SEAL Envelope | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| SEAL Envelope | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ (origin-seal api.rs) |
 | OVLT Vault | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ (header/index) |
-| Channel Message | N/A | N/A | ✅ | ✅ | ✅ | ✅ | ❌ |
-| CombinedSignature | N/A | N/A | ✅ | ❌ | ✅ | ✅ | ❌ |
+| Channel Message | N/A | N/A | ✅ | ✅ | ✅ | ✅ | ✅ (origin-channel message.rs) |
+| CombinedSignature | N/A | N/A | ✅ | ✅ (falcon_len ≤ SIGNATURE_MAX) | ✅ | ✅ | ✅ (origin-identity commands.rs) |
 
 ## Priorities
 
 1. ~~Add magic + version to Seed Blob~~ ✅ Done (v2 format with `ORGB` magic)
 2. ~~Generate golden vectors for Seed Blob~~ ✅ Done (5 structural + round-trip + tamper tests)
-3. **Add maximum size limits** to ORGN envelope, identity blob, SEAL, OVLT, CombinedSignature
-4. **Add magic + version to Identity Blob** (breaking, requires migration)
+3. ~~Add maximum size limits~~ ✅ Already enforced everywhere — ORGN max
+   payload, identity blob 1 MiB boundary, SEAL `MAX_ENVELOPE_LEN`, OVLT max
+   vault size, CombinedSignature `falcon_len ≤ SIGNATURE_MAX`
+   (`origin-identity/src/commands.rs`). The ❌ in the table was stale.
+4. ~~Add magic + version to Identity Blob~~ ✅ Superseded — current writes
+   are Seed Blob v2 (`ORGB` magic + version byte). The legacy no-magic
+   format is read-only compatibility; retrofitting a magic into a frozen
+   read path would break existing files, not fix them.
 5. ~~Generate golden vectors for SDK-owned formats~~ ✅ Done — recovery phrase, Falcon-512/1024, Ed448, Ed41417, Reed-Solomon in `tests/format_golden_vectors.rs`; NTRU Prime covered by the official NIST KATs (100/100 byte-exact)
-6. **Add cross-version read/write fixtures** for downstream formats
+6. ~~Add cross-version read/write fixtures for downstream formats~~ ✅ v1
+   golden vectors added in origin-tools: SEAL envelope
+   (`origin-seal/src/api.rs::seal_envelope_golden_vector_v1`), channel
+   message (`origin-channel/src/message.rs::channel_message_golden_vector_v1`),
+   CombinedSignature (`origin-identity/src/commands.rs::combined_signature_golden_vector_v1`).
+   All downstream formats are v1-only today, so "cross-version" coverage
+   is the pinned-v1 fixture plus the unknown-version rejection paths
+   (dedicated test for ORGN; parse-time rejection for SEAL); when a v2
+   ships, the v1 fixture becomes the backward-compat oracle.

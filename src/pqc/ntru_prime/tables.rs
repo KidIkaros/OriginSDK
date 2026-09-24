@@ -307,19 +307,20 @@ fn mod_pow(mut base: i32, mut exp: i32, modulus: i32) -> i32 {
 // =============================================================================
 
 #[cfg(feature = "pqc-simd")]
-use once_cell::sync::Lazy;
+use std::sync::LazyLock;
 
 /// Global small product table (lazy-initialized)
 #[cfg(feature = "pqc-simd")]
-pub static SMALL_PRODUCT_TABLE: Lazy<SmallProductTable> = Lazy::new(|| SmallProductTable::new());
+pub static SMALL_PRODUCT_TABLE: LazyLock<SmallProductTable> =
+    LazyLock::new(|| SmallProductTable::new());
 
 /// Global mod Q table (lazy-initialized)
 #[cfg(feature = "pqc-simd")]
-pub static MOD_Q_TABLE: Lazy<ModQTable> = Lazy::new(|| ModQTable::new());
+pub static MOD_Q_TABLE: LazyLock<ModQTable> = LazyLock::new(|| ModQTable::new());
 
 /// Global twiddle factor table (lazy-initialized)
 #[cfg(feature = "pqc-simd")]
-pub static TWIDDLE_TABLE: Lazy<TwiddleTable> = Lazy::new(|| TwiddleTable::new());
+pub static TWIDDLE_TABLE: LazyLock<TwiddleTable> = LazyLock::new(|| TwiddleTable::new());
 
 // =============================================================================
 // Table Lookup Functions

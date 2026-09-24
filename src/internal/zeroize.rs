@@ -85,48 +85,6 @@ impl Zeroize for String {
     }
 }
 
-/// A wrapper that zeroizes its contents on drop.
-///
-/// Replacement for `zeroize::Zeroizing`.
-pub struct Zeroizing<T: Zeroize>(pub T);
-
-impl<T: Zeroize> Zeroizing<T> {
-    /// Create a new `Zeroizing` wrapper.
-    pub fn new(data: T) -> Self {
-        Self(data)
-    }
-}
-
-impl<T: Zeroize> core::ops::Deref for Zeroizing<T> {
-    type Target = T;
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl<T: Zeroize> core::ops::DerefMut for Zeroizing<T> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
-
-impl<T: Zeroize> Drop for Zeroizing<T> {
-    fn drop(&mut self) {
-        self.0.zeroize();
-    }
-}
-
-impl<T: Zeroize + Clone> Clone for Zeroizing<T> {
-    fn clone(&self) -> Self {
-        Self(self.0.clone())
-    }
-}
-
-impl<T: Zeroize> std::fmt::Debug for Zeroizing<T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        // No field-name label — `Zeroizing(<redacted>)` shape only.
-        // Prevents any metadata leak via the wrapped value's path through Debug.
-        // Generic over T: Zeroize so we do not require T: Debug.
-        write!(f, "Zeroizing(<redacted>)")
-    }
-}
+// NOTE: a `Zeroizing<T>` wrapper (parity with the `zeroize` crate) used to
+// live here. It was removed — nothing in the crate constructed it, and the
+// 30-line type can be re-added if a real need appears.

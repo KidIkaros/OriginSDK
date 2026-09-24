@@ -19,25 +19,12 @@
 //! let code = totp(secret, 1718000000, 30, 6, HashAlgorithm::Sha256);
 //! ```
 
-use hmac::{Hmac, Mac};
-use sha1::Sha1;
-use sha2::{Sha256, Sha512};
+use crate::kdf::mac::compute_hmac;
 
-// ---------------------------------------------------------------------------
-// Hash algorithm selection
-// ---------------------------------------------------------------------------
-
-/// Hash algorithm for HOTP/TOTP computation.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum HashAlgorithm {
-    /// SHA-1 (legacy compatibility only — do not use for new applications).
-    Sha1,
-    /// SHA-256 (recommended).
-    Sha256,
-    /// SHA-512 (high security).
-    Sha512,
-}
-
+/// Re-exported from [`crate::kdf::mac`] — the shared HMAC-digest vocabulary
+/// for the OATH-family modules. The canonical definition lives in `kdf::mac`;
+/// this alias keeps the historical `drbg::otp::HashAlgorithm` path working.
+pub use crate::kdf::mac::HashAlgorithm;
 // ---------------------------------------------------------------------------
 // HOTP — RFC 4226
 // ---------------------------------------------------------------------------
@@ -155,29 +142,6 @@ pub fn totp_uri(
 // ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
-
-pub(crate) fn compute_hmac(secret: &[u8], message: &[u8], algo: HashAlgorithm) -> Vec<u8> {
-    match algo {
-        HashAlgorithm::Sha1 => {
-            type HmacSha1 = Hmac<Sha1>;
-            let mut mac = HmacSha1::new_from_slice(secret).expect("HMAC accepts any key length");
-            mac.update(message);
-            mac.finalize().into_bytes().to_vec()
-        }
-        HashAlgorithm::Sha256 => {
-            type HmacSha256 = Hmac<Sha256>;
-            let mut mac = HmacSha256::new_from_slice(secret).expect("HMAC accepts any key length");
-            mac.update(message);
-            mac.finalize().into_bytes().to_vec()
-        }
-        HashAlgorithm::Sha512 => {
-            type HmacSha512 = Hmac<Sha512>;
-            let mut mac = HmacSha512::new_from_slice(secret).expect("HMAC accepts any key length");
-            mac.update(message);
-            mac.finalize().into_bytes().to_vec()
-        }
-    }
-}
 
 fn algo_str(algo: HashAlgorithm) -> &'static str {
     match algo {

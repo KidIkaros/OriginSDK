@@ -2,7 +2,7 @@
 
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 use ed25519_dalek::SigningKey as Ed25519Sk;
-use origin_crypto_sdk::internal::rng::ChaCha20Rng;
+use origin_crypto_sdk::drbg::ChaCha20Rng;
 use origin_crypto_sdk::pqc::ed448::SigningKey as Ed448Signer;
 use origin_crypto_sdk::pqc::ntru_prime::constants::P;
 use origin_crypto_sdk::signing::hybrid::{

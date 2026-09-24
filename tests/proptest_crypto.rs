@@ -476,7 +476,7 @@ proptest! {
     #[test]
     fn prop_ntru_prime_roundtrip(seed in any_32_bytes(), enc_seed in any_32_bytes()) {
         use origin_crypto_sdk::pqc::ntru_prime::NtruPrime;
-        use origin_crypto_sdk::internal::rng::ChaCha20Rng;
+        use origin_crypto_sdk::drbg::ChaCha20Rng;
         let (pk, sk) = NtruPrime::generate_keypair_from_seed(&seed);
         let mut rng = ChaCha20Rng::from_seed(enc_seed);
         let (ct, ss1) = NtruPrime::encapsulate(&pk, &mut rng);
@@ -499,7 +499,7 @@ proptest! {
     #[test]
     fn prop_ntru_prime_cca_tamper(seed in any_32_bytes(), enc_seed in any_32_bytes(), byte_idx in 0usize..1039) {
         use origin_crypto_sdk::pqc::ntru_prime::NtruPrime;
-        use origin_crypto_sdk::internal::rng::ChaCha20Rng;
+        use origin_crypto_sdk::drbg::ChaCha20Rng;
         let (pk, sk) = NtruPrime::generate_keypair_from_seed(&seed);
         let mut rng = ChaCha20Rng::from_seed(enc_seed);
         let (mut ct, ss1) = NtruPrime::encapsulate(&pk, &mut rng);

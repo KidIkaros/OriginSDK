@@ -50,12 +50,7 @@ impl SeedHandle {
         // intentionally best-effort because mlock limits vary by platform.
         #[cfg(unix)]
         if tier.should_lock() && !seed_vec.is_empty() {
-            let _ = unsafe {
-                extern "C" {
-                    fn mlock(addr: *const u8, len: usize) -> i32;
-                }
-                mlock(seed_vec.as_ptr(), seed_vec.capacity())
-            };
+            let _ = crate::internal::mlock::lock(seed_vec.as_ptr(), seed_vec.capacity());
         }
 
         Self {
@@ -142,12 +137,7 @@ impl Drop for SeedHandle {
         // munlock pages previously requested by the Sovereign tier.
         #[cfg(unix)]
         if self.tier.should_lock() && !self.seed.is_empty() {
-            unsafe {
-                extern "C" {
-                    fn munlock(addr: *const u8, len: usize) -> i32;
-                }
-                munlock(self.seed.as_ptr(), self.seed.capacity());
-            }
+            let _ = crate::internal::mlock::unlock(self.seed.as_ptr(), self.seed.capacity());
         }
     }
 }

@@ -480,7 +480,7 @@ fn test_falcon1024_full_workflow() {
 
 #[test]
 fn test_ntru_prime_full_workflow() {
-    use origin_crypto_sdk::internal::rng::ChaCha20Rng;
+    use origin_crypto_sdk::drbg::ChaCha20Rng;
 
     let mut rng = ChaCha20Rng::from_seed([42u8; 32]);
 
@@ -499,7 +499,7 @@ fn test_ntru_prime_full_workflow() {
 
 #[test]
 fn test_ntru_prime_different_keypairs() {
-    use origin_crypto_sdk::internal::rng::ChaCha20Rng;
+    use origin_crypto_sdk::drbg::ChaCha20Rng;
 
     let mut rng1 = ChaCha20Rng::from_seed([1u8; 32]);
     let mut rng2 = ChaCha20Rng::from_seed([2u8; 32]);

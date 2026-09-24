@@ -14,13 +14,13 @@
 //! traits" and the `kdf`/`pqc` wrapper modules): the audited `x25519-dalek`
 //! crate is the arithmetic kernel, while the public surface is byte arrays in
 //! and out. Secret scalars and shared secrets are held as raw `[u8; 32]` and
-//! zeroized on drop via the SDK's own [`crate::internal::zeroize`] (the
+//! zeroized on drop via the SDK's own zeroize implementation (the
 //! documented zeroization pattern since 0.4.0) — no custom crypto drop code.
 //!
 //! - [`X25519KeyPair`] — clamped 32-byte secret scalar + derived public key
 //! - [`X25519PublicKey`] — 32-byte Montgomery u-coordinate (transmit form)
 //! - [`X25519SharedSecret`] — 32-byte Diffie-Hellman output. Feed it through a
-//!   KDF ([`crate::hkdf_blake3`] or [`crate::hkdf_sha3_256`], domain-separated)
+//!   KDF ([`crate::kdf::hkdf::hkdf_blake3`] or [`crate::kdf::hkdf::hkdf_sha3_256`], domain-separated)
 //!   before using it as key material — never use the raw shared secret.
 //!
 //! # Deterministic derivation
@@ -233,7 +233,7 @@ impl std::fmt::Debug for X25519KeyPair {
 
 /// The 32-byte X25519 shared secret.
 ///
-/// Feed it through a KDF (e.g. [`crate::hkdf_blake3`] with a domain-separated
+/// Feed it through a KDF (e.g. [`crate::kdf::hkdf::hkdf_blake3`] with a domain-separated
 /// `info`) before using it as key material. Zeroizes on drop.
 #[derive(Clone)]
 pub struct X25519SharedSecret([u8; SHARED_SECRET_SIZE]);

@@ -20,13 +20,11 @@
 
 use clap::{Parser, Subcommand, ValueEnum};
 use origin_crypto_sdk::{
-    kdf::Argon2idBuilder, prelude::*, seed::derive_child_seed, signing::hybrid::Ed25519Falcon1024,
+    fill_random, kdf::Argon2idBuilder, prelude::*, seed::derive_child_seed,
+    signing::hybrid::Ed25519Falcon1024,
 };
 use std::fs;
 use std::path::PathBuf;
-
-// bin `crate::…` has no `internal`; pull from the library crate
-use origin_crypto_sdk::internal::getrandom;
 
 type CliResult<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
@@ -292,7 +290,7 @@ fn cmd_encrypt(args: EncryptArgs) -> CliResult<()> {
     let key = to_array_32(read_input(&args.key)?)?;
 
     let mut nonce = [0u8; 24];
-    getrandom::fill(&mut nonce)?;
+    fill_random(&mut nonce)?;
     let ct =
         XChaCha20Poly1305::encrypt(&key, &nonce, &data).map_err(|e| format!("encrypt: {}", e))?;
     let ct_len = ct.len();
@@ -335,7 +333,7 @@ fn cmd_derive(args: DeriveArgs) -> CliResult<()> {
     let password = read_string_input(&args.password)?;
     let salt = if args.salt == "generate" {
         let mut s = [0u8; 16];
-        getrandom::fill(&mut s)?;
+        fill_random(&mut s)?;
         s
     } else {
         to_array_16(read_input(&args.salt)?)?
@@ -361,7 +359,7 @@ fn cmd_seed(args: SeedArgs) -> CliResult<()> {
             let mut seed = [0u8; 32];
             match entropy.as_str() {
                 "os" | "system" => {
-                    getrandom::fill(&mut seed)?;
+                    fill_random(&mut seed)?;
                 }
                 _ if entropy.starts_with('@') => {
                     let data = fs::read(&entropy[1..])?;

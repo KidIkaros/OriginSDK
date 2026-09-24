@@ -24,7 +24,7 @@
 use std::fs;
 use std::path::PathBuf;
 
-use origin_crypto_sdk::internal::rng::ChaCha20Rng;
+use origin_crypto_sdk::drbg::ChaCha20Rng;
 use origin_crypto_sdk::pqc::ntru_prime::{NtruPrime, CT_SIZE, K_SIZE, PK_SIZE, SK_SIZE};
 
 /// Official NIST sntrup761 reference sizes (from supercop-20201130).

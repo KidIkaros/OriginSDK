@@ -20,7 +20,14 @@ pub mod otp;
 use rand::RngCore;
 
 use crate::internal::getrandom;
-use crate::internal::rng::ChaCha20Rng;
+
+/// Bare deterministic ChaCha20 CSPRNG (no auto-reseed).
+///
+/// Re-exported from the internal implementation for deterministic consumers
+/// such as KAT tests, benchmarks, and downstream reproducible-key generation.
+/// For production randomness, prefer [`ChaCha20Drbg`], which reseeds from OS
+/// entropy after 16 MB of output and zeroizes on drop.
+pub use crate::internal::rng::ChaCha20Rng;
 use crate::internal::zeroize::Zeroize;
 
 /// Maximum bytes before automatic reseed from OS entropy.

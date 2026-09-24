@@ -225,10 +225,15 @@ pub mod compressed;
 pub mod blob;
 
 // ──────────────────────────────────────────────────────────────────────
-// Internal modules (not part of public API; use at your own risk)
+// Internal modules (crate-private implementation details)
 // ──────────────────────────────────────────────────────────────────────
-#[doc(hidden)]
-pub mod internal;
+//
+// `internal` holds vendored primitive implementations (SHA-3, HMAC, HKDF,
+// ChaCha20 CSPRNG, secp256k1, mlock, OS entropy). It is crate-private —
+// not `#[doc(hidden)] pub` — so the layering boundary is enforced by the
+// compiler. Public consumers reach deterministic RNG through
+// [`drbg::ChaCha20Rng`] and OS entropy through [`fill_random`].
+pub(crate) mod internal;
 
 // ── Hash function re-exports (primitives is pub(crate); these are the public surface) ──
 /// BLAKE3 hash module — fast, parallelizable.

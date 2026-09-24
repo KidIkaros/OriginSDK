@@ -38,8 +38,8 @@
 
 use sha1::{Digest, Sha1};
 
-use crate::drbg::otp::{compute_hmac, HashAlgorithm};
 use crate::error::{CryptoError, Result};
+use crate::kdf::mac::{compute_hmac, HashAlgorithm};
 
 // ---------------------------------------------------------------------------
 // Constants

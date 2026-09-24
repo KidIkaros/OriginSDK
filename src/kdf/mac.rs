@@ -28,6 +28,57 @@ pub fn hmac_blake3_multi(key: &[u8], chunks: &[&[u8]]) -> Result<[u8; 32]> {
     Ok(native_hmac_blake3_multi(key, chunks))
 }
 
+// ---------------------------------------------------------------------------
+// Pluggable HMAC digest — shared by the OATH-family modules (`otp`, `ocra`)
+// ---------------------------------------------------------------------------
+
+/// Hash algorithm for HOTP/TOTP/OCRA computation.
+///
+/// This is the shared HMAC-digest vocabulary for the OATH-family modules:
+/// [`crate::drbg::otp`] (RFC 4226/6238) and [`crate::ocra`] (RFC 6287) both
+/// select their underlying HMAC through this enum.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HashAlgorithm {
+    /// SHA-1 (legacy compatibility only — do not use for new applications).
+    Sha1,
+    /// SHA-256 (recommended).
+    Sha256,
+    /// SHA-512 (high security).
+    Sha512,
+}
+
+/// Compute `HMAC-<algo>(secret, message)` over the pluggable SHA family.
+///
+/// Unlike the `hmac_sha3_256`/`hmac_blake3` helpers above (which use the
+/// vendored `internal::hmac` implementation), this dispatches to the `hmac`
+/// crate so the OATH modules can reach SHA-1/SHA-256/SHA-512.
+pub(crate) fn compute_hmac(secret: &[u8], message: &[u8], algo: HashAlgorithm) -> Vec<u8> {
+    use hmac::{Hmac, Mac};
+    use sha1::Sha1;
+    use sha2::{Sha256, Sha512};
+
+    match algo {
+        HashAlgorithm::Sha1 => {
+            type HmacSha1 = Hmac<Sha1>;
+            let mut mac = HmacSha1::new_from_slice(secret).expect("HMAC accepts any key length");
+            mac.update(message);
+            mac.finalize().into_bytes().to_vec()
+        }
+        HashAlgorithm::Sha256 => {
+            type HmacSha256 = Hmac<Sha256>;
+            let mut mac = HmacSha256::new_from_slice(secret).expect("HMAC accepts any key length");
+            mac.update(message);
+            mac.finalize().into_bytes().to_vec()
+        }
+        HashAlgorithm::Sha512 => {
+            type HmacSha512 = Hmac<Sha512>;
+            let mut mac = HmacSha512::new_from_slice(secret).expect("HMAC accepts any key length");
+            mac.update(message);
+            mac.finalize().into_bytes().to_vec()
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

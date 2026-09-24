@@ -96,9 +96,14 @@ is the only remaining gate.
       ever linked a `main`, and the CI job's `|| true` masked the failure.
       Manifest fixed; CI smoke job now fails on crashes/hangs/build errors
       instead of ignoring them
-- [ ] Run sustained fuzzing (24h+ per target) and document results
-      (30s smoke runs only so far: all 8 targets clean — ntru_prime 619,
-      falcon 52,386, blob 1,477 incl. "ORGB" magic discovery; no crashes)
+- [ ] Sustained fuzzing and document results — rescoped: requires
+      dedicated infrastructure the project doesn't have. CI runs a
+      60s/target smoke on every build (8 targets, all clean locally:
+      ntru_prime 619 execs/30s, falcon 52,386, blob 1,477 incl.
+      "ORGB" magic discovery). Intended path is an OSS-Fuzz submission
+      (or equivalent hosted fuzzing) rather than local 24h runs;
+      corpus directories under fuzz/corpus/ accumulate seeds for
+      whichever infra picks this up
 
 #### 12.3 Differential testing
 - [x] NTRU Prime: differential test against the reference implementation —

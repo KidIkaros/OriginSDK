@@ -391,8 +391,9 @@ Smoke verification (30s/target, ASAN+sanitizer coverage): all 8
 targets run clean — `fuzz_ntru_prime` 619 execs (bounded by real
 encapsulate/decap per run), `fuzz_falcon` 52,386, `fuzz_blob` 1,477
 (deep valid-header corpus; libFuzzer independently rediscovered the
-`"ORGB"` blob magic via CMP hints). No crashes. The 24h+
-sustained-fuzzing item remains unchecked in the roadmap.
+`"ORGB"` blob magic via CMP hints). No crashes. Sustained fuzzing was
+rescoped to hosted infra (OSS-Fuzz candidate); the CI smoke loop
+provides continuous shallow coverage in the meantime.
 
 ## Phase 12.3/12.4 — sntrup761 NIST KAT execution (two real spec deviations fixed)
 

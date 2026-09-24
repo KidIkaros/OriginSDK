@@ -128,6 +128,7 @@ rustdoc-args = ["--cfg", "docsrs"]
 tempfile = "3.10"
 criterion = "0.5"
 proptest = "1.5"
+aes = "=0.8.4" # pinned: NIST KAT AES-256-CTR DRBG replay for sntrup761 vectors (test-only)
 
 [[bench]]
 name = "crypto_benchmarks"

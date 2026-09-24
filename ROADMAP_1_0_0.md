@@ -101,22 +101,46 @@ is the only remaining gate.
       falcon 52,386, blob 1,477 incl. "ORGB" magic discovery; no crashes)
 
 #### 12.3 Differential testing
-- [ ] NTRU Prime: differential test against liboqs/sntrup761
-      (encode/decode, encapsulate/decapsulate with same seed)
-- [ ] Falcon: differential test against pqclean/falcon
-      (sign/verify with same key, same message)
-- [ ] Hybrid KEM: differential test against X25519 + Ed41417 references
+- [x] NTRU Prime: differential test against the reference implementation —
+      stronger than liboqs: the NIST AES-256-CTR DRBG is replayed through
+      our `RngCore`-generic keygen/encapsulate, reproducing pk, sk, ct AND
+      ss byte-for-byte on all 100 official submission vectors
+      (`tests/ntru_prime_kat.rs::kat_execution`). This caught two real
+      spec-deviation bugs: `hash_session` committed to the 32-byte confirm
+      instead of the full ciphertext, and `random_tsmall` sorted signed
+      i32 where the reference uses `crypto_sort_uint32`
+- [x] Falcon: N/A as scoped — our Falcon path delegates to the external,
+      audited `falcon-rs` crate (FIPS 206 format), which passes all NIST
+      KATs upstream. pqclean/falcon implements the incompatible
+      PQC-submission format (header 0x02 vs FIPS 206 0x30/0x50), so a
+      byte-level differential is impossible by construction. Our wrapper
+      layer is covered by `tests/falcon_kat.rs` regression vectors
+- [ ] Hybrid KEM: N/A — the crate has no hybrid KEM construction
+      (hybrid signing only). Remove or rescope this item when a hybrid
+      KEM is actually designed
 
 #### 12.4 NTRU Prime full KAT integration
-- [ ] Port AES-256-CTR DRBG to match NIST KAT seed expansion
-- [ ] Verify 100/100 NIST sntrup761 KAT vectors (encapsulate + decapsulate)
-- [ ] This requires implementing the NIST DRBG or using a crate
-- [ ] Alternative: verify against liboqs-rs if it exposes sntrup761
+- [x] Port AES-256-CTR DRBG to match NIST KAT seed expansion
+      (`NistDrbg` in `tests/ntru_prime_kat.rs`; `aes` dev-dep)
+- [x] Verify 100/100 NIST sntrup761 KAT vectors — full pipeline:
+      seeded keygen → pk + sk byte-exact; encapsulate → ct + ss byte-exact;
+      decapsulate(ct, sk) → ss on all vectors; plus cross-roundtrip with
+      reference keys under our encapsulate
+- [x] This requires implementing the NIST DRBG or using a crate
+      (implemented `NistDrbg` test-only, `aes = "=0.8.4"` dev-dep)
+- [x] Alternative: verify against liboqs-rs if it exposes sntrup761
+      (superseded — official submission KATs are the stronger oracle)
 
 #### 12.5 Falcon full KAT integration
 - [ ] Port AES-256-CTR DRBG to match FIPS 206 KAT seed expansion
+      (blocked: NIST has not published FIPS 206 ACVP vectors; the old
+      submission `falcon512-KAT.rsp` uses an incompatible signature format —
+      see `tests/falcon_kat.rs` header)
 - [ ] Verify 100/100 Falcon-512/1024 FIPS 206 KAT vectors
+      (blocked pending ACVP vectors; falcon-rs already passes NIST KATs
+      internally via its own `nist_kat.rs`)
 - [ ] Or: verify against pqclean if falcon-rs exposes deterministic keygen
+      (deferred — see 12.3 note: submission format ≠ FIPS 206)
 
 #### 12.6 Persistence format migration
 - [ ] Add 0.6.7 → 0.7.0 migration tool for NTRU Prime keys

@@ -394,6 +394,41 @@ encapsulate/decap per run), `fuzz_falcon` 52,386, `fuzz_blob` 1,477
 `"ORGB"` blob magic via CMP hints). No crashes. The 24h+
 sustained-fuzzing item remains unchecked in the roadmap.
 
+## Phase 12.3/12.4 — sntrup761 NIST KAT execution (two real spec deviations fixed)
+
+The previous `ntru_prime_kat.rs` only checked the KAT file's presence
+and field sizes. A `NistDrbg` (AES-256-CTR per the reference `rng.c`,
+including the `Update(NULL)` churn after every `randombytes` call) was
+added behind `RngCore + CryptoRng`, letting the official submission
+vectors drive `generate_keypair`/`encapsulate`/`decapsulate` directly.
+
+Executing the vectors caught **two genuine wire-format deviations**:
+
+1. `hash_session` committed the session key to `H_b(H3(r) || confirm)`
+   — the reference commits to the **full ciphertext**
+   (`H_b(H3(r) || c || confirm)`, 1039 bytes). Session keys were
+   incompatible with every other sntrup761 implementation. Fixed in
+   `primitives::sha3::hash_session` (+ the three feature-gated variants)
+   and both call sites.
+2. `random_tsmall` sorted its tagged draw pool as **signed i32**; the
+   reference `Short_fromlist` uses `crypto_sort_uint32`. High-bit draws
+   ordered differently, producing a different (still valid, still
+   weight-286) polynomial — so keygen was never seed-compatible with
+   the reference. Fixed by sorting `u32`.
+
+Result: `kat_execution::ntru_prime_kat_decapsulate_all_100`,
+`ntru_prime_kat_seeded_keygen_encap_all_100` (pk + sk + ct + ss all
+byte-exact), and `ntru_prime_kat_cross_roundtrip_foreign_keys` all
+pass — byte-level compatibility with the official submission
+implementation across the entire pipeline. The KAT-execution module is
+`#[cfg]`-gated off the non-NIST hash backends (`ntru-blake3` etc.).
+
+Falcon differential was dispositioned N/A: the Falcon path delegates to
+the external audited `falcon-rs` crate (FIPS 206), which already passes
+NIST KATs upstream; pqclean's submission-format signatures are
+byte-incompatible by construction. No hybrid KEM construction exists in
+the crate, so that roadmap item was rescoped.
+
 The SDK remains **experimental** — this work improves internal evidence
 and structure; it is not a substitute for the independent cryptographic
 and Rust review in Phase 13.

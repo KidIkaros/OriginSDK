@@ -197,8 +197,8 @@ impl NtruPrime {
         ciphertext[..ROUNDED_BYTES].copy_from_slice(&c_enc);
         ciphertext[CT_CONFIRM_OFFSET..].copy_from_slice(&confirm);
 
-        // Compute session key: HashSession(1, r_enc, confirm)
-        let session = kem_hash::hash_session(1, &r_enc, &confirm);
+        // Compute session key: HashSession(1, r_enc, ciphertext)
+        let session = kem_hash::hash_session(1, &r_enc, &ciphertext);
 
         let mut shared_secret = [0u8; K_SIZE];
         shared_secret.copy_from_slice(&session);
@@ -227,7 +227,6 @@ impl NtruPrime {
         // Extract ciphertext components
         let c_enc = &ciphertext[..ROUNDED_BYTES];
         let confirm = &ciphertext[CT_CONFIRM_OFFSET..];
-        let confirm_arr: &[u8; HASH_BYTES] = confirm.try_into().unwrap();
 
         // Decrypt: recover r from c using f and gr
         let c = rq::encoding::decode_rounded(c_enc);
@@ -278,11 +277,11 @@ impl NtruPrime {
             r_enc_masked[i] = r_enc[i] ^ m;
         }
 
-        // Session key: HashSession(1 + mask, r_enc_masked, confirm)
-        // On success: HashSession(1, r_enc, confirm)
-        // On failure: HashSession(0, rho, confirm)
+        // Session key: HashSession(1 + mask, r_enc_masked, ciphertext)
+        // On success: HashSession(1, r_enc, ct)
+        // On failure: HashSession(0, rho, ct)
         let b = (1 + mask) as u8;
-        let session = kem_hash::hash_session(b, &r_enc_masked, confirm_arr);
+        let session = kem_hash::hash_session(b, &r_enc_masked, ciphertext);
 
         let mut shared_secret = [0u8; K_SIZE];
         shared_secret.copy_from_slice(&session);

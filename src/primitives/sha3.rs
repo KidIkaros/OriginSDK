@@ -91,7 +91,10 @@ pub fn hash_confirm(r_enc: &[u8], cache: &[u8; HASH_BYTES]) -> [u8; HASH_BYTES] 
 
 /// NIST reference `HashSession()`: session key hash.
 ///
-/// Computes `Hash_prefix(b, Hash_prefix(3, r_enc) || confirm)[..32]`.
+/// Computes `Hash_prefix(b, Hash_prefix(3, r_enc) || ciphertext)[..32]`,
+/// committing the session key to the *full* ciphertext (`z` covers
+/// `Ciphertexts_bytes + Confirm_bytes` in the reference), not just the
+/// confirmation hash.
 ///
 /// - `b=1` on successful decapsulation
 /// - `b=0` on CCA failure (r_enc replaced with rho)
@@ -99,12 +102,12 @@ pub fn hash_confirm(r_enc: &[u8], cache: &[u8; HASH_BYTES]) -> [u8; HASH_BYTES] 
 /// # Arguments
 /// - `b`: Domain separator byte (0 for failure, 1 for success)
 /// - `r_enc`: Small-encoded r (191 bytes) or rho on failure
-/// - `confirm`: First 32 bytes of ciphertext (confirmation hash)
-pub fn hash_session(b: u8, r_enc: &[u8], confirm: &[u8; HASH_BYTES]) -> [u8; HASH_BYTES] {
+/// - `ciphertext`: The complete ciphertext (1039 bytes)
+pub fn hash_session(b: u8, r_enc: &[u8], ciphertext: &[u8]) -> [u8; HASH_BYTES] {
     let inner = hash_prefix(3, r_enc);
-    let mut x = [0u8; HASH_BYTES * 2];
-    x[..HASH_BYTES].copy_from_slice(&inner);
-    x[HASH_BYTES..].copy_from_slice(confirm);
+    let mut x = Vec::with_capacity(HASH_BYTES + ciphertext.len());
+    x.extend_from_slice(&inner);
+    x.extend_from_slice(ciphertext);
     hash_prefix(b, &x)
 }
 
@@ -148,12 +151,12 @@ pub mod shake128_kem {
         out
     }
 
-    /// Session key: SHAKE128(b || r_enc || confirm)[..32].
-    pub fn hash_session(b: u8, r_enc: &[u8], confirm: &[u8; 32]) -> [u8; 32] {
+    /// Session key: SHAKE128(b || r_enc || ciphertext)[..32].
+    pub fn hash_session(b: u8, r_enc: &[u8], ciphertext: &[u8]) -> [u8; 32] {
         let mut hasher = Shake128::default();
         hasher.update(&[b]);
         hasher.update(r_enc);
-        hasher.update(confirm);
+        hasher.update(ciphertext);
         let mut reader = hasher.finalize_xof();
         let mut out = [0u8; 32];
         reader.read(&mut out);
@@ -198,12 +201,12 @@ pub mod shake256_kem {
         out
     }
 
-    /// Session key: SHAKE256(b || r_enc || confirm)[..32].
-    pub fn hash_session(b: u8, r_enc: &[u8], confirm: &[u8; 32]) -> [u8; 32] {
+    /// Session key: SHAKE256(b || r_enc || ciphertext)[..32].
+    pub fn hash_session(b: u8, r_enc: &[u8], ciphertext: &[u8]) -> [u8; 32] {
         let mut hasher = Shake256::default();
         hasher.update(&[b]);
         hasher.update(r_enc);
-        hasher.update(confirm);
+        hasher.update(ciphertext);
         let mut reader = hasher.finalize_xof();
         let mut out = [0u8; 32];
         reader.read(&mut out);
@@ -291,12 +294,12 @@ pub mod blake3_kem {
         out
     }
 
-    /// Session key: BLAKE3(b || r_enc || confirm)[..32].
-    pub fn hash_session(b: u8, r_enc: &[u8], confirm: &[u8; 32]) -> [u8; 32] {
+    /// Session key: BLAKE3(b || r_enc || ciphertext)[..32].
+    pub fn hash_session(b: u8, r_enc: &[u8], ciphertext: &[u8]) -> [u8; 32] {
         let mut hasher = Hasher::new();
         hasher.update(&[b]);
         hasher.update(r_enc);
-        hasher.update(confirm);
+        hasher.update(ciphertext);
         let mut out = [0u8; 32];
         hasher.finalize_xof().fill(&mut out);
         out
@@ -367,9 +370,9 @@ mod tests {
     #[test]
     fn test_hash_session_success_vs_failure() {
         let r_enc = [99u8; 191];
-        let confirm = [0xAA; 32];
-        let k_success = hash_session(1, &r_enc, &confirm);
-        let k_failure = hash_session(0, &r_enc, &confirm);
+        let ct = [0xAA; 1039];
+        let k_success = hash_session(1, &r_enc, &ct);
+        let k_failure = hash_session(0, &r_enc, &ct);
         assert_ne!(
             k_success, k_failure,
             "Success and failure session keys must differ"
@@ -379,9 +382,9 @@ mod tests {
     #[test]
     fn test_hash_session_deterministic() {
         let r_enc = [99u8; 191];
-        let confirm = [0xAA; 32];
-        let k1 = hash_session(1, &r_enc, &confirm);
-        let k2 = hash_session(1, &r_enc, &confirm);
+        let ct = [0xAA; 1039];
+        let k1 = hash_session(1, &r_enc, &ct);
+        let k2 = hash_session(1, &r_enc, &ct);
         assert_eq!(k1, k2);
     }
 
@@ -444,9 +447,9 @@ mod tests {
     #[test]
     fn test_blake3_kem_session_success_vs_failure() {
         let r_enc = [99u8; 191];
-        let confirm = [0xAA; 32];
-        let k_success = blake3_kem::hash_session(1, &r_enc, &confirm);
-        let k_failure = blake3_kem::hash_session(0, &r_enc, &confirm);
+        let ct = [0xAA; 1039];
+        let k_success = blake3_kem::hash_session(1, &r_enc, &ct);
+        let k_failure = blake3_kem::hash_session(0, &r_enc, &ct);
         assert_ne!(
             k_success, k_failure,
             "BLAKE3: success and failure session keys must differ"

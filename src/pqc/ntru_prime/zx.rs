@@ -27,22 +27,24 @@ pub mod random {
         rng.next_u32() as i32
     }
 
-    /// Branchless min/max swap — the sort runs over random values whose
-    /// ordering determines secret coefficient positions, so the compare
-    /// must not leak through a branch (matches the reference
-    /// `crypto_sort_int32` masking approach).
-    fn min_max(arr: &mut [i32], x: usize, y: usize) {
+    /// Branchless min/max swap over u32 — the reference `Short_fromlist`
+    /// sorts with `crypto_sort_uint32` (unsigned). Sorting signed i32
+    /// would place high-bit values differently and produce a different
+    /// polynomial than the reference for identical randomness.
+    /// The compare must not leak through a branch since the ordering
+    /// determines secret coefficient positions.
+    fn min_max(arr: &mut [u32], x: usize, y: usize) {
         let a = arr[x];
         let b = arr[y];
         // mask = all-ones iff b < a (i64 subtraction can't overflow for
-        // i32 inputs)
-        let mask = (((b as i64) - (a as i64)) >> 63) as i32;
+        // u32 inputs)
+        let mask = (((b as i64) - (a as i64)) >> 63) as u32;
         let delta = (a ^ b) & mask;
         arr[x] = a ^ delta;
         arr[y] = b ^ delta;
     }
 
-    fn sort(x: &mut [i32], n: usize) {
+    fn sort(x: &mut [u32], n: usize) {
         if n < 2 {
             return;
         }
@@ -79,18 +81,21 @@ pub mod random {
     }
 
     /// Generate a random T-small polynomial with weight W
+    ///
+    /// Matches the reference `Short_random`/`Short_fromlist`: P u32 draws,
+    /// low-bit tagging (first W cleared bit0, rest cleared bit1 + set bit0),
+    /// `crypto_sort_uint32`, then coefficients = (sorted & 3) - 1.
     pub fn random_tsmall<R: RngCore>(f: &mut [i8; P], rng: &mut R) {
         const W: usize = 286;
-        let mut r = [0i32; P];
+        let mut r = [0u32; P];
         for i in 0..P {
-            let x = random_i32(rng);
-            r[i] = x;
+            r[i] = rng.next_u32();
         }
         for i in 0..W {
-            r[i] &= -2;
+            r[i] &= !1u32;
         }
         for i in W..P {
-            r[i] = (r[i] & -3) | 1;
+            r[i] = (r[i] & !2u32) | 1;
         }
         sort(&mut r, P);
         for i in 0..P {

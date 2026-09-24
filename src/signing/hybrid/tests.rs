@@ -485,6 +485,37 @@ fn test_bundle_cache_lifecycle() {
     bundle_cache_configure(DEFAULT_BUNDLE_CACHE_MAX_ENTRIES, None);
 }
 
+/// An ownable `BundleCache` instance must be independent of the
+/// process-global cache: entries in one never appear in the other.
+#[test]
+fn test_ownable_bundle_cache_is_independent_of_global() {
+    let _guard = CACHE_TEST_GUARD.lock().unwrap();
+    bundle_cache_clear();
+
+    let local = BundleCache::new();
+    local.configure(2, None);
+    assert!(local.is_empty());
+
+    let seed = [55u8; 32];
+    let b1 = local
+        .get_or_insert(&seed, "local-test", || {
+            HybridSigningKeyBundle::from_seed(&seed, "local-test")
+        })
+        .expect("local insert");
+    assert_eq!(local.len(), 1);
+
+    // Second lookup on the ownable cache hits the same Arc.
+    let b2 = local
+        .get_or_insert(&seed, "local-test", || {
+            HybridSigningKeyBundle::from_seed(&seed, "local-test")
+        })
+        .expect("local hit");
+    assert!(Arc::ptr_eq(&b1, &b2));
+
+    // The process-global cache was not touched.
+    assert_eq!(bundle_cache_len(), 0);
+}
+
 #[test]
 fn test_falcon1024_keygen_convenience() {
     let seed = [42u8; 32];

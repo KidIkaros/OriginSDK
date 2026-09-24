@@ -165,3 +165,16 @@ byte-identical (golden vectors), wire format untouched.
 Not done here (deferred per plan): `BundleCache` remains the process-global
 `BUNDLE_CACHE` behind the same public functions — its ownable-type redesign
 is Step 3 (GOF-2/FD-1).
+
+### Step 3 — `BundleCache` as an ownable value type
+
+Resolved: GOF-2, FD-1. `BundleCache` is now `pub` with `new`/`Default`,
+`get_or_insert(seed, domain, derive)`, `configure`, `clear`, `len`,
+`is_empty`, and a redacted `Debug`. Callers that want explicit ownership
+(per-tenant caches, test isolation) construct their own instance; the
+process-global `BUNDLE_CACHE` remains as a documented convenience behind
+the unchanged `bundle_cache_*` functions and `from_seed_cached`.
+`get_or_insert` keeps the original behavior — `derive` runs while the
+entry lock is held, so misses serialize. New test
+`test_ownable_bundle_cache_is_independent_of_global` proves local and
+global instances do not share entries.

@@ -150,6 +150,9 @@ impl HybridSigningKeyBundle {
     /// The cache is bounded by [`super::bundle_cache_configure`]. Expired and
     /// oldest entries are evicted automatically on each access. Use
     /// [`super::bundle_cache_clear`] to force full eviction.
+    ///
+    /// Callers that want explicit cache ownership (per-tenant caches, test
+    /// isolation) can use an ownable [`super::BundleCache`] instance instead.
     pub fn from_seed_cached(master_seed: &[u8; 32], domain: &str) -> Result<Arc<Self>> {
         super::cache::get_or_insert(master_seed, domain, || Self::from_seed(master_seed, domain))
     }

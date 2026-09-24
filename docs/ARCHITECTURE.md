@@ -59,8 +59,9 @@ name anything from a layer above it.
 
 6. **Wrapped state only.** Mutable state lives inside named wrappers
    (`SeedHandle`, `ChaCha20Drbg`, `BundleCache`); the only process-global
-   mutable state is `BUNDLE_CACHE` (see `signing::hybrid`), which is
-   documented and bounded.
+   mutable state is `BUNDLE_CACHE` (see `signing::hybrid::cache`), which is
+   documented and bounded. `BundleCache` is an ownable value type — the
+   global is a convenience wrapper over one instance, not a requirement.
 
 7. **Wire formats are frozen by golden vectors.** `signing::wire`,
    `blob` (Seed Blob v2), `compressed`, and the NTRU/Falcon codecs must

@@ -115,7 +115,8 @@ pub use ed25519_dalek::{
 
 pub use bundle::{falcon1024_keygen, HybridSigningKeyBundle};
 pub use cache::{
-    bundle_cache_clear, bundle_cache_configure, bundle_cache_len, DEFAULT_BUNDLE_CACHE_MAX_ENTRIES,
+    bundle_cache_clear, bundle_cache_configure, bundle_cache_len, BundleCache,
+    DEFAULT_BUNDLE_CACHE_MAX_ENTRIES,
 };
 pub use combinators::{
     concat_combine, hkdf_combine, shake128_output, shake256_output, skein1024, skein512,

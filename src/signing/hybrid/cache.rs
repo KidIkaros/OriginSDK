@@ -1,16 +1,18 @@
 // SPDX-License-Identifier: Apache-2.0
 
-//! Bounded process-wide cache for [`HybridSigningKeyBundle`].
+//! Bounded cache for [`HybridSigningKeyBundle`].
 //!
 //! Falcon-1024 keygen is expensive (~4s), so the bundle API offers
 //! `from_seed_cached`, which memoizes bundles keyed by a domain-separated
 //! BLAKE3 digest of `(seed, domain)` — the raw seed is never retained in
 //! the index.
 //!
-//! The cache is the crate's one piece of process-global mutable state.
-//! It is wrapped (never bare): a `OnceLock` holding one `BundleCache`,
-//! whose fields are mutex-guarded. Eviction is bounded by entry count and
-//! optional TTL.
+//! [`BundleCache`] is an ownable value type — `BundleCache::new()` creates
+//! an independent instance for callers that want explicit ownership. For
+//! the common case, a process-global instance sits behind `OnceLock` and
+//! is reached through the free functions below; that global is the crate's
+//! one piece of process-global mutable state, wrapped (never bare) and
+//! bounded by entry count and optional TTL.
 
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, OnceLock};
@@ -39,7 +41,7 @@ impl CacheEntry {
     }
 }
 
-/// Process-wide cache for [`HybridSigningKeyBundle`], keyed by a
+/// Bounded cache for [`HybridSigningKeyBundle`], keyed by a
 /// domain-separated digest of `(seed, domain)`.
 ///
 /// The digest prevents the cache index from retaining a second raw copy of
@@ -51,7 +53,14 @@ impl CacheEntry {
 /// clones past eviction keep the key material alive until their last clone
 /// is dropped — this is a documented limitation of reference-counted
 /// caching.
-pub(crate) struct BundleCache {
+///
+/// `BundleCache` is an ownable value: `BundleCache::new()` gives an
+/// independent instance for callers that want explicit ownership (e.g.
+/// per-connection or per-tenant caches). The free functions
+/// [`bundle_cache_configure`]/[`bundle_cache_clear`]/[`bundle_cache_len`]
+/// and [`HybridSigningKeyBundle::from_seed_cached`] operate on a single
+/// process-global instance as a convenience for the common case.
+pub struct BundleCache {
     entries: Mutex<HashMap<[u8; 32], CacheEntry>>,
     max_entries: Mutex<usize>,
     ttl: Mutex<Option<Duration>>,
@@ -65,8 +74,27 @@ fn bundle_cache_key(master_seed: &[u8; 32], domain: &str) -> [u8; 32] {
     blake3::derive_key("origin-crypto-sdk/bundle-cache/v1", &input)
 }
 
+impl std::fmt::Debug for BundleCache {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // Entries hold key material — report only the bound policy.
+        f.debug_struct("BundleCache")
+            .field("entries", &self.len())
+            .field("max_entries", &self.max_entries)
+            .field("ttl", &self.ttl)
+            .finish()
+    }
+}
+
+impl Default for BundleCache {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl BundleCache {
-    fn new() -> Self {
+    /// Create an empty cache with default bounds
+    /// ([`DEFAULT_BUNDLE_CACHE_MAX_ENTRIES`], no TTL).
+    pub fn new() -> Self {
         Self {
             entries: Mutex::new(HashMap::new()),
             max_entries: Mutex::new(DEFAULT_BUNDLE_CACHE_MAX_ENTRIES),
@@ -77,7 +105,21 @@ impl BundleCache {
     /// Fetch the cached bundle for `(seed, domain)`, or run `derive` and
     /// insert its result on a miss. Expired entries are evicted before the
     /// lookup; the oldest entry is evicted when the cache is at capacity.
-    fn get_or_insert(
+    ///
+    /// `derive` runs while the cache's entry lock is held, so a miss
+    /// serializes against other inserts — matching the historical
+    /// process-global behavior.
+    pub fn get_or_insert(
+        &self,
+        master_seed: &[u8; 32],
+        domain: &str,
+        derive: impl FnOnce() -> Result<HybridSigningKeyBundle>,
+    ) -> Result<Arc<HybridSigningKeyBundle>> {
+        self.get_or_insert_key(bundle_cache_key(master_seed, domain), derive)
+    }
+
+    /// Key-addressed variant of [`BundleCache::get_or_insert`].
+    fn get_or_insert_key(
         &self,
         key: [u8; 32],
         derive: impl FnOnce() -> Result<HybridSigningKeyBundle>,
@@ -135,25 +177,33 @@ impl BundleCache {
         }
     }
 
-    /// Clear all entries. No-op-shaped: always succeeds, poisoned locks recover.
-    fn clear(&self) {
+    /// Clear all entries. Always succeeds; poisoned locks recover.
+    pub fn clear(&self) {
         match self.entries.lock() {
             Ok(mut entries) => entries.clear(),
             Err(poisoned) => poisoned.into_inner().clear(),
         }
     }
 
-    /// Current entry count (diagnostics/tests).
-    fn len(&self) -> usize {
+    /// Current entry count.
+    pub fn len(&self) -> usize {
         match self.entries.lock() {
             Ok(entries) => entries.len(),
             Err(poisoned) => poisoned.into_inner().len(),
         }
     }
 
+    /// True when the cache holds no entries.
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
     /// Replace the bounding policy and clear existing entries so stale
     /// entries under the old policy do not persist.
-    fn configure(&self, max_entries: usize, ttl: Option<Duration>) {
+    ///
+    /// `max_entries` is clamped to a minimum of 1. `ttl` of `None` disables
+    /// time-based eviction.
+    pub fn configure(&self, max_entries: usize, ttl: Option<Duration>) {
         self.clear();
         match self.max_entries.lock() {
             Ok(mut current) => *current = max_entries.max(1),
@@ -179,7 +229,7 @@ pub(crate) fn get_or_insert(
     domain: &str,
     derive: impl FnOnce() -> Result<HybridSigningKeyBundle>,
 ) -> Result<Arc<HybridSigningKeyBundle>> {
-    bundle_cache().get_or_insert(bundle_cache_key(master_seed, domain), derive)
+    bundle_cache().get_or_insert(master_seed, domain, derive)
 }
 
 /// Configure the process-wide bundle cache bounds.

@@ -39,8 +39,18 @@ pub fn concat_combine(a: &[u8], b: &[u8]) -> Vec<u8> {
 }
 
 /// HKDF-SHA3-256 combiner (for KDF constructions)
+///
+/// Thin alias over [`crate::kdf::hkdf::hkdf_sha3_256`] kept as a
+/// **deprecated** compatibility shim: the old signature took
+/// `(salt, ikm, info, out)` — the opposite order of the public KDF API —
+/// which made cross-boundary calls error-prone (audit CC-3). New code
+/// should call `kdf::hkdf::hkdf_sha3_256(ikm, salt, info, out)` directly.
+#[deprecated(
+    since = "0.7.1",
+    note = "argument order swaps at the boundary (audit CC-3); use kdf::hkdf::hkdf_sha3_256(ikm, salt, info, out) directly"
+)]
 pub fn hkdf_combine(salt: Option<&[u8]>, ikm: &[u8], info: &[u8], output: &mut [u8]) -> Result<()> {
-    hkdf_sha3_256(ikm, salt, info, output).map_err(|e| CryptoError::Kdf(e.to_string()))
+    hkdf_sha3_256(ikm, salt, info, output)
 }
 
 /// Generate variable-length output from SHAKE128

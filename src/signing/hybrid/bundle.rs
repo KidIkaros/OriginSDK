@@ -18,7 +18,8 @@ use crate::pqc::falcon1024::{
 };
 use crate::pqc::falcon512::{Falcon512PrivateKey, Falcon512PublicKey};
 
-use super::combinators::hkdf_combine;
+use crate::kdf::hkdf::hkdf_sha3_256;
+
 use super::constructions::Ed25519Falcon1024;
 use super::{Ed25519SigningKey, Ed25519VerifyingKey};
 
@@ -79,9 +80,9 @@ impl HybridSigningKeyBundle {
     pub fn from_seed(master_seed: &[u8; 32], domain: &str) -> Result<Self> {
         // Ed25519 — derive 32-byte seed with domain separation
         let mut ed25519_seed = [0u8; 32];
-        hkdf_combine(
-            Some(b"hybrid-bundle"),
+        hkdf_sha3_256(
             master_seed,
+            Some(b"hybrid-bundle"),
             &[domain.as_bytes(), b"ed25519"].concat(),
             &mut ed25519_seed,
         )?;
@@ -91,9 +92,9 @@ impl HybridSigningKeyBundle {
 
         // Falcon-1024 — derive seed with domain separation, then run Falcon keygen
         let mut falcon_seed = [0u8; 32];
-        hkdf_combine(
-            Some(b"hybrid-bundle"),
+        hkdf_sha3_256(
             master_seed,
+            Some(b"hybrid-bundle"),
             &[domain.as_bytes(), b"falcon1024"].concat(),
             &mut falcon_seed,
         )?;

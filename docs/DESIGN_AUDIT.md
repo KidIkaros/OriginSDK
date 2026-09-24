@@ -178,3 +178,35 @@ the unchanged `bundle_cache_*` functions and `from_seed_cached`.
 entry lock is held, so misses serialize. New test
 `test_ownable_bundle_cache_is_independent_of_global` proves local and
 global instances do not share entries.
+
+### Step 4 — error and boundary hygiene
+
+Resolved: CC-3, CC-6 (partial, by design), CC-7, FD-3.
+
+- **CC-3** `hkdf_combine` is now `#[deprecated]` — it was a pure
+  pass-through whose only effect was permuting `(salt, ikm)` vs the public
+  `kdf::hkdf::hkdf_sha3_256(ikm, salt)` convention. All in-crate callers
+  migrated; the shim remains exported for downstream callers.
+- **CC-7/FD-3** every OS-entropy call site now has a fallible variant:
+  `ChaCha20Rng::try_from_entropy`, `ChaCha20Drbg::try_from_os_entropy` /
+  `try_random_bytes`, `seed::gen::try_generate` / `try_generate_with_entropy`,
+  `ChaCha20Blake3::try_generate_nonce` / `try_generate_key`. Infallible
+  forms delegate to the `try_*` form with a documented `# Panics`
+  contract (previously `aead`/`types` duplicated the RNG call instead of
+  delegating). Failures map to `CryptoError::Io`, matching `fill_random`.
+- **CC-6** miscategorized uses remapped to existing structured variants:
+  Falcon `SizeError`/`InternalError` → `Pqc`; `SchnorrError::From` now maps
+  `InvalidPublicKey` → `InvalidKey`, `VerificationFailed` →
+  `AuthenticationFailed`, `RngFailed` → `Io`; `compressed`/`blob`
+  container parse failures (13 sites) → `Serialization`. The remaining
+  `InvalidParameter` uses are genuine parameter validation (empty seeds,
+  expired handles, digit ranges, wordlist checks) — the catch-all is the
+  correct category there per the error vocabulary docs.
+- **Bug fixed in passing:** `seed::gen` compressed caller-supplied entropy
+  through `try_into::<[u8;32]>().unwrap_or([0;32])`, silently producing an
+  all-zero keyed-BLAKE2b key for any entropy ≠ 32 bytes. The key pool is
+  now `sha3_256(entropy ‖ "seed-gen-key")` — domain-separated from the msg
+  and salt pools. This changes deterministic outputs for the
+  `Some(entropy)` path only (a testing seam with no pinned vectors);
+  the OS-RNG path is unchanged. Intermediate key/msg material is now
+  zeroized instead of plain-dropped.

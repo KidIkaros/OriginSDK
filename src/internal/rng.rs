@@ -32,10 +32,20 @@ impl ChaCha20Rng {
     }
 
     /// Create from OS entropy.
+    ///
+    /// # Panics
+    /// Panics if the OS RNG fails. Use [`Self::try_from_entropy`] for a
+    /// fallible variant.
     pub fn from_entropy() -> Self {
+        Self::try_from_entropy().expect("OS RNG failed")
+    }
+
+    /// Create from OS entropy, returning an error on RNG failure.
+    pub fn try_from_entropy() -> crate::error::Result<Self> {
         let mut seed = [0u8; CHACHA20_KEY_SIZE];
-        crate::internal::getrandom::fill(&mut seed).expect("OS RNG failed");
-        Self::from_seed(seed)
+        crate::internal::getrandom::fill(&mut seed)
+            .map_err(|e| crate::error::CryptoError::Io(std::io::Error::other(e)))?;
+        Ok(Self::from_seed(seed))
     }
 
     fn refill_block(&mut self) {

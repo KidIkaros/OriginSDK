@@ -313,7 +313,7 @@ pub fn compress_encrypt(
 pub fn decompress_decrypt(container: &[u8], passphrase: &[u8]) -> Result<Vec<u8>> {
     // 1. Parse header.
     if container.len() < HEADER_LEN {
-        return Err(CryptoError::InvalidParameter(format!(
+        return Err(CryptoError::Serialization(format!(
             "container too short: {} bytes, need at least {}",
             container.len(),
             HEADER_LEN
@@ -321,12 +321,12 @@ pub fn decompress_decrypt(container: &[u8], passphrase: &[u8]) -> Result<Vec<u8>
     }
 
     if &container[..4] != MAGIC {
-        return Err(CryptoError::InvalidParameter("bad magic bytes".into()));
+        return Err(CryptoError::Serialization("bad magic bytes".into()));
     }
 
     let version = container[4];
     if version != VERSION {
-        return Err(CryptoError::InvalidParameter(format!(
+        return Err(CryptoError::Serialization(format!(
             "unsupported version: {} (expected {})",
             version, VERSION
         )));
@@ -338,7 +338,7 @@ pub fn decompress_decrypt(container: &[u8], passphrase: &[u8]) -> Result<Vec<u8>
         1 => MemoryTier::Standard,
         2 => MemoryTier::Sovereign,
         _ => {
-            return Err(CryptoError::InvalidParameter(format!(
+            return Err(CryptoError::Serialization(format!(
                 "invalid tier byte: {}",
                 tier_byte
             )))
@@ -347,26 +347,26 @@ pub fn decompress_decrypt(container: &[u8], passphrase: &[u8]) -> Result<Vec<u8>
 
     let algo_byte = container[6];
     let compressor = Compressor::from_byte(algo_byte).ok_or_else(|| {
-        CryptoError::InvalidParameter(format!("unknown compressor byte: {}", algo_byte))
+        CryptoError::Serialization(format!("unknown compressor byte: {}", algo_byte))
     })?;
 
     let salt: [u8; 16] = container[9..25]
         .try_into()
-        .map_err(|_| CryptoError::InvalidParameter("salt parse failed".into()))?;
+        .map_err(|_| CryptoError::Serialization("salt parse failed".into()))?;
 
     let base_nonce: [u8; NONCE_SIZE] = container[25..49]
         .try_into()
-        .map_err(|_| CryptoError::InvalidParameter("nonce parse failed".into()))?;
+        .map_err(|_| CryptoError::Serialization("nonce parse failed".into()))?;
 
     let chunk_size = u32::from_be_bytes(
         container[49..53]
             .try_into()
-            .map_err(|_| CryptoError::InvalidParameter("chunk_size field parse failed".into()))?,
+            .map_err(|_| CryptoError::Serialization("chunk_size field parse failed".into()))?,
     ) as usize;
     let num_chunks = u32::from_be_bytes(
         container[53..57]
             .try_into()
-            .map_err(|_| CryptoError::InvalidParameter("num_chunks field parse failed".into()))?,
+            .map_err(|_| CryptoError::Serialization("num_chunks field parse failed".into()))?,
     ) as usize;
 
     let body = &container[HEADER_LEN..];

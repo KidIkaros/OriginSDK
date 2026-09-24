@@ -119,9 +119,12 @@ pub use cache::{
     DEFAULT_BUNDLE_CACHE_MAX_ENTRIES,
 };
 pub use combinators::{
-    concat_combine, hkdf_combine, shake128_output, shake256_output, skein1024, skein512,
-    xor_combine,
+    concat_combine, shake128_output, shake256_output, skein1024, skein512, xor_combine,
 };
+// Re-exported for backward compatibility; the shim carries a `#[deprecated]`
+// attribute — suppress the warning on the re-export itself.
+#[allow(deprecated)]
+pub use combinators::hkdf_combine;
 pub use constructions::{
     Ed25519Blake3, Ed25519ChaCha20Blake3Sha3_256, Ed25519Falcon1024, Ed25519Falcon512,
     Ed25519Shake256, Ed25519Skein512, Ed448Falcon1024, Ed448Sha3_256, Ed448Shake256, Ed448Skein512,

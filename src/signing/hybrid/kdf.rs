@@ -8,8 +8,7 @@
 //! changing them would change every derived key.
 
 use crate::error::Result;
-
-use super::combinators::hkdf_combine;
+use crate::kdf::hkdf::hkdf_sha3_256;
 
 /// The three domain-separated subkeys used by the KDF hybrid constructions.
 ///
@@ -49,26 +48,27 @@ impl std::fmt::Debug for HybridSubkeys {
 /// ever used); the named-struct return replaces the `(Vec, Vec, Vec)`
 /// triple of magic lengths.
 pub fn derive_hybrid_keys(master_seed: &[u8], domain: &str) -> Result<HybridSubkeys> {
+    let salt = Some(b"hybrid-kdf".as_slice());
     let mut ed25519 = [0u8; 32];
-    hkdf_combine(
-        Some(b"hybrid-kdf"),
+    hkdf_sha3_256(
         master_seed,
+        salt,
         &[domain.as_bytes(), b"ed25519"].concat(),
         &mut ed25519,
     )?;
 
     let mut chacha20 = [0u8; 32];
-    hkdf_combine(
-        Some(b"hybrid-kdf"),
+    hkdf_sha3_256(
         master_seed,
+        salt,
         &[domain.as_bytes(), b"chacha20"].concat(),
         &mut chacha20,
     )?;
 
     let mut hash = [0u8; 32];
-    hkdf_combine(
-        Some(b"hybrid-kdf"),
+    hkdf_sha3_256(
         master_seed,
+        salt,
         &[domain.as_bytes(), b"hash"].concat(),
         &mut hash,
     )?;

@@ -51,14 +51,24 @@ impl std::error::Error for SchnorrError {}
 
 impl From<SchnorrError> for CryptoError {
     fn from(e: SchnorrError) -> Self {
-        CryptoError::InvalidParameter(e.to_string())
+        match e {
+            // Malformed proof components are bad input, not auth failures.
+            SchnorrError::InvalidCommitment(msg) | SchnorrError::InvalidResponse(msg) => {
+                CryptoError::InvalidParameter(msg)
+            }
+            SchnorrError::InvalidPublicKey(msg) => CryptoError::InvalidKey(msg),
+            SchnorrError::VerificationFailed => CryptoError::AuthenticationFailed,
+            SchnorrError::RngFailed => {
+                CryptoError::Io(std::io::Error::other("Schnorr RNG failure"))
+            }
+        }
     }
 }
 
 /// Create an EC-Schnorr proof of knowledge of the discrete log of `public_key`.
 pub fn prove(secret_key: &[u8; 32], public_key: &[u8], message: &[u8]) -> Result<EcSchnorrProof> {
     let x = ct_option_to_option(Scalar::from_repr(secret_key))
-        .ok_or_else(|| CryptoError::InvalidParameter("Invalid secret key scalar".into()))?;
+        .ok_or_else(|| CryptoError::InvalidKey("Invalid secret key scalar".into()))?;
 
     // Generate random nonce r
     let r = {

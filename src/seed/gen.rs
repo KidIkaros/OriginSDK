@@ -26,6 +26,7 @@
 //! assert_eq!(result.salt.len(), 16);
 //! ```
 
+use crate::error::{CryptoError, Result};
 use crate::internal::getrandom;
 use crate::internal::zeroize::Zeroize;
 use crate::primitives::sha3::{sha3_256, Shake256};
@@ -73,30 +74,62 @@ impl Drop for GeneratedSeed {
 ///
 /// Returns `(seed, salt)` where `seed` is 32 bytes and `salt` is 16 bytes
 /// unless the variant specifies otherwise.
+///
+/// # Panics
+/// Panics if the OS RNG fails. Use [`try_generate`] for a fallible variant.
 pub fn generate(variant: SeedVariant) -> GeneratedSeed {
-    generate_with_entropy(variant, None)
+    try_generate(variant).expect("OS RNG failed")
+}
+
+/// Generate a seed using the chosen hash chain, returning an error on
+/// OS RNG failure.
+pub fn try_generate(variant: SeedVariant) -> Result<GeneratedSeed> {
+    try_generate_with_entropy(variant, None)
 }
 
 /// Generate a seed, optionally using caller-supplied entropy (for testing).
 ///
 /// When `entropy` is `None`, fresh random bytes are drawn from the OS RNG.
+///
+/// # Panics
+/// Panics if the OS RNG fails (unreachable when `entropy` is `Some`).
+/// Use [`try_generate_with_entropy`] for a fallible variant.
 pub fn generate_with_entropy(variant: SeedVariant, entropy: Option<&[u8]>) -> GeneratedSeed {
-    // Key material: 32 bytes of randomness (or caller-supplied)
-    let key_bytes = entropy.map(|e| e.to_vec()).unwrap_or_else(|| {
-        let mut buf = vec![0u8; 32];
-        getrandom::fill(&mut buf).expect("OS RNG failed");
-        buf
-    });
+    try_generate_with_entropy(variant, entropy).expect("OS RNG failed")
+}
+
+/// Generate a seed, optionally using caller-supplied entropy, returning an
+/// error on OS RNG failure.
+///
+/// Caller-supplied `entropy` of any length is hash-compressed with
+/// SHA3-256 into the 32-byte key pool — it is never truncated or silently
+/// replaced.
+pub fn try_generate_with_entropy(
+    variant: SeedVariant,
+    entropy: Option<&[u8]>,
+) -> Result<GeneratedSeed> {
+    // Key material: 32 bytes of randomness, or caller-supplied entropy
+    // compressed with a domain tag so it stays distinct from the msg pool
+    // (sha3_256(e) below). The pre-0.7.x code fed raw bytes through
+    // try_into::<[u8; 32]>, which silently produced an all-zero key
+    // whenever the entropy length differed from 32.
+    const ENTROPY_KEY_DOMAIN: &[u8] = b"seed-gen-key";
+    let mut key_bytes: [u8; 32] = match entropy {
+        Some(e) => sha3_256(&[e, ENTROPY_KEY_DOMAIN].concat()),
+        None => {
+            let mut buf = [0u8; 32];
+            getrandom::fill(&mut buf).map_err(|e| CryptoError::Io(std::io::Error::other(e)))?;
+            buf
+        }
+    };
 
     // Message material: 32 bytes of randomness
-    let msg_bytes = if let Some(e) = entropy {
+    let mut msg_bytes = if let Some(e) = entropy {
         // Derive a second pool via SHA3-256 to avoid reusing the same bytes
-        let mut derived = [0u8; 32];
-        derived.copy_from_slice(&sha3_256(e));
-        derived.to_vec()
+        sha3_256(e).to_vec()
     } else {
         let mut buf = vec![0u8; 32];
-        getrandom::fill(&mut buf).expect("OS RNG failed");
+        getrandom::fill(&mut buf).map_err(|e| CryptoError::Io(std::io::Error::other(e)))?;
         buf
     };
 
@@ -108,14 +141,13 @@ pub fn generate_with_entropy(variant: SeedVariant, entropy: Option<&[u8]>) -> Ge
         let hash = sha3_256(&[e, &salt_input[..]].concat());
         salt.copy_from_slice(&hash[..16]);
     } else {
-        getrandom::fill(&mut salt).expect("OS RNG failed");
+        getrandom::fill(&mut salt).map_err(|e| CryptoError::Io(std::io::Error::other(e)))?;
     }
 
     let seed = match variant {
         SeedVariant::Blake2bShake256 => {
             // Round 1: keyed-BLAKE2b
-            let blake_key: [u8; 32] = key_bytes.as_slice().try_into().unwrap_or([0u8; 32]);
-            let blake_hash = blake3::keyed_hash(&blake_key, &msg_bytes);
+            let blake_hash = blake3::keyed_hash(&key_bytes, &msg_bytes);
 
             // Round 2: SHAKE-256
             let mut hasher = Shake256::default();
@@ -129,8 +161,7 @@ pub fn generate_with_entropy(variant: SeedVariant, entropy: Option<&[u8]>) -> Ge
 
         SeedVariant::Blake2bSha3_256 => {
             // Round 1: keyed-BLAKE2b
-            let blake_key: [u8; 32] = key_bytes.as_slice().try_into().unwrap_or([0u8; 32]);
-            let blake_hash = blake3::keyed_hash(&blake_key, &msg_bytes);
+            let blake_hash = blake3::keyed_hash(&key_bytes, &msg_bytes);
 
             // Round 2: SHA3-256
             let mut input = Vec::with_capacity(32 + 16);
@@ -141,8 +172,7 @@ pub fn generate_with_entropy(variant: SeedVariant, entropy: Option<&[u8]>) -> Ge
 
         SeedVariant::Blake2bSha512 => {
             // Round 1: keyed-BLAKE2b
-            let blake_key: [u8; 32] = key_bytes.as_slice().try_into().unwrap_or([0u8; 32]);
-            let blake_hash = blake3::keyed_hash(&blake_key, &msg_bytes);
+            let blake_hash = blake3::keyed_hash(&key_bytes, &msg_bytes);
 
             // Round 2: SHA-512, truncate to 32 bytes (256 bits)
             use sha2::{Digest, Sha512};
@@ -171,14 +201,14 @@ pub fn generate_with_entropy(variant: SeedVariant, entropy: Option<&[u8]>) -> Ge
     };
 
     // Wipe intermediate material
-    drop(key_bytes);
-    drop(msg_bytes);
+    key_bytes.zeroize();
+    msg_bytes.zeroize();
 
-    GeneratedSeed {
+    Ok(GeneratedSeed {
         seed,
         salt: salt.to_vec(),
         variant,
-    }
+    })
 }
 
 // ---------------------------------------------------------------------------

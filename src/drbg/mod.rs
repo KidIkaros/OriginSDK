@@ -19,6 +19,7 @@ pub mod otp;
 
 use rand::RngCore;
 
+use crate::error::{CryptoError, Result};
 use crate::internal::getrandom;
 
 /// Bare deterministic ChaCha20 CSPRNG (no auto-reseed).
@@ -53,11 +54,20 @@ impl ChaCha20Drbg {
     }
 
     /// Create a DRBG seeded from OS entropy.
+    ///
+    /// # Panics
+    /// Panics if the OS RNG fails. Use [`Self::try_from_os_entropy`] for a
+    /// fallible variant.
     pub fn from_os_entropy() -> Self {
-        Self {
-            inner: ChaCha20Rng::from_entropy(),
+        Self::try_from_os_entropy().expect("OS entropy failed")
+    }
+
+    /// Create a DRBG seeded from OS entropy, returning an error on RNG failure.
+    pub fn try_from_os_entropy() -> Result<Self> {
+        Ok(Self {
+            inner: ChaCha20Rng::try_from_entropy()?,
             generated: 0,
-        }
+        })
     }
 
     /// Mix new entropy into the DRBG state.
@@ -75,10 +85,21 @@ impl ChaCha20Drbg {
     /// Generate `n` random bytes.
     ///
     /// Auto-reseeds from OS entropy after 16 MB of output.
+    ///
+    /// # Panics
+    /// Panics if an OS-entropy reseed fails. Use [`Self::try_random_bytes`]
+    /// for a fallible variant.
     pub fn random_bytes(&mut self, n: usize) -> Vec<u8> {
+        self.try_random_bytes(n).expect("OS entropy failed")
+    }
+
+    /// Generate `n` random bytes, returning an error if an OS-entropy
+    /// reseed fails.
+    pub fn try_random_bytes(&mut self, n: usize) -> Result<Vec<u8>> {
         if self.generated + n as u64 > MAX_BYTES_BEFORE_RESEED {
             let mut os_entropy = [0u8; 32];
-            getrandom::fill(&mut os_entropy).expect("OS entropy failed");
+            getrandom::fill(&mut os_entropy)
+                .map_err(|e| CryptoError::Io(std::io::Error::other(e)))?;
             self.reseed(&os_entropy);
             os_entropy.zeroize();
         }
@@ -86,7 +107,7 @@ impl ChaCha20Drbg {
         let mut buf = vec![0u8; n];
         self.inner.fill_bytes(&mut buf);
         self.generated += n as u64;
-        buf
+        Ok(buf)
     }
 
     /// Fill a mutable slice with random bytes.

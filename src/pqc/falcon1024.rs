@@ -152,8 +152,8 @@ fn map_falcon_err(e: FalconError) -> CryptoError {
         FalconError::BadSignature => CryptoError::AuthenticationFailed,
         FalconError::FormatError => CryptoError::InvalidKey("Falcon format error".into()),
         FalconError::RandomError => CryptoError::Pqc("Falcon RNG failure".into()),
-        FalconError::SizeError => CryptoError::InvalidParameter("Falcon buffer size error".into()),
-        FalconError::InternalError => CryptoError::InvalidParameter("Falcon internal error".into()),
+        FalconError::SizeError => CryptoError::Pqc("Falcon buffer size error".into()),
+        FalconError::InternalError => CryptoError::Pqc("Falcon internal error".into()),
     }
 }
 

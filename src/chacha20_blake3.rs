@@ -71,17 +71,39 @@ impl ChaCha20Blake3 {
     }
 
     /// Generate a secure random nonce (192-bit / 24 bytes)
+    ///
+    /// # Panics
+    /// Panics if the OS RNG fails. Use [`Self::try_generate_nonce`] for a
+    /// fallible variant.
     pub fn generate_nonce() -> [u8; 24] {
+        Self::try_generate_nonce().expect("RNG failed")
+    }
+
+    /// Generate a secure random nonce (192-bit / 24 bytes), returning an
+    /// error on RNG failure.
+    pub fn try_generate_nonce() -> Result<[u8; 24]> {
         let mut nonce = [0u8; 24];
-        crate::internal::getrandom::fill(&mut nonce).expect("RNG failed");
-        nonce
+        crate::internal::getrandom::fill(&mut nonce)
+            .map_err(|e| CryptoError::Io(std::io::Error::other(e)))?;
+        Ok(nonce)
     }
 
     /// Generate a secure random key (256-bit / 32 bytes)
+    ///
+    /// # Panics
+    /// Panics if the OS RNG fails. Use [`Self::try_generate_key`] for a
+    /// fallible variant.
     pub fn generate_key() -> [u8; 32] {
+        Self::try_generate_key().expect("RNG failed")
+    }
+
+    /// Generate a secure random key (256-bit / 32 bytes), returning an
+    /// error on RNG failure.
+    pub fn try_generate_key() -> Result<[u8; 32]> {
         let mut key = [0u8; 32];
-        crate::internal::getrandom::fill(&mut key).expect("RNG failed");
-        key
+        crate::internal::getrandom::fill(&mut key)
+            .map_err(|e| CryptoError::Io(std::io::Error::other(e)))?;
+        Ok(key)
     }
 }
 

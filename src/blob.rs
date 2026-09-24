@@ -159,7 +159,7 @@ pub fn recover_seed(blob: &[u8], passphrase: &[u8], tier: MemoryTier) -> Result<
 /// Recover from a v1 (legacy) blob: `salt(16) ‖ nonce(24) ‖ ct+tag(48)`.
 fn recover_seed_v1(blob: &[u8], passphrase: &[u8], tier: MemoryTier) -> Result<[u8; SEED_LEN]> {
     if blob.len() < BLOB_LEN {
-        return Err(CryptoError::InvalidParameter("invalid blob format".into()));
+        return Err(CryptoError::Serialization("invalid blob format".into()));
     }
 
     let salt = &blob[..SALT_LEN];
@@ -184,7 +184,7 @@ fn recover_seed_v1(blob: &[u8], passphrase: &[u8], tier: MemoryTier) -> Result<[
 /// Recover from a v2 blob: `magic(4) ‖ version(1) ‖ tier(1) ‖ salt(16) ‖ nonce(24) ‖ ct+tag(48)`.
 fn recover_seed_v2(blob: &[u8], passphrase: &[u8]) -> Result<[u8; SEED_LEN]> {
     if blob.len() < BLOB_V2_LEN {
-        return Err(CryptoError::InvalidParameter(format!(
+        return Err(CryptoError::Serialization(format!(
             "v2 blob too short ({} bytes, need {BLOB_V2_LEN})",
             blob.len()
         )));
@@ -192,14 +192,14 @@ fn recover_seed_v2(blob: &[u8], passphrase: &[u8]) -> Result<[u8; SEED_LEN]> {
 
     let version = blob[4];
     if version != BLOB_VERSION {
-        return Err(CryptoError::InvalidParameter(format!(
+        return Err(CryptoError::Serialization(format!(
             "unsupported blob version: {version} (expected {BLOB_VERSION})"
         )));
     }
 
     let tier_byte = blob[5];
     let tier = tier_from_byte(tier_byte)
-        .ok_or_else(|| CryptoError::InvalidParameter(format!("invalid tier byte: {tier_byte}")))?;
+        .ok_or_else(|| CryptoError::Serialization(format!("invalid tier byte: {tier_byte}")))?;
 
     let salt = &blob[6..6 + SALT_LEN];
     let nonce_bytes = &blob[6 + SALT_LEN..6 + SALT_LEN + NONCE_LEN];

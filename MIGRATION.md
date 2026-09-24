@@ -2,6 +2,31 @@
 
 This document helps you move between major versions of `origin-crypto-sdk`.
 
+## 0.6.x → 0.7
+
+0.7.0 switched NTRU Prime and Falcon to NIST submission/FIPS 206 wire
+formats — **breaking at the byte level**, not just the API level.
+
+**Persisted key material:** sntrup761 public and private keys generated
+under 0.6.x can be re-encoded to the 0.7.x format with
+`pqc::ntru_prime::migrate` or `origin-crypto migrate ntru-pk|ntru-sk`.
+Falcon keys and all signatures cannot migrate — regenerate and re-sign.
+See [`docs/MIGRATION_0_6_TO_0_7.md`](docs/MIGRATION_0_6_TO_0_7.md) for the
+full table and caveats.
+
+**API notes:**
+
+- Wire sizes changed: sntrup761 pk 1218→1158, sk 1600→1763, ct 1047→1039;
+  Falcon-512 sig 666→809, Falcon-1024 sig 1280→1577. Any code with
+  hard-coded sizes must update.
+- `pqc::ntru_prime::kem_hashing::hash_session` now takes the full
+  ciphertext (post-KAT fix); session keys differ from pre-0.7.1-rc outputs
+  even for the same ciphertext.
+- `internal`/`primitives` internals are `pub(crate)`-sealed; use the
+  documented public surface (`fill_random` for OS randomness).
+- `BundleCache` is an ownable value type; the process-global cache API is
+  unchanged.
+
 ## 0.5.x → 0.6
 
 This minor cycle ships as three releases. The lead release (0.6.0) is a

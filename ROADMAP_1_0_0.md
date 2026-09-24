@@ -178,11 +178,13 @@ is the only remaining gate.
 **Goal:** Prepare and deliver the audit package, commission external review.
 
 #### 13.1 Audit package finalization
-- [ ] Update AUDIT_PACKAGE.md with v0.7.0 state
-- [ ] Include all test evidence (726 tests, KAT vectors, fuzz results)
-- [ ] Include threat model, security claims, and known limitations
-- [ ] Include dependency inventory and advisory dispositions
-- [ ] Include format registry and migration tooling
+- [x] Update AUDIT_PACKAGE.md with v0.7.1-rc.9 state
+- [x] Include all test evidence (455 lib + 269 integration, 100/100 NIST
+      KAT vectors, 8 fuzz targets, 6 timing tests)
+- [x] Include threat model, security claims, and known limitations
+- [x] Include dependency inventory and advisory dispositions
+- [x] Include format registry (FORMAT_REGISTRY.md) and migration tooling
+      (`docs/MIGRATION_0_6_TO_0_7.md` + `origin-crypto migrate`)
 
 #### 13.2 Commission independent cryptographic review
 - [ ] Engage external reviewer for NTRU Prime custom implementation

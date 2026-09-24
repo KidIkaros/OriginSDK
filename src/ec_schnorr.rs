@@ -76,6 +76,16 @@ fn scalar_from_repr(bytes: &[u8; 32]) -> Option<Scalar> {
     Scalar::from_repr(FieldBytes::from(*bytes)).into_option()
 }
 
+/// Parse a SEC1-encoded point, rejecting malformed encodings and the
+/// identity point. `err` selects the error variant for the field.
+fn parse_non_identity_point(bytes: &[u8], err: fn(String) -> SchnorrError) -> Result<AffinePoint> {
+    let point = AffinePoint::from_sec1_bytes(bytes).map_err(|_| err("Invalid encoding".into()))?;
+    if bool::from(point.is_identity()) {
+        return Err(err("Identity point".into()).into());
+    }
+    Ok(point)
+}
+
 /// Create an EC-Schnorr proof of knowledge of the discrete log of `public_key`.
 // CT note (Phase 12.1): scalar mul goes through k256's primeorder
 // implementation (fiat-crypto field arithmetic + complete formulas), which
@@ -112,11 +122,7 @@ pub fn prove(secret_key: &[u8; 32], public_key: &[u8], message: &[u8]) -> Result
 /// Verify an EC-Schnorr proof.
 pub fn verify(proof: &EcSchnorrProof, public_key: &[u8], message: &[u8]) -> Result<bool> {
     // Parse commitment point R
-    let r_affine = AffinePoint::from_sec1_bytes(&proof.commitment)
-        .map_err(|_| SchnorrError::InvalidCommitment("Invalid encoding".into()))?;
-    if bool::from(r_affine.is_identity()) {
-        return Err(SchnorrError::InvalidCommitment("Identity point".into()).into());
-    }
+    let r_affine = parse_non_identity_point(&proof.commitment, SchnorrError::InvalidCommitment)?;
 
     // Parse response scalar s
     let s_bytes: [u8; 32] = proof
@@ -128,11 +134,7 @@ pub fn verify(proof: &EcSchnorrProof, public_key: &[u8], message: &[u8]) -> Resu
         .ok_or_else(|| SchnorrError::InvalidResponse("Not a valid scalar".into()))?;
 
     // Parse public key P
-    let p_affine = AffinePoint::from_sec1_bytes(public_key)
-        .map_err(|_| SchnorrError::InvalidPublicKey("Invalid encoding".into()))?;
-    if bool::from(p_affine.is_identity()) {
-        return Err(SchnorrError::InvalidPublicKey("Identity point".into()).into());
-    }
+    let p_affine = parse_non_identity_point(public_key, SchnorrError::InvalidPublicKey)?;
 
     // Recompute challenge e = H(R || P || message)
     let challenge = compute_challenge(&proof.commitment, public_key, message);
@@ -186,6 +188,7 @@ pub fn generate_keypair(seed: &[u8; 32]) -> ([u8; 32], Vec<u8>) {
     let mut input = Vec::with_capacity(23 + 32);
     input.extend_from_slice(b"ec-schnorr-keygen-v2");
     input.extend_from_slice(seed);
+    let prefix_len = input.len();
     let mut counter = 0u32;
 
     let secret = loop {
@@ -194,7 +197,7 @@ pub fn generate_keypair(seed: &[u8; 32]) -> ([u8; 32], Vec<u8>) {
             break s;
         }
         counter += 1;
-        input.truncate(23 + 32);
+        input.truncate(prefix_len);
         input.extend_from_slice(&counter.to_le_bytes());
     };
 

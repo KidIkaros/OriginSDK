@@ -270,13 +270,13 @@ format registry. They are listed for completeness:
 |--------|-------|---------|---------|---------|-------------|-----------|---------------|
 | Seed Blob v2 | ✅ | ✅ | ✅ | ✅ (fixed) | ✅ | ✅ | ✅ |
 | Seed Blob v1 | ❌ | ❌ | ✅ | ✅ (fixed) | ✅ | ✅ | ✅ |
-| Recovery Phrase | N/A | implicit | ✅ | ✅ | ✅ | ✅ | ❌ |
-| NTRU Prime | N/A | N/A | ✅ | ✅ (types) | ✅ | ✅ | ❌ |
-| Falcon-1024 | N/A | N/A | ✅ | ✅ | ✅ | ✅ | ❌ |
-| Falcon-512 | N/A | N/A | ✅ | ✅ | ✅ | ✅ | ❌ |
-| Ed448 | N/A | N/A | ✅ | ✅ | ✅ | ✅ | ❌ |
-| Ed41417 | N/A | N/A | ✅ | ✅ | ✅ | ✅ | ❌ |
-| Reed-Solomon | N/A | N/A | ✅ | ❌ | ✅ | ✅ | ❌ |
+| Recovery Phrase | N/A | implicit | ✅ | ✅ | ✅ | ✅ | ✅ (format_golden_vectors) |
+| NTRU Prime | N/A | N/A | ✅ | ✅ (types) | ✅ | ✅ | ✅ (official NIST KATs, 100/100) |
+| Falcon-1024 | N/A | N/A | ✅ | ✅ | ✅ | ✅ | ✅ (format_golden_vectors) |
+| Falcon-512 | N/A | N/A | ✅ | ✅ | ✅ | ✅ | ✅ (format_golden_vectors) |
+| Ed448 | N/A | N/A | ✅ | ✅ | ✅ | ✅ | ✅ (format_golden_vectors) |
+| Ed41417 | N/A | N/A | ✅ | ✅ | ✅ | ✅ | ✅ (format_golden_vectors) |
+| Reed-Solomon | N/A | N/A | ✅ | ❌ | ✅ | ✅ | ✅ (format_golden_vectors) |
 | ORGN Envelope | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Identity Blob | ✅ (ORGB) | ✅ (ORGB) | ✅ | ✅ (1 MiB boundary) | ✅ | ✅ | ✅ (SDK v2) |
 | SEAL Envelope | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
@@ -290,5 +290,5 @@ format registry. They are listed for completeness:
 2. ~~Generate golden vectors for Seed Blob~~ ✅ Done (5 structural + round-trip + tamper tests)
 3. **Add maximum size limits** to ORGN envelope, identity blob, SEAL, OVLT, CombinedSignature
 4. **Add magic + version to Identity Blob** (breaking, requires migration)
-5. **Generate golden vectors** for remaining SDK-owned formats (recovery phrase, NTRU Prime, Falcon, Ed448, Reed-Solomon)
+5. ~~Generate golden vectors for SDK-owned formats~~ ✅ Done — recovery phrase, Falcon-512/1024, Ed448, Ed41417, Reed-Solomon in `tests/format_golden_vectors.rs`; NTRU Prime covered by the official NIST KATs (100/100 byte-exact)
 6. **Add cross-version read/write fixtures** for downstream formats

@@ -120,9 +120,8 @@ is the only remaining gate.
       PQC-submission format (header 0x02 vs FIPS 206 0x30/0x50), so a
       byte-level differential is impossible by construction. Our wrapper
       layer is covered by `tests/falcon_kat.rs` regression vectors
-- [ ] Hybrid KEM: N/A — the crate has no hybrid KEM construction
-      (hybrid signing only). Remove or rescope this item when a hybrid
-      KEM is actually designed
+- [x] Hybrid KEM: N/A — the crate has no hybrid KEM construction
+      (hybrid signing only). Rescope when a hybrid KEM is actually designed
 
 #### 12.4 NTRU Prime full KAT integration
 - [x] Port AES-256-CTR DRBG to match NIST KAT seed expansion

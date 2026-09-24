@@ -104,7 +104,7 @@
 //!
 //! See also `SECURITY.md` for the implementation source table.
 
-#![doc(html_root_url = "https://docs.rs/origin-crypto-sdk/0.4.0")]
+#![doc(html_root_url = "https://docs.rs/origin-crypto-sdk/0.7.1")]
 #![allow(clippy::result_large_err)]
 
 // ──────────────────────────────────────────────────────────────────────
@@ -168,7 +168,7 @@ pub mod drbg;
 /// RFC 6287 OCRA core — challenge → response.
 ///
 /// Implements RFC 6287 §7.1 with explicitly-named fields. No
-/// Suite-string parsing (deferred to 0.6.2). Uses
+/// suite-string parsing (not implemented; fields are explicit). Uses
 /// [`crate::drbg::otp::HashAlgorithm`] for the underlying HMAC family.
 pub mod ocra;
 
@@ -193,8 +193,11 @@ pub mod seed;
 /// Stealth address primitives (KDF + PoW).
 pub mod stealth;
 
-/// Error correction codes — internal utility.
-#[doc(hidden)]
+/// Error correction codes (Reed-Solomon over GF(2^8)).
+///
+/// **Experimental utility** — exposed for sharded backup/recovery
+/// compositions and exercised by the test suite. Wire format is not yet
+/// frozen; see the module docs for decoder limitations.
 pub mod error_correction;
 
 /// Low-level cryptographic primitives (hashes, ciphers, etc.).
@@ -204,19 +207,24 @@ pub mod error_correction;
 #[doc(hidden)]
 pub(crate) mod primitives;
 
-/// SipHash keyed hash — internal utility.
-#[doc(hidden)]
+/// SipHash-c-d compute-hardener used in the entropy pipeline.
+///
+/// **Experimental utility** — not a security boundary; see module docs.
 pub mod siphash;
 
-/// Compression utility — internal.
-#[doc(hidden)]
+/// DEFLATE compression helpers used by [`compressed`].
+///
+/// **Experimental utility** — most callers want [`compressed`]'s
+/// authenticated container instead of raw compression.
 pub mod compression;
 
 /// Atomic compress-then-encrypt / decrypt-then-decompress container.
 pub mod compressed;
 
-/// Blob storage — internal utility.
-#[doc(hidden)]
+/// Seed-blob storage format (v1/v2, tier-aware).
+///
+/// **Experimental** — see `FORMAT_REGISTRY.md` for the wire-format
+/// guarantees and version-detection contract.
 pub mod blob;
 
 // ──────────────────────────────────────────────────────────────────────

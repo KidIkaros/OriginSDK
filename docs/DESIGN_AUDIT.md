@@ -277,3 +277,36 @@ warnings. Its 10 unit tests went with it (448 lib tests now).
 Verification: 448 lib tests, `timing_tests` (4),
 `hybrid_golden_vectors` (15), `malformed_input` (20),
 `x25519_key_agreement` (5) — all green.
+
+### Step 7 — public API rationalization
+
+- **Promoted to documented API** (were `#[doc(hidden)] pub` but already
+  exercised through the public path by `integration_tests`,
+  `malformed_input`, `fuzz_like_testing`, `proptest_crypto` — sealing
+  would have destroyed test coverage, keeping them hidden was
+  public-but-undiscoverable): `error_correction`, `siphash`,
+  `compression`, `blob`. Each now carries an explicit
+  "experimental utility / format not frozen" doc note, and README's
+  API-stability section lists them under **Experimental**.
+- **Kept doc-hidden (compat surface):** `pub use primitives::poly1305`
+  and `primitives::tier` re-exports — the useful items (`MemoryTier`,
+  hashes, ciphers) are reachable via `prelude`; the module-path exports
+  stay hidden so the canonical surface is unambiguous. `ntru_prime::rq`
+  scalar helpers remain `#[doc(hidden)]` under `test-utils` — correct
+  as designed (feature-gated benchmarking seam).
+- **Stale docs fixed:** `html_root_url` 0.4.0 → 0.7.1; OCRA module doc
+  no longer references the passed "0.6.2" milestone; README module map
+  updated (deleted `mmr`, un-hidden modules listed, `internal` removed —
+  it is now `pub(crate)` and unreachable); README version string
+  0.7.1-rc.4 → 0.7.1-rc.9.
+- **`try_*` convention:** normalized in Step 4 — every panicking
+  RNG-dependent function now delegates to a documented `try_*` variant.
+  `ml_kem::encapsulate` delegates RNG to the upstream `ml-kem` crate
+  (feature-gated); documented boundary.
+- **Prelude audit:** contents are common types only (errors, AEAD, key
+  agreement, KDF, MAC, hashes, DRBG, seed, compression, hybrid signing,
+  OCRA) — conforms to the "common types" rule; exact set is already
+  documented as Unstable in README.
+
+Verification: 448 lib tests green; `cargo doc --no-deps` clean except
+pre-existing `-W unsafe-code` warnings.

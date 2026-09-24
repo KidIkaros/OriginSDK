@@ -149,25 +149,27 @@ origin_crypto_sdk::
   drbg::                -- ChaCha20 DRBG (auto-reseed at 16 MB)
     otp::               -- One-time pad (HOTP/TOTP, RFC 4226/6238)
   ocra::                -- OCRA challenge-response (RFC 6287 core)
-  entropy::            -- Entropy quality analysis (internal)
+  entropy::             -- Entropy quality analysis
   seed::                -- Hierarchical seed derivation
     gen::               -- Multi-hash seed generation
-  blob::                -- Encrypted seed at rest (internal)
-  mmr::                 -- Merkle Mountain Range (internal)
+  blob::                -- Seed-blob storage format (v1/v2, tier-aware)
+  error_correction::    -- Reed-Solomon over GF(2^8) (experimental utility)
+  compression::         -- DEFLATE helpers used by `compressed` (experimental utility)
+  compressed::          -- Atomic compress-then-encrypt container
+  siphash::             -- SipHash-c-d compute-hardener (experimental utility)
   stealth::             -- Stealth address primitives
-    kdf::                -- Stealth master/child key derivation
-    pow::                -- Hashcash PoW for enumeration rate-limiting
-recovery::           -- Unicode recovery phrase codec (NOT BIP-39 compatible)
-    unicode_cipher::  -- Encode/decode Unicode-phrase backups
+    kdf::               -- Stealth master/child key derivation
+    pow::               -- Hashcash PoW for enumeration rate-limiting
+  recovery::            -- Unicode recovery phrase codec (NOT BIP-39 compatible)
+    unicode_cipher::    -- Encode/decode Unicode-phrase backups
   ec_schnorr::          -- secp256k1 Schnorr (native, zero deps)
   prelude::             -- Common re-exports
   test_utils::          -- Deterministic test helpers (feature = "test-utils")
   types::               -- Zeroizing byte array newtypes (XNonce, CNonce, Seed, etc.)
   error::               -- CryptoError, Result alias
-  internal::            -- Internals (hidden, not for external use)
 ```
 
-> **Note**: Modules marked `(internal)` are `#[doc(hidden)]` — they compile and work but don't appear in public docs. Use at your own risk.
+> **Note**: Utility modules marked `(experimental utility)` are public API but their wire formats and surface are not yet frozen — see each module's docs. The `internal` and `primitives` implementation layers are crate-private and unreachable from outside the crate; see `docs/ARCHITECTURE.md` for the layer rules.
 
 ## Usage: Two Layers for Signing
 
@@ -216,7 +218,7 @@ Apache-2.0 — see [LICENSE](LICENSE).
 
 ## API Stability
 
-**Pre-1.0 notice**: This crate is at version 0.7.1-rc.4. Per [Cargo's SemVer guidance](https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html#pre-1-0), anything below 1.0 may contain breaking changes in minor releases.
+**Pre-1.0 notice**: This crate is at version 0.7.1-rc.9. Per [Cargo's SemVer guidance](https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html#pre-1-0), anything below 1.0 may contain breaking changes in minor releases.
 
 **Stable** (breaking changes will require a major version bump):
 - `CryptoError` variants and their `Display` output
@@ -247,6 +249,8 @@ Apache-2.0 — see [LICENSE](LICENSE).
 - `signing::hybrid` — hybrid compositions (novel, needs formal analysis)
 - `blob` — custom persistence format
 - `ec_schnorr` — custom secp256k1 arithmetic
+- `error_correction` — custom Reed-Solomon (bounded-distance decoder; see module docs)
+- `siphash`, `compression` — internal utilities exposed for testing
 
 **Frozen** (will not change):
 - Wire formats of `HybridSignatureOutput` byte representations

@@ -69,7 +69,9 @@
 //!   curated wordlist for the new matching policy.
 
 use crate::error::{CryptoError, Result};
-use crate::recovery::alphabet::{validate_input_chars, validate_unique_codepoints};
+use crate::recovery::alphabet::{
+    validate_input_chars, validate_unique_codepoints, MAX_ALPHABET_LEN,
+};
 use sha3::{Digest, Sha3_256};
 use std::sync::LazyLock;
 
@@ -461,9 +463,9 @@ pub fn encode_phrase_custom(
             alphabet.len()
         )));
     }
-    if !(16..=4096).contains(&alphabet.len()) {
+    if !(16..=MAX_ALPHABET_LEN).contains(&alphabet.len()) {
         return Err(CryptoError::InvalidParameter(format!(
-            "custom alphabet size {} is outside the supported range 16..=4096",
+            "custom alphabet size {} is outside the supported range 16..={MAX_ALPHABET_LEN}",
             alphabet.len()
         )));
     }

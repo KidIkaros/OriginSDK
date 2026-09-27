@@ -18,7 +18,7 @@
 //! rather than a bare `Vec<u8>`.
 
 use crate::error::{CryptoError, Result};
-use crate::internal::zeroize::secure_zero_memory;
+use crate::internal::zeroize::Zeroize;
 use std::fmt;
 use subtle::ConstantTimeEq;
 
@@ -100,7 +100,7 @@ impl fmt::Debug for Phrase {
 
 impl Drop for Phrase {
     fn drop(&mut self) {
-        zeroize_chars(&mut self.symbols);
+        self.symbols.zeroize();
     }
 }
 
@@ -141,7 +141,7 @@ impl fmt::Debug for SecretBytes {
 
 impl Drop for SecretBytes {
     fn drop(&mut self) {
-        secure_zero_memory(&mut self.bytes);
+        self.bytes.zeroize();
     }
 }
 
@@ -152,26 +152,6 @@ impl PartialEq for SecretBytes {
 }
 
 impl Eq for SecretBytes {}
-
-/// Overwrite a codepoint buffer in place.
-///
-/// `char` is 4 bytes and `U+0000` is a valid scalar value, so zeroing the
-/// backing bytes leaves the buffer in a representable state.
-fn zeroize_chars(symbols: &mut [char]) {
-    if symbols.is_empty() {
-        return;
-    }
-    // SAFETY: `char` is a plain 4-byte scalar; reinterpreting the initialized
-    // slice as bytes for the duration of the call is sound, and the length is
-    // exact.
-    let bytes = unsafe {
-        core::slice::from_raw_parts_mut(
-            symbols.as_mut_ptr() as *mut u8,
-            core::mem::size_of_val(symbols),
-        )
-    };
-    secure_zero_memory(bytes);
-}
 
 #[cfg(test)]
 mod tests {
@@ -237,7 +217,7 @@ mod tests {
         // The buffer must be scrubbed before the allocation is released; a
         // copy taken beforehand proves the mechanism, not the allocation.
         let mut symbols = vec!['ᚠ', 'ᚢ', 'ᚦ'];
-        zeroize_chars(&mut symbols);
+        symbols.zeroize();
         assert!(symbols.iter().all(|&c| c == '\u{0}'), "{symbols:?}");
     }
 }

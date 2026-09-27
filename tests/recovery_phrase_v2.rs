@@ -84,7 +84,9 @@ fn runic_recovery_method_round_trips() {
 fn alphabets_produce_distinct_phrases() {
     let entropy = [0x11u8; 32];
     let runic = format_for(0x16A0, 24, 32).encode(&entropy).expect("encode");
-    let hanzi = format_for(0x4E00, 256, 32).encode(&entropy).expect("encode");
+    let hanzi = format_for(0x4E00, 256, 32)
+        .encode(&entropy)
+        .expect("encode");
     assert_ne!(runic.to_text(), hanzi.to_text());
     assert!(format_for(0x4E00, 24, 32).decode(&hanzi).is_err());
     assert!(format_for(0x4E00, 256, 32).decode(&runic).is_err());

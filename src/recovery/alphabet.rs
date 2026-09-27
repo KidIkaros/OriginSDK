@@ -9,7 +9,9 @@
 //!
 //! This module also owns the codepoint policy. The v1 codec
 //! ([`crate::recovery::unicode_cipher`]) uses the same `validate_*` helpers,
-//! so there is one policy rather than one per codec.
+//! so there is one policy rather than one per codec. The UNICODE tooling
+//! crate mirrors this policy in its `recovery_safe` predicate for offline
+//! alphabet authoring; the two lists must stay in step.
 //!
 //! Nothing here touches the filesystem or the network.
 
@@ -185,6 +187,13 @@ pub(crate) fn reject_class(c: char) -> Option<&'static str> {
     if c.is_control() {
         return Some("CONTROL");
     }
+    // Unicode White_Space that is not a control: a whitespace symbol cannot
+    // survive the canonical text form, because phrase parsing drops
+    // whitespace between symbols — it would silently vanish from its own
+    // phrase and the backup would never decode.
+    if c.is_whitespace() {
+        return Some("WHITESPACE");
+    }
     None
 }
 
@@ -200,11 +209,9 @@ pub(crate) fn reject_class(c: char) -> Option<&'static str> {
 /// non-Latin default wordlist the NFKC partner is absent, so a manual
 /// typing collision is not realizable.
 pub(crate) fn reject_non_canonical(c: char) -> Option<&'static str> {
-    let mut multi = 0usize;
-    for _x in c.nfkc() {
-        multi += 1;
-    }
-    if multi != 1 {
+    // nfkc() yields at least one codepoint, so a second element means the
+    // canonical form is multi-codepoint.
+    if c.nfkc().nth(1).is_some() {
         Some("NFKC canonical form has multiple codepoints (silent malleability vector)")
     } else {
         None
@@ -311,6 +318,29 @@ mod tests {
                     codepoint as u32
                 ),
             }
+        }
+    }
+
+    #[test]
+    fn rejects_whitespace_symbols() {
+        // Phrase::parse drops whitespace between symbols, so a whitespace
+        // codepoint would silently vanish from its own canonical text form.
+        // None of these is a control, and all sit inside allocated blocks.
+        for cp in [
+            0x0020u32, 0x00A0, 0x1680, 0x2007, 0x2028, 0x2029, 0x202F, 0x205F, 0x3000,
+        ] {
+            let mut symbols = vec!['a', 'b'];
+            symbols[1] = char::from_u32(cp).expect("valid scalar");
+            assert!(
+                matches!(
+                    RecoveryAlphabet::new(&symbols),
+                    Err(CryptoError::RejectedCodepointClass {
+                        class: "WHITESPACE",
+                        ..
+                    })
+                ),
+                "U+{cp:04X} is White_Space and must be rejected"
+            );
         }
     }
 

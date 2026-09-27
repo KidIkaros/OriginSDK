@@ -74,6 +74,24 @@ impl<const N: usize> Zeroize for [u32; N] {
     }
 }
 
+// `char` is a 4-byte scalar and U+0000 is a valid value, so fully zeroing the
+// backing bytes leaves every element in a representable state.
+impl Zeroize for [char] {
+    fn zeroize(&mut self) {
+        let ptr = self.as_mut_ptr() as *mut u8;
+        let bytes = unsafe {
+            core::slice::from_raw_parts_mut(ptr, self.len() * core::mem::size_of::<char>())
+        };
+        secure_zero_memory(bytes);
+    }
+}
+
+impl Zeroize for Vec<char> {
+    fn zeroize(&mut self) {
+        self.as_mut_slice().zeroize();
+    }
+}
+
 impl Zeroize for String {
     fn zeroize(&mut self) {
         unsafe {

@@ -24,7 +24,7 @@
 //! ```
 
 use p256::ecdsa::{signature::Signer, signature::Verifier, Signature, SigningKey, VerifyingKey};
-use p256::pkcs8::DecodePrivateKey;
+use p256::pkcs8::{DecodePrivateKey, EncodePrivateKey};
 
 use crate::error::{CryptoError, Result};
 
@@ -104,6 +104,17 @@ impl EcdsaP256Signer {
     /// The 32-byte secret scalar.
     pub fn secret_key(&self) -> [u8; 32] {
         self.key.to_bytes().into()
+    }
+
+    /// Export as PKCS#8 DER — the storage form password managers and
+    /// authenticator credential stores use for P-256 keys.
+    pub fn to_pkcs8_der(&self) -> Result<Vec<u8>> {
+        let secret = p256::SecretKey::from_slice(&self.key.to_bytes())
+            .map_err(|e| CryptoError::InvalidKey(format!("invalid scalar: {e}")))?;
+        let doc = EncodePrivateKey::to_pkcs8_der(&secret).map_err(|e| {
+            CryptoError::InvalidKey(format!("could not encode PKCS8: {e}"))
+        })?;
+        Ok(doc.as_bytes().to_vec())
     }
 }
 

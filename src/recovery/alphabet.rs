@@ -9,9 +9,13 @@
 //!
 //! This module also owns the codepoint policy. The v1 codec
 //! ([`crate::recovery::unicode_cipher`]) uses the same `validate_*` helpers,
-//! so there is one policy rather than one per codec. The UNICODE tooling
-//! crate mirrors this policy in its `recovery_safe` predicate for offline
-//! alphabet authoring; the two lists must stay in step.
+//! so there is one policy rather than one per codec.
+//!
+//! The UNICODE tooling crate carries its own offline `recovery_safe` check, for
+//! authoring alphabets without this crate. That check is independent and is
+//! deliberately *not* kept in lockstep: this policy is authoritative, so a pack
+//! UNICODE accepts may still be refused here, and the SDK's verdict is the one
+//! that governs a phrase.
 //!
 //! Nothing here touches the filesystem or the network.
 
@@ -162,8 +166,8 @@ impl RecoveryAlphabet {
     ///
     /// The same policy [`RecoveryAlphabet::new`] enforces, exposed so an
     /// authoring tool can report the offending symbol rather than only an
-    /// error. A sibling tool (UNICODE) mirrors this predicate; the SDK
-    /// remains authoritative.
+    /// error. This is the authoritative predicate: the sibling UNICODE tool's
+    /// offline check is independent and may lag.
     pub fn is_safe_codepoint(codepoint: char) -> bool {
         validate_codepoint(codepoint).is_ok()
     }

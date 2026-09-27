@@ -96,7 +96,8 @@ versioning policy, and tracks validation coverage.
   reports the phrase length an alphabet would need at a supported width without
   enforcing the 64-symbol limit that `new` keeps enforcing.
   `SUPPORTED_ENTROPY_BYTES` lists the accepted widths. A sibling layout tool
-  (UNICODE) mirrors this policy for offline authoring; the SDK is authoritative.
+  (UNICODE) has its own offline check for authoring without this crate; it is
+  independent and not kept in lockstep, and this policy is authoritative.
 - **Ownership:** SDK-owned
 
 ### 3. NTRU Prime Key/Ciphertext (`pqc/ntru_prime/`)

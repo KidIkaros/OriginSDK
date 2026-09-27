@@ -37,8 +37,8 @@
 
 use crate::error::{CryptoError, Result};
 use crate::recovery::alphabet::{validate_input_chars, RecoveryAlphabet};
+use crate::recovery::bits::{extract_bits_msb, insert_bits_msb};
 use crate::recovery::phrase::{Phrase, SecretBytes};
-use crate::recovery::unicode_cipher::{extract_bits_msb, insert_bits_msb};
 use sha3::{Digest, Sha3_256};
 
 /// Bound into the checksum so a phrase from another format version, or from

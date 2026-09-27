@@ -22,6 +22,8 @@
 //!
 //! If you need BIP-39 interop, use the upstream `bip39` crate.
 
+mod bits;
+
 pub mod alphabet;
 pub mod format;
 pub mod phrase;

@@ -2,6 +2,46 @@
 
 All notable changes to origin-crypto-sdk will be documented in this file.
 
+## [Unreleased]
+
+_Alphabet-agnostic recovery phrases (format v2): a project can define its own
+recovery method. v1 decoding is unchanged._
+
+### Added
+- **`recovery::alphabet::RecoveryAlphabet`** — a validated alphabet of 2..=4096
+  distinct codepoints with a stable fingerprint. It now owns the codepoint
+  policy that v1 shares, so there is one policy rather than one per codec.
+- **`recovery::format::RecoveryFormat`** — alphabet + entropy width, with
+  `encode`/`decode`. Any alphabet size: powers of two use `log2(n)`-bit groups,
+  everything else base-`n` digits of the message integer. Both are canonical —
+  decoding rejects a symbol string whose value exceeds the message range, so one
+  seed has exactly one phrase.
+- **`recovery::phrase::{Phrase, SecretBytes}`** — canonical text form
+  (space-separated output; concatenated, whitespace-separated, multiline, and
+  BOM-prefixed input all parse), redacting `Debug`, zeroize on drop.
+- **`tests/recovery_phrase_v2.rs`** — golden vectors for four alphabets,
+  including 24- and 33-symbol alphabets that v1 cannot express, plus a test that
+  a v1 phrase is not a valid v2 phrase.
+
+### Changed
+- **The v2 checksum is one bit per byte of entropy** (16 bits at 128-bit
+  entropy, 32 at 256-bit) rather than v1's entropy/32, and the format version is
+  bound into the checksum domain. A phrase decoded against the wrong alphabet is
+  rejected with probability `1 - 2^-checksum_bits` instead of the v1 8-bit
+  checksum's 1 in 256.
+
+### Fixed
+- **`UnicodeWordlist::new`** now rejects duplicate codepoints and codepoints the
+  decoder itself rejects, so a constructed list cannot produce a phrase that
+  fails to decode.
+- **`encode_phrase_custom`** now enforces its documented 16..=4096 alphabet range
+  and rejects duplicate symbols.
+- **The codepoint policy now rejects more invisible classes**: combining marks in
+  the ranges dedicated to them (U+0483..=U+0489, U+1AB0..=U+1AFF,
+  U+1DC0..=U+1DFF, U+20D0..=U+20FF, U+FE20..=U+FE2F), the variation-selector
+  supplement, soft hyphen, and the tag characters. The default wordlist is
+  unaffected.
+
 ## [0.7.1-rc.10] — 2026-09-24
 
 _Design-audit remediation, NIST KAT execution with real spec fixes, and replacement

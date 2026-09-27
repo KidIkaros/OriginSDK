@@ -161,6 +161,27 @@ pub(crate) fn reject_class(c: char) -> Option<&'static str> {
     if cp == 0x061C {
         return Some("BIDI_MARK");
     }
+    // Combining marks outside U+0300..=U+036F. Only the ranges that are
+    // *dedicated* to combining marks are listed: mixed script blocks (Tibetan,
+    // Devanagari, Arabic, ...) also carry them, and separating those needs
+    // general-category data this crate does not carry. A codepoint that slips
+    // through here still has to be a member of the caller's alphabet.
+    if (0x0483..=0x0489).contains(&cp)
+        || (0x1AB0..=0x1AFF).contains(&cp)
+        || (0x1DC0..=0x1DFF).contains(&cp)
+        || (0x20D0..=0x20FF).contains(&cp)
+        || (0xFE20..=0xFE2F).contains(&cp)
+    {
+        return Some("COMBINING_MARK");
+    }
+    // Variation Selectors Supplement: invisible, same channel as U+FE00..=U+FE0F.
+    if (0xE0100..=0xE01EF).contains(&cp) {
+        return Some("VARIATION_SELECTOR");
+    }
+    // Soft hyphen and the tag characters render as nothing.
+    if cp == 0x00AD || (0xE0000..=0xE007F).contains(&cp) {
+        return Some("DEFAULT_IGNORABLE");
+    }
     if c.is_control() {
         return Some("CONTROL");
     }
@@ -231,4 +252,111 @@ pub(crate) fn validate_unique_codepoints(chars: &[char], owner: &str) -> Result<
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn alphabet(start: u32, len: usize) -> RecoveryAlphabet {
+        let symbols: Vec<char> = (0..len as u32)
+            .map(|i| char::from_u32(start + i).expect("valid scalar"))
+            .collect();
+        RecoveryAlphabet::new(&symbols).expect("valid alphabet")
+    }
+
+    #[test]
+    fn rejects_size_bounds() {
+        assert!(RecoveryAlphabet::new(&['a']).is_err());
+        let huge: Vec<char> = (0..(MAX_ALPHABET_LEN + 1) as u32)
+            .map(|i| char::from_u32(0x4E00 + i).expect("valid scalar"))
+            .collect();
+        assert!(RecoveryAlphabet::new(&huge).is_err());
+        assert!(RecoveryAlphabet::new(&['a', 'b']).is_ok());
+    }
+
+    #[test]
+    fn rejects_duplicates() {
+        assert!(matches!(
+            RecoveryAlphabet::new(&['a', 'b', 'a']),
+            Err(CryptoError::InvalidParameter(_))
+        ));
+    }
+
+    #[test]
+    fn rejects_invisible_and_control_codepoints() {
+        // Each of these sits inside an *allocated* block, so a check that only
+        // consults block coverage accepts them.
+        let cases: [(char, &str); 10] = [
+            ('\u{0}', "CONTROL"),
+            ('\u{9}', "CONTROL"),
+            ('\u{7F}', "CONTROL"),
+            ('\u{85}', "CONTROL"),
+            ('\u{200D}', "ZWJ"),
+            ('\u{200E}', "BIDI_MARK"),
+            ('\u{FEFF}', "DEFAULT_IGNORABLE"),
+            ('\u{00AD}', "DEFAULT_IGNORABLE"),
+            ('\u{0301}', "COMBINING_MARK"),
+            ('\u{E0100}', "VARIATION_SELECTOR"),
+        ];
+        for (codepoint, expected) in cases {
+            let mut symbols = vec!['a', 'b'];
+            symbols[1] = codepoint;
+            match RecoveryAlphabet::new(&symbols) {
+                Err(CryptoError::RejectedCodepointClass { class, .. }) => {
+                    assert_eq!(class, expected, "U+{:04X}", codepoint as u32);
+                }
+                other => panic!(
+                    "U+{:04X} should be rejected, got {other:?}",
+                    codepoint as u32
+                ),
+            }
+        }
+    }
+
+    #[test]
+    fn rejects_dedicated_combining_ranges() {
+        for cp in [0x0483u32, 0x1AB0, 0x1DC0, 0x20D0, 0xFE20] {
+            let mut symbols = vec!['a', 'b'];
+            symbols[1] = char::from_u32(cp).expect("valid scalar");
+            assert!(
+                matches!(
+                    RecoveryAlphabet::new(&symbols),
+                    Err(CryptoError::RejectedCodepointClass {
+                        class: "COMBINING_MARK",
+                        ..
+                    })
+                ),
+                "U+{cp:04X} should be a combining mark"
+            );
+        }
+    }
+
+    #[test]
+    fn accepts_ordinary_symbols() {
+        let alphabet = alphabet(0x16A0, 96);
+        assert_eq!(alphabet.len(), 96);
+        assert_eq!(alphabet.get(0), Some('\u{16A0}'));
+        assert_eq!(alphabet.index_of('\u{16A0}'), Some(0));
+        assert_eq!(alphabet.index_of('\u{16FF}'), Some(95));
+        assert_eq!(alphabet.index_of('Z'), None);
+        assert!(alphabet.contains('\u{16A5}'));
+        assert!(!alphabet.is_empty());
+        assert_eq!(alphabet.as_slice().len(), 96);
+    }
+
+    #[test]
+    fn fingerprint_is_stable_and_order_sensitive() {
+        let forward = alphabet(0x16A0, 24);
+        let again = alphabet(0x16A0, 24);
+        assert_eq!(forward.fingerprint(), again.fingerprint());
+
+        let mut reversed: Vec<char> = forward.as_slice().to_vec();
+        reversed.reverse();
+        let reversed = RecoveryAlphabet::new(&reversed).unwrap();
+        assert_ne!(forward.fingerprint(), reversed.fingerprint());
+
+        // Length participates, so a prefix is not the same alphabet.
+        assert_ne!(forward.fingerprint(), alphabet(0x16A0, 23).fingerprint());
+    }
 }

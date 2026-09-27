@@ -67,7 +67,29 @@ versioning policy, and tracks validation coverage.
 - **Checksum:** Truncated SHA-3-256 (4 bits / 8 bits)
 - **Validation:** Extensive — word count, entropy length, wordlist size,
   codepoint classes, NFKC normalization
-- **Version:** Implicit (phrase length determines format)
+- **Version:** Implicit (phrase length determines format). **Frozen** — v1
+  decoding is permanent because phrases are seed backups; new phrases use v2.
+- **Ownership:** SDK-owned
+
+### 2b. Recovery Phrase v2 (`recovery/{alphabet,format,phrase}.rs`)
+
+- **Format:** `entropy ‖ checksum` written as a fixed number of symbols over a
+  caller-supplied alphabet
+- **Alphabet:** any size 2..=4096, validated for uniqueness and codepoint
+  policy; not restricted to powers of two
+- **Entropy:** 16, 24, or 32 bytes
+- **Checksum:** truncated SHA-3-256 over `"origin-recovery-phrase-v2" ‖ entropy`,
+  one bit per byte of entropy (16/24/32 bits), versus v1's entropy/32
+- **Symbol encoding:** `log2(n)`-bit groups for a power-of-two alphabet, base-`n`
+  digits otherwise. Both are canonical: a symbol string whose value exceeds the
+  message range is rejected, so one seed has exactly one phrase.
+- **Version:** explicit — bound into the checksum domain and described by a
+  caller-supplied `RecoveryFormat`; not inferred from symbol count
+- **Text form:** canonical space-separated output; parsing accepts concatenated,
+  whitespace-separated, multiline, and BOM-prefixed input
+- **Validation:** symbol count, alphabet membership, canonical form, codepoint
+  policy; wrong-alphabet phrases fail the checksum with probability
+  `1 - 2^-checksum_bits`
 - **Ownership:** SDK-owned
 
 ### 3. NTRU Prime Key/Ciphertext (`pqc/ntru_prime/`)
@@ -306,3 +328,10 @@ format registry. They are listed for completeness:
    is the pinned-v1 fixture plus the unknown-version rejection paths
    (dedicated test for ORGN; parse-time rejection for SEAL); when a v2
    ships, the v1 fixture becomes the backward-compat oracle.
+7. ~~Make the recovery phrase alphabet-agnostic~~ ✅ Done — format v2
+   (entry 2b). v1's "implicit version" was workable only while there was one
+   blessed 2048-codepoint list: the moment an alphabet is user-supplied,
+   symbol count implies nothing, so the format descriptor became explicit and
+   the version was bound into the checksum. v1 stays decodable, and
+   `tests/recovery_phrase_v2.rs` pins both. The golden vectors were reproduced
+   by an independent Python implementation of the format.

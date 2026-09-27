@@ -174,9 +174,11 @@ pub mod ocra;
 
 // ── Recovery phrases ──
 ///
-/// BIP-39-shaped Unicode recovery phrases. NOT BIP-39-compatible —
-/// uses a curated Unicode codepoint wordlist and SHA-3-256 (not
-/// SHA-256). For interop with other wallets, use the `bip39` crate.
+/// Unicode recovery phrases. Two codecs: the frozen v1 codec
+/// (BIP-39-shaped, fixed 2048-codepoint wordlist) and the
+/// alphabet-agnostic v2 for user-defined recovery methods. NOT
+/// BIP-39-compatible — codepoints and SHA-3-256, not words and
+/// SHA-256. For interop with other wallets, use the `bip39` crate.
 pub mod recovery;
 
 // ── Utility modules ──

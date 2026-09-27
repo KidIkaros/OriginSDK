@@ -40,7 +40,7 @@ const ALPHABET_DOMAIN: &[u8] = b"origin-recovery-alphabet-v1";
 ///
 /// Construction enforces the whole policy: size bounds, uniqueness, and the
 /// codepoint classes that break text pipelines or enable silent mismatches
-/// (see [`validate_codepoint`]).
+/// (see `validate_codepoint`).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RecoveryAlphabet {
     entries: Box<[char]>,
@@ -99,12 +99,13 @@ impl RecoveryAlphabet {
     /// usable symbols remain, or more than [`MAX_ALPHABET_LEN`] do.
     pub fn from_pack(text: &str) -> Result<(Self, Vec<char>)> {
         let mut usable = Vec::new();
+        let mut seen = std::collections::HashSet::new();
         let mut skipped = Vec::new();
         for codepoint in text.chars() {
             if codepoint.is_whitespace() || codepoint == ',' {
                 continue;
             }
-            if usable.contains(&codepoint) || !Self::is_safe_codepoint(codepoint) {
+            if !seen.insert(codepoint) || !Self::is_safe_codepoint(codepoint) {
                 skipped.push(codepoint);
                 continue;
             }

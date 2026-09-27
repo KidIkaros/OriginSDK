@@ -4,7 +4,7 @@
 //!
 //! This module exposes Ed25519 signing with a clean seed-based API.
 //! For new applications that need quantum resistance, use
-//! [`super::hybrid::HybridSigningKeyBundle`] instead — it pairs Ed25519
+//! [`crate::signing::hybrid::HybridSigningKeyBundle`] instead — it pairs Ed25519
 //! with Falcon-1024 so the signature remains unforgeable even if Ed25519
 //! is broken.
 //!
@@ -23,7 +23,7 @@ use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
 /// Ed25519 signer with a clean seed-based API.
 ///
 /// Pure Ed25519 — no post-quantum insurance. For new applications that
-/// need quantum resistance, prefer [`super::hybrid::HybridSigningKeyBundle`].
+/// need quantum resistance, prefer [`crate::signing::hybrid::HybridSigningKeyBundle`].
 #[derive(Clone)]
 pub struct Ed25519Signer {
     key: SigningKey,

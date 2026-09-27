@@ -47,8 +47,9 @@
 //! * **Default wordlist**: 2048 codepoints curated by
 //!   `scripts/generate_wordlist.py`. Power-of-2 sized so 11-bit
 //!   indexing works.
-//! * **Custom alphabets** must be power-of-2 sized in v0.1;
-//!   arbitrary sizes require a BigInt library and are deferred to v0.2.
+//! * **Custom alphabets** in this codec must be power-of-2 sized.
+//!   For arbitrary alphabets (any size, with checksum and decode), use
+//!   [`crate::recovery::format::RecoveryFormat`] instead.
 //! * **Truncated checksum is short**: 4 bits for 12-word, 8 bits for
 //!   24-word. Catches random typos with probability 1/16 and 1/256
 //!   respectively but is NOT a substitute for verifying the full
@@ -61,12 +62,13 @@
 //!   - normalization pipelines (NFC, NFD, NFKC, NFKD),
 //!   - QR encoders or IME composers that substitute visually-equivalent
 //!     glyphs (e.g. `ⓕ` U+24D5 ↔ `f` U+0066).
-//!   Round-tripping critically assumes the codepoints in the encoded
-//!   phrase are bit-for-bit identical to those the encoder selected.
-//!   If you need NFKC-stable matching (a looser but more permissive
-//!   semantic), implement it in a separate decoder wrapper — DO NOT
-//!   add normalization to this module without also regenerating the
-//!   curated wordlist for the new matching policy.
+//!
+//! Round-tripping critically assumes the codepoints in the encoded
+//! phrase are bit-for-bit identical to those the encoder selected.
+//! If you need NFKC-stable matching (a looser but more permissive
+//! semantic), implement it in a separate decoder wrapper — DO NOT
+//! add normalization to this module without also regenerating the
+//! curated wordlist for the new matching policy.
 
 use crate::error::{CryptoError, Result};
 use crate::recovery::alphabet::{
@@ -127,9 +129,9 @@ const DEFAULT_WORDLIST_LEN: usize = 2048;
 /// recovery phrase alphabet.
 ///
 /// The default wordlist ships with the SDK and is curated by
-/// `scripts/generate_wordlist.py`. Custom lists can be supplied for
-/// power-of-2 sized alphabets in v0.1 (see
-/// [`encode_phrase_custom`]).
+/// `scripts/generate_wordlist.py`. Custom v1 lists are power-of-2 sized;
+/// for user-defined alphabets of *any* size, use
+/// [`crate::recovery::format::RecoveryFormat`].
 #[derive(Debug, Clone)]
 pub struct UnicodeWordlist {
     entries: Box<[char]>,
@@ -140,8 +142,8 @@ impl UnicodeWordlist {
     ///
     /// # Errors
     /// * `InvalidParameter` if `entries` is empty.
-    /// * `InvalidParameter` if `entries.len()` is not a power of 2
-    ///   (only power-of-2 sizes are supported in v0.1).
+    /// * `InvalidParameter` if `entries.len()` is not a power of 2 —
+    ///   this codec packs whole `log2(n)` bits per symbol.
     /// * `InvalidParameter` if `entries` contains duplicates.
     pub fn new(entries: &[char]) -> Result<Self> {
         if entries.is_empty() {
@@ -152,7 +154,7 @@ impl UnicodeWordlist {
         if !entries.len().is_power_of_two() {
             return Err(CryptoError::InvalidParameter(format!(
                 "wordlist size {} is not a power of 2 \
-                 (v0.1 supports 16, 32, 64, 128, 256, 512, 1024, 2048, 4096)",
+                 (supported sizes: 16, 32, 64, 128, 256, 512, 1024, 2048, 4096)",
                 entries.len()
             )));
         }
@@ -207,6 +209,10 @@ impl UnicodeWordlist {
 ///
 /// Parsed from `default_wordlist.txt` at first use (cached for the
 /// process lifetime via [`std::sync::LazyLock`]).
+// Panicking on an invalid embedded wordlist is deliberate: the SDK is
+// broken if the bundled asset fails its own policy, and LazyLock init
+// cannot return a Result.
+#[allow(clippy::expect_used)]
 pub static DEFAULT_WORDLIST: LazyLock<UnicodeWordlist> = LazyLock::new(|| {
     let chars: Vec<char> = DEFAULT_WORDLIST_STR.chars().collect();
     assert_eq!(
@@ -276,7 +282,7 @@ pub fn encode_phrase(
 
     // Build combined bit-stream: entropy || checksum (top bits first).
     let mut combined = entropy.to_vec();
-    let cs_bytes = (len.checksum_bits() + 7) / 8;
+    let cs_bytes = len.checksum_bits().div_ceil(8);
     combined.extend_from_slice(&checksum_full[..cs_bytes]);
 
     let n_words = len.words();
@@ -338,7 +344,7 @@ pub fn decode_phrase(phrase: &[char], list: &UnicodeWordlist) -> Result<Vec<u8>>
         })? as u32;
         insert_bits_msb(&mut bits, idx, i * 11, 11);
     }
-    debug_assert!(bits.len() >= (total_bits + 7) / 8);
+    debug_assert!(bits.len() >= total_bits.div_ceil(8));
 
     // Extract entropy bytes (top `entropy_bits` bits).
     let entropy_bytes_len = len.entropy_bytes();
@@ -400,7 +406,12 @@ pub fn decode_phrase(phrase: &[char], list: &UnicodeWordlist) -> Result<Vec<u8>>
 /// alphabets. This function is retained for compatibility; it produces no
 /// checksum and has no decode counterpart.
 ///
-/// Power-of-2 sized alphabets only (16, 32, 64, ..., 4096) in v0.1.
+/// **Deprecated**: [`crate::recovery::format::RecoveryFormat`] supersedes it —
+/// arbitrary alphabet sizes (not just powers of two), a real checksum, and a
+/// decode path. This one-way encoder can emit a "recovery phrase" that
+/// nothing can restore.
+///
+/// Power-of-2 sized alphabets only (16, 32, 64, ..., 4096).
 /// The resulting entropy bits are reported in [`EntropyReport`] and
 /// the function refuses to produce phrases below 128-bit entropy.
 ///
@@ -410,6 +421,9 @@ pub fn decode_phrase(phrase: &[char], list: &UnicodeWordlist) -> Result<Vec<u8>>
 /// * [`CryptoError::InsufficientEntropy`] if `want_words × log2(|A|) < 128`.
 /// * [`CryptoError::RejectedCodepointClass`] / [`CryptoError::InvalidNormalization`]
 ///   if any codepoint fails the validation policy.
+#[deprecated(
+    note = "one-way, checksum-less encoding; use recovery::format::RecoveryFormat instead"
+)]
 pub fn encode_phrase_custom(
     entropy: &[u8],
     alphabet: &[char],
@@ -422,7 +436,7 @@ pub fn encode_phrase_custom(
     }
     if !alphabet.len().is_power_of_two() {
         return Err(CryptoError::InvalidParameter(format!(
-            "custom alphabet size {} is not a power of 2 (v0.1 supports 16, 32, 64, 128, 256, 512, 1024, 2048, 4096)",
+            "custom alphabet size {} is not a power of 2 (supported sizes: 16, 32, 64, 128, 256, 512, 1024, 2048, 4096)",
             alphabet.len()
         )));
     }
@@ -462,8 +476,8 @@ pub fn encode_phrase_custom(
         });
     }
 
-    // Custom alphabet doesn't include a checksum in v0.1 — the user is
-    // taking on that responsibility by accepting a different format.
+    // The custom-alphabet path carries no checksum — the user takes on
+    // that responsibility by choosing a different format.
     let mut out = Vec::with_capacity(want_words);
     for i in 0..want_words {
         let start_bit = i * bits_per_word;
@@ -492,6 +506,7 @@ pub fn encode_phrase_custom(
 // ---------------------------------------------------------------------------
 
 #[cfg(test)]
+#[allow(deprecated)]
 mod tests {
     use super::*;
     use crate::recovery::alphabet::validate_codepoint;

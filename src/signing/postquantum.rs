@@ -4,7 +4,7 @@
 //!
 //! These are NIST-standardized (or NIST-selected) post-quantum signature
 //! schemes, exposed individually. For most applications, prefer
-//! [`super::hybrid::HybridSigningKeyBundle`] which pairs a classical
+//! [`crate::signing::hybrid::HybridSigningKeyBundle`] which pairs a classical
 //! primitive with a post-quantum one — that gives defense in depth
 //! against either primitive being broken.
 //!

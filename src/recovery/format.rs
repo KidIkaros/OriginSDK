@@ -84,9 +84,14 @@ impl RecoveryFormat {
     ///   16, 24, or 32 (whole bytes of checksum are required), or if the
     ///   resulting phrase would exceed [`MAX_PHRASE_SYMBOLS`].
     pub fn new(alphabet: RecoveryAlphabet, entropy_bytes: usize) -> Result<Self> {
-        if !matches!(entropy_bytes, MIN_ENTROPY_BYTES | 24 | MAX_ENTROPY_BYTES) {
+        if !SUPPORTED_ENTROPY_BYTES.contains(&entropy_bytes) {
+            let supported = SUPPORTED_ENTROPY_BYTES
+                .iter()
+                .map(usize::to_string)
+                .collect::<Vec<_>>()
+                .join(", ");
             return Err(CryptoError::InvalidParameter(format!(
-                "entropy width {entropy_bytes} bytes is not one of 16, 24, 32"
+                "entropy width {entropy_bytes} bytes is not one of {supported}"
             )));
         }
         let format = Self {

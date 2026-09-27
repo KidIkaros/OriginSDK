@@ -4,8 +4,8 @@
 //!
 //! This exists for **interoperability**: WebAuthn/FIDO2 passkeys, TLS
 //! ecosystems, and FIPS-mandated environments all speak ES256. For new
-//! designs prefer [`super::classical::Ed25519Signer`] or
-//! [`super::hybrid::HybridSigningKeyBundle`] — Ed25519 is deterministic and
+//! designs prefer [`crate::signing::classical::Ed25519Signer`] or
+//! [`crate::signing::hybrid::HybridSigningKeyBundle`] — Ed25519 is deterministic and
 //! immune to the nonce-reuse fragility ECDSA carries.
 //!
 //! Arithmetic and signing come from the audited RustCrypto `p256` crate

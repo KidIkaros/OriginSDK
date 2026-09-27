@@ -120,6 +120,30 @@ impl RecoveryAlphabet {
         }
         hasher.finalize().into()
     }
+
+    /// Whether `codepoint` may be a symbol of a recovery alphabet.
+    ///
+    /// The same policy [`RecoveryAlphabet::new`] enforces, exposed so an
+    /// authoring tool can report the offending symbol rather than only an
+    /// error. A sibling tool (UNICODE) mirrors this predicate; the SDK
+    /// remains authoritative.
+    pub fn is_safe_codepoint(codepoint: char) -> bool {
+        validate_codepoint(codepoint).is_ok()
+    }
+
+    /// First symbol that fails the policy, as `(index, codepoint)`.
+    ///
+    /// `None` means every symbol passed. Convenience for reporting *where* an
+    /// authored alphabet goes wrong. Per-codepoint policy only — duplicates
+    /// are a property of the whole alphabet, reported by
+    /// [`RecoveryAlphabet::new`].
+    pub fn first_unsafe_symbol(symbols: &[char]) -> Option<(usize, char)> {
+        symbols
+            .iter()
+            .enumerate()
+            .find(|(_, &codepoint)| !Self::is_safe_codepoint(codepoint))
+            .map(|(index, &codepoint)| (index, codepoint))
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -388,5 +412,52 @@ mod tests {
 
         // Length participates, so a prefix is not the same alphabet.
         assert_ne!(forward.fingerprint(), alphabet(0x16A0, 23).fingerprint());
+    }
+
+    #[test]
+    fn is_safe_codepoint_agrees_with_construction() {
+        // The predicate must accept exactly what `new` accepts, so an
+        // authoring tool cannot disagree with the codec.
+        let rejected = [
+            0x0000u32, 0x0009, 0x007F, 0x0085, // controls
+            0x0020, 0x00A0, 0x2007, 0x2028, 0x3000, // whitespace
+            0x00AD, 0xFEFF, // invisible
+            0x0301, 0x0483, 0xFE20, // combining
+            0x200D, 0x200E,  // format
+            0xE0100, // variation selector supplement
+        ];
+        for cp in rejected {
+            let codepoint = char::from_u32(cp).expect("valid scalar");
+            assert!(
+                !RecoveryAlphabet::is_safe_codepoint(codepoint),
+                "U+{cp:04X} should be unsafe"
+            );
+            assert!(
+                RecoveryAlphabet::new(&['a', codepoint]).is_err(),
+                "U+{cp:04X} should be rejected by new"
+            );
+        }
+        for cp in [0x16A0u32, 0x2800, 0x4E00, 0x41] {
+            let codepoint = char::from_u32(cp).expect("valid scalar");
+            assert!(
+                RecoveryAlphabet::is_safe_codepoint(codepoint),
+                "U+{cp:04X} should be safe"
+            );
+            assert!(
+                RecoveryAlphabet::new(&['a', codepoint]).is_ok(),
+                "U+{cp:04X} should be accepted by new"
+            );
+        }
+    }
+
+    #[test]
+    fn first_unsafe_symbol_reports_position() {
+        let ideographic_space = char::from_u32(0x3000).expect("valid scalar");
+        assert_eq!(RecoveryAlphabet::first_unsafe_symbol(&['\u{16A0}']), None);
+        assert_eq!(RecoveryAlphabet::first_unsafe_symbol(&[]), None);
+        assert_eq!(
+            RecoveryAlphabet::first_unsafe_symbol(&['\u{16A0}', ideographic_space]),
+            Some((1, ideographic_space))
+        );
     }
 }

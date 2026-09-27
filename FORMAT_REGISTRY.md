@@ -90,6 +90,13 @@ versioning policy, and tracks validation coverage.
 - **Validation:** symbol count, alphabet membership, canonical form, codepoint
   policy; wrong-alphabet phrases fail the checksum with probability
   `1 - 2^-checksum_bits`
+- **Alphabet analysis (authoring surface):**
+  `RecoveryAlphabet::is_safe_codepoint` / `first_unsafe_symbol` classify a
+  candidate symbol against the policy, and `RecoveryFormat::symbol_count_for`
+  reports the phrase length an alphabet would need at a supported width without
+  enforcing the 64-symbol limit that `new` keeps enforcing.
+  `SUPPORTED_ENTROPY_BYTES` lists the accepted widths. A sibling layout tool
+  (UNICODE) mirrors this policy for offline authoring; the SDK is authoritative.
 - **Ownership:** SDK-owned
 
 ### 3. NTRU Prime Key/Ciphertext (`pqc/ntru_prime/`)

@@ -22,6 +22,13 @@ recovery method. v1 decoding is unchanged._
 - **`tests/recovery_phrase_v2.rs`** — golden vectors for four alphabets,
   including 24- and 33-symbol alphabets that v1 cannot express, plus a test that
   a v1 phrase is not a valid v2 phrase.
+- **`RecoveryAlphabet::is_safe_codepoint` / `first_unsafe_symbol`** and
+  **`RecoveryFormat::symbol_count_for`** (+ `SUPPORTED_ENTROPY_BYTES`) — the
+  alphabet-analysis surface: classify a candidate symbol against the policy and
+  size a phrase for an alphabet and entropy width without constructing a format.
+  `symbol_count_for` reports an over-limit count rather than rejecting it, so a
+  caller can compare against `MAX_PHRASE_SYMBOLS`; `new` keeps enforcing the
+  limit.
 
 ### Changed
 - **The v2 checksum is one bit per byte of entropy** (16 bits at 128-bit

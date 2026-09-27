@@ -36,7 +36,9 @@
 //! also not BIP-39 compatible and does not interoperate with wallet tooling.
 
 use crate::error::{CryptoError, Result};
-use crate::recovery::alphabet::{validate_input_chars, RecoveryAlphabet};
+use crate::recovery::alphabet::{
+    validate_input_chars, RecoveryAlphabet, MAX_ALPHABET_LEN, MIN_ALPHABET_LEN,
+};
 use crate::recovery::bits::{extract_bits_msb, insert_bits_msb};
 use crate::recovery::phrase::{Phrase, SecretBytes};
 use sha3::{Digest, Sha3_256};
@@ -50,6 +52,12 @@ pub const MIN_ENTROPY_BYTES: usize = 16;
 
 /// Largest entropy width accepted.
 pub const MAX_ENTROPY_BYTES: usize = 32;
+
+/// Entropy widths the recovery codec accepts, in bytes.
+///
+/// A test keeps this in step with what [`RecoveryFormat::new`] builds, so a
+/// caller iterating the widths cannot drift from the codec.
+pub const SUPPORTED_ENTROPY_BYTES: [usize; 3] = [MIN_ENTROPY_BYTES, 24, MAX_ENTROPY_BYTES];
 
 /// Longest phrase this codec will produce.
 ///
@@ -116,9 +124,25 @@ impl RecoveryFormat {
         base_n_digits(self.alphabet.len(), self.message_bits())
     }
 
+    /// Symbols a phrase needs for an alphabet of `radix` symbols at
+    /// `entropy_bytes` entropy, or `None` if either is out of range.
+    ///
+    /// Unlike [`RecoveryFormat::new`], this *reports* an over-limit count
+    /// rather than rejecting it, so a caller can compare against
+    /// [`MAX_PHRASE_SYMBOLS`] — the authoring question is "how long would
+    /// this phrase be", not "is it allowed".
+    pub fn symbol_count_for(radix: usize, entropy_bytes: usize) -> Option<usize> {
+        if !(MIN_ALPHABET_LEN..=MAX_ALPHABET_LEN).contains(&radix)
+            || !SUPPORTED_ENTROPY_BYTES.contains(&entropy_bytes)
+        {
+            return None;
+        }
+        Some(base_n_digits(radix, message_bits_for(entropy_bytes)))
+    }
+
     /// Bits in `entropy ‖ checksum`.
     pub fn message_bits(&self) -> usize {
-        self.message_bytes() * 8
+        message_bits_for(self.entropy_bytes)
     }
 
     /// Encode entropy as a phrase.
@@ -297,6 +321,12 @@ fn checksum_from_bytes(bytes: &[u8]) -> u32 {
         value = (value << 8) | byte as u32;
     }
     value
+}
+
+/// Bits in `entropy ‖ checksum` for an entropy width: entropy bits plus one
+/// bit of checksum per byte.
+fn message_bits_for(entropy_bytes: usize) -> usize {
+    (entropy_bytes + entropy_bytes / 8) * 8
 }
 
 /// Smallest `digits` with `radix^digits >= 2^bits`.
@@ -692,5 +722,75 @@ mod tests {
         wide.0[9] = 1 << (288 - 9 * 32);
         assert!(!wide.fits_bits(288));
         assert!(wide.fits_bits(289));
+    }
+
+    #[test]
+    fn symbol_count_for_matches_the_pinned_table() {
+        // The same table the sibling UNICODE crate asserts, so the two
+        // sizing implementations are cross-checked rather than merely
+        // similar.
+        let pinned = [
+            (24usize, 32usize, 63usize),
+            (33, 16, 29),
+            (256, 16, 18),
+            (4096, 32, 24),
+            (2048, 32, 27),
+            (2048, 16, 14),
+            (16, 16, 36),
+        ];
+        for (radix, entropy_bytes, expected) in pinned {
+            assert_eq!(
+                RecoveryFormat::symbol_count_for(radix, entropy_bytes),
+                Some(expected),
+                "radix {radix}, {entropy_bytes} bytes"
+            );
+        }
+    }
+
+    #[test]
+    fn symbol_count_for_agrees_with_constructed_formats() {
+        for radix in [2usize, 3, 16, 24, 33, 96, 256, 1000, 2048, 4096] {
+            for entropy_bytes in SUPPORTED_ENTROPY_BYTES {
+                let count =
+                    RecoveryFormat::symbol_count_for(radix, entropy_bytes).expect("in range");
+                match RecoveryFormat::new(alphabet_from(0x4E00, radix), entropy_bytes) {
+                    Ok(format) => assert_eq!(count, format.symbol_count()),
+                    // Construction fails only on the phrase limit, so a
+                    // rejected format must be one this reports as over it.
+                    Err(_) => assert!(
+                        count > MAX_PHRASE_SYMBOLS,
+                        "radix {radix} was rejected but reports {count} symbols"
+                    ),
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn symbol_count_for_rejects_out_of_range_inputs() {
+        assert_eq!(RecoveryFormat::symbol_count_for(0, 16), None);
+        assert_eq!(RecoveryFormat::symbol_count_for(1, 16), None);
+        assert_eq!(
+            RecoveryFormat::symbol_count_for(MAX_ALPHABET_LEN + 1, 16),
+            None
+        );
+        assert_eq!(RecoveryFormat::symbol_count_for(24, 20), None);
+        assert_eq!(RecoveryFormat::symbol_count_for(24, 0), None);
+        // Boundaries are accepted: 2 symbols at 128-bit entropy is 144
+        // single-bit symbols.
+        assert_eq!(RecoveryFormat::symbol_count_for(2, 16), Some(144));
+        assert!(RecoveryFormat::symbol_count_for(MAX_ALPHABET_LEN, 32).is_some());
+    }
+
+    #[test]
+    fn supported_entropy_widths_match_construction() {
+        for width in 0..=40usize {
+            let accepted = RecoveryFormat::new(alphabet_from(0x4E00, 256), width).is_ok();
+            assert_eq!(
+                accepted,
+                SUPPORTED_ENTROPY_BYTES.contains(&width),
+                "width {width}"
+            );
+        }
     }
 }

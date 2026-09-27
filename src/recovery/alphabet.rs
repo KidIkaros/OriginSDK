@@ -72,6 +72,43 @@ impl RecoveryAlphabet {
         })
     }
 
+    /// Build an alphabet from a symbol pack: a blob of text whose symbols are
+    /// separated by whitespace, newlines, or commas.
+    ///
+    /// Returns the alphabet built from the usable symbols plus the symbols
+    /// that were skipped — every codepoint that failed the policy or repeated
+    /// an earlier one. Skipping (rather than rejecting) matches how packs
+    /// actually look: a downloaded pack may mix usable symbols with
+    /// characters that break text pipelines — combining marks, invisible
+    /// format characters, separators.
+    ///
+    /// The policy is structural, not assignment-aware: an *unassigned*
+    /// codepoint passes (the SDK carries no Unicode data tables) but renders
+    /// as a missing glyph — a real pack should still be curated, e.g. with
+    /// the UNICODE tooling.
+    ///
+    /// Symbols are codepoints, not grapheme clusters — an emoji like 👍🏽
+    /// contributes two symbols (👍 and 🏽).
+    ///
+    /// # Errors
+    /// [`CryptoError::InvalidParameter`] if fewer than [`MIN_ALPHABET_LEN`]
+    /// usable symbols remain, or more than [`MAX_ALPHABET_LEN`] do.
+    pub fn from_pack(text: &str) -> Result<(Self, Vec<char>)> {
+        let mut usable = Vec::new();
+        let mut skipped = Vec::new();
+        for codepoint in text.chars() {
+            if codepoint.is_whitespace() || codepoint == ',' {
+                continue;
+            }
+            if usable.contains(&codepoint) || !Self::is_safe_codepoint(codepoint) {
+                skipped.push(codepoint);
+                continue;
+            }
+            usable.push(codepoint);
+        }
+        Ok((Self::new(&usable)?, skipped))
+    }
+
     /// Number of symbols in the alphabet.
     pub fn len(&self) -> usize {
         self.entries.len()
@@ -459,5 +496,52 @@ mod tests {
             RecoveryAlphabet::first_unsafe_symbol(&['\u{16A0}', ideographic_space]),
             Some((1, ideographic_space))
         );
+    }
+
+    #[test]
+    fn from_pack_separates_on_whitespace_newlines_and_commas() {
+        let (alphabet, skipped) =
+            RecoveryAlphabet::from_pack("\u{16A0} \u{16A2},\u{16A6}\n\u{16A8}\t\u{16B1}")
+                .expect("pack parses");
+        assert_eq!(
+            alphabet.as_slice(),
+            &['\u{16A0}', '\u{16A2}', '\u{16A6}', '\u{16A8}', '\u{16B1}']
+        );
+        assert!(skipped.is_empty());
+    }
+
+    #[test]
+    fn from_pack_reports_unsafe_and_duplicate_symbols() {
+        // U+0300 is a combining mark (unsafe); the second \u{16A2} is a repeat.
+        let (alphabet, skipped) =
+            RecoveryAlphabet::from_pack("\u{16A0}\u{0300}\u{16A2} \u{16A2}\u{16A6}")
+                .expect("pack parses");
+        assert_eq!(alphabet.as_slice(), &['\u{16A0}', '\u{16A2}', '\u{16A6}']);
+        assert_eq!(skipped, vec!['\u{0300}', '\u{16A2}']);
+    }
+
+    #[test]
+    fn from_pack_accepts_a_single_codepoint_emoji_pack() {
+        let (alphabet, skipped) =
+            RecoveryAlphabet::from_pack("\u{1F600} \u{1F60E} \u{1F511} \u{1F9E7}")
+                .expect("emoji pack parses");
+        assert_eq!(alphabet.len(), 4);
+        assert!(skipped.is_empty());
+    }
+
+    #[test]
+    fn from_pack_counts_each_codepoint_of_a_multi_codepoint_emoji() {
+        // 👍🏽 is U+1F44D followed by the skin-tone modifier U+1F3FB — two
+        // usable codepoints, hence two symbols, not one skipped glyph.
+        let (alphabet, _) = RecoveryAlphabet::from_pack("\u{1F44D}\u{1F3FB}").expect("pack parses");
+        assert_eq!(alphabet.as_slice(), &['\u{1F44D}', '\u{1F3FB}']);
+    }
+
+    #[test]
+    fn from_pack_rejects_an_underfilled_pack() {
+        assert!(RecoveryAlphabet::from_pack("").is_err());
+        assert!(RecoveryAlphabet::from_pack(" \n\t,").is_err());
+        assert!(RecoveryAlphabet::from_pack("\u{0300}").is_err());
+        assert!(RecoveryAlphabet::from_pack("\u{16A0}").is_err());
     }
 }

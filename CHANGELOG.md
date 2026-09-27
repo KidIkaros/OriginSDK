@@ -29,6 +29,11 @@ recovery method. v1 decoding is unchanged._
   `symbol_count_for` reports an over-limit count rather than rejecting it, so a
   caller can compare against `MAX_PHRASE_SYMBOLS`; `new` keeps enforcing the
   limit.
+- **`RecoveryAlphabet::from_pack`** — build an alphabet from a symbol pack: a
+  blob of text whose symbols are separated by whitespace, newlines, or commas.
+  Symbols that fail the policy or repeat are skipped and returned for the
+  caller to report, so a downloaded pack (an emoji set, a script's block) plugs
+  straight into `RecoveryFormat`.
 
 ### Changed
 - **The v2 checksum is one bit per byte of entropy** (16 bits at 128-bit

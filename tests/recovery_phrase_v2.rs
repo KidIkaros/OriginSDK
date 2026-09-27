@@ -153,3 +153,50 @@ fn v1_phrase_is_still_decodable() {
     let as_v2 = Phrase::from_symbols(phrase);
     assert!(v2.decode(&as_v2).is_err());
 }
+
+/// A downloaded pack — symbols as text — plugs straight into a format. This
+/// is the feature end to end: pick a pack, get a phrase, restore the seed.
+#[test]
+fn symbol_pack_round_trips() {
+    // Emoticons U+1F600..=U+1F64F: 80 single-codepoint emoji, a pack a user
+    // could plausibly download.
+    let pack: String = (0x1F600..=0x1F64F)
+        .map(|cp| char::from_u32(cp).expect("valid scalar"))
+        .collect();
+    let (alphabet, skipped) = RecoveryAlphabet::from_pack(&pack).expect("pack parses");
+    assert!(skipped.is_empty(), "Emoticons has no unsafe symbols");
+    assert_eq!(alphabet.len(), 80);
+
+    let format = RecoveryFormat::new(alphabet, 32).expect("emoji format");
+    let entropy = seed(32, 0x0E);
+    let phrase = format.encode(&entropy).expect("encode");
+    assert_eq!(phrase.len(), format.symbol_count());
+
+    let parsed = Phrase::parse(&phrase.to_text()).expect("parse");
+    let recovered = format.decode(&parsed).expect("decode");
+    assert_eq!(recovered.as_bytes(), &entropy[..]);
+}
+
+/// The pack is part of the backup: a phrase cannot decode under a different
+/// pack. Its symbols are not even in the other alphabet (and where packs did
+/// overlap, the checksum is the deeper guard) — no silent wrong seed.
+#[test]
+fn pack_phrase_is_rejected_by_a_different_pack() {
+    let entropy = seed(32, 0x5D);
+    let emoji_pack: String = (0x1F600..=0x1F64F).filter_map(char::from_u32).collect();
+    let emoji = RecoveryAlphabet::from_pack(&emoji_pack).expect("pack").0;
+    let emoji_format = RecoveryFormat::new(emoji, 32).expect("format");
+    let phrase = emoji_format.encode(&entropy).expect("encode");
+
+    // A different 80-symbol pack renders the same symbol count but a wrong
+    // alphabet — decode must fail, not produce a different seed.
+    let dingbats = RecoveryAlphabet::from_pack(
+        &(0x2700..=0x274F)
+            .filter_map(char::from_u32)
+            .collect::<String>(),
+    )
+    .expect("pack")
+    .0;
+    let dingbats_format = RecoveryFormat::new(dingbats, 32).expect("format");
+    assert!(dingbats_format.decode(&phrase).is_err());
+}

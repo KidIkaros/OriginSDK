@@ -95,9 +95,10 @@ impl RecoveryFormat {
         };
         let symbols = format.symbol_count();
         if symbols > MAX_PHRASE_SYMBOLS {
+            let min = min_alphabet_len_for(entropy_bytes);
             return Err(CryptoError::InvalidParameter(format!(
                 "a {}-symbol alphabet at {entropy_bytes}-byte entropy needs {symbols} symbols, \
-                 over the {MAX_PHRASE_SYMBOLS}-symbol limit; use a larger alphabet",
+                 over the {MAX_PHRASE_SYMBOLS}-symbol limit; use at least {min} symbols",
                 format.alphabet.len()
             )));
         }
@@ -445,6 +446,22 @@ impl Message {
     }
 }
 
+/// Smallest alphabet that fits a phrase within [`MAX_PHRASE_SYMBOLS`].
+///
+/// Computed with the same digit arithmetic the constructor uses, so the
+/// guidance in a rejection can never disagree with what the constructor
+/// accepts. Only ever runs on the error path.
+fn min_alphabet_len_for(entropy_bytes: usize) -> usize {
+    (MIN_ALPHABET_LEN..=MAX_ALPHABET_LEN)
+        .find(|&radix| {
+            matches!(
+                RecoveryFormat::symbol_count_for(radix, entropy_bytes),
+                Some(symbols) if symbols <= MAX_PHRASE_SYMBOLS
+            )
+        })
+        .unwrap_or(MAX_ALPHABET_LEN)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -674,6 +691,28 @@ mod tests {
         assert!(RecoveryFormat::new(alphabet_from(0x4E00, 16), 16).is_ok());
         // 24 runes at 256-bit is 63 symbols — just inside the limit.
         assert!(RecoveryFormat::new(alphabet_from(0x16A0, 24), 32).is_ok());
+    }
+
+    #[test]
+    fn the_rejection_names_the_smallest_usable_alphabet() {
+        // The named minimum is exactly what the constructor accepts: it is
+        // usable, and one symbol fewer is not. Pinned so the guidance cannot
+        // drift from the arithmetic.
+        for width in [16usize, 24, 32] {
+            let min = min_alphabet_len_for(width);
+            assert!(
+                RecoveryFormat::new(alphabet_from(0x4E00, min), width).is_ok(),
+                "width {width}: {min} symbols must be accepted"
+            );
+            assert!(
+                RecoveryFormat::new(alphabet_from(0x4E00, min - 1), width).is_err(),
+                "width {width}: {} symbols must be rejected",
+                min - 1
+            );
+        }
+        assert_eq!(min_alphabet_len_for(16), 5);
+        assert_eq!(min_alphabet_len_for(24), 11);
+        assert_eq!(min_alphabet_len_for(32), 23);
     }
 
     #[test]

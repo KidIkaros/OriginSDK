@@ -4,6 +4,8 @@ All notable changes to origin-crypto-sdk will be documented in this file.
 
 ## [Unreleased]
 
+## [0.7.2] — 2026-09-27
+
 _Alphabet-agnostic recovery phrases (format v2): a project can define its own
 recovery method. v1 decoding is unchanged._
 

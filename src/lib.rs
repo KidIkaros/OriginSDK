@@ -104,7 +104,7 @@
 //!
 //! See also `SECURITY.md` for the implementation source table.
 
-#![doc(html_root_url = "https://docs.rs/origin-crypto-sdk/0.7.1")]
+#![doc(html_root_url = "https://docs.rs/origin-crypto-sdk/0.7.2")]
 #![allow(clippy::result_large_err)]
 
 // ──────────────────────────────────────────────────────────────────────

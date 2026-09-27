@@ -55,9 +55,8 @@ impl EcdsaP256Signer {
     /// Import a PKCS#8 DER private key — the shape Bitwarden and other
     /// password managers export passkey material as.
     pub fn from_pkcs8_der(der: &[u8]) -> Result<Self> {
-        let key = SigningKey::from_pkcs8_der(der).map_err(|e| {
-            CryptoError::InvalidKey(format!("not a PKCS8 P-256 private key: {e}"))
-        })?;
+        let key = SigningKey::from_pkcs8_der(der)
+            .map_err(|e| CryptoError::InvalidKey(format!("not a PKCS8 P-256 private key: {e}")))?;
         Ok(Self { key })
     }
 
@@ -73,15 +72,16 @@ impl EcdsaP256Signer {
         let Ok(sig) = Signature::from_der(signature_der) else {
             return false;
         };
-        self.key
-            .verifying_key()
-            .verify(message, &sig)
-            .is_ok()
+        self.key.verifying_key().verify(message, &sig).is_ok()
     }
 
     /// Verify a DER signature against an uncompressed SEC1 public key
     /// (65 bytes, `0x04 ‖ X ‖ Y` — the form inside a COSE key's x/y pair).
-    pub fn verify_with_pubkey(sec1_uncompressed: &[u8], message: &[u8], signature_der: &[u8]) -> bool {
+    pub fn verify_with_pubkey(
+        sec1_uncompressed: &[u8],
+        message: &[u8],
+        signature_der: &[u8],
+    ) -> bool {
         let Ok(vk) = VerifyingKey::from_sec1_bytes(sec1_uncompressed) else {
             return false;
         };
@@ -111,9 +111,8 @@ impl EcdsaP256Signer {
     pub fn to_pkcs8_der(&self) -> Result<Vec<u8>> {
         let secret = p256::SecretKey::from_slice(&self.key.to_bytes())
             .map_err(|e| CryptoError::InvalidKey(format!("invalid scalar: {e}")))?;
-        let doc = EncodePrivateKey::to_pkcs8_der(&secret).map_err(|e| {
-            CryptoError::InvalidKey(format!("could not encode PKCS8: {e}"))
-        })?;
+        let doc = EncodePrivateKey::to_pkcs8_der(&secret)
+            .map_err(|e| CryptoError::InvalidKey(format!("could not encode PKCS8: {e}")))?;
         Ok(doc.as_bytes().to_vec())
     }
 }

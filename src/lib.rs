@@ -248,12 +248,12 @@ pub use primitives::blake3;
 pub use primitives::chacha40;
 /// SHA-256 hash (raw SHA-2 — WebAuthn/TLS interop, not SHA-3).
 pub use primitives::sha256;
-/// SHA-512 hash (raw SHA-2).
-pub use primitives::sha512;
 /// SHA3-256 hash.
 pub use primitives::sha3_256;
 /// SHA3-512 hash.
 pub use primitives::sha3_512;
+/// SHA-512 hash (raw SHA-2).
+pub use primitives::sha512;
 
 // ── Additional cipher module re-exports ──
 /// ChaCha20 stream cipher module.

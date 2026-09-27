@@ -69,9 +69,9 @@
 //!   curated wordlist for the new matching policy.
 
 use crate::error::{CryptoError, Result};
+use crate::recovery::alphabet::{validate_input_chars, validate_unique_codepoints};
 use sha3::{Digest, Sha3_256};
 use std::sync::LazyLock;
-use unicode_normalization::UnicodeNormalization;
 
 /// Allowed recovery phrase shapes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -153,15 +153,8 @@ impl UnicodeWordlist {
                 entries.len()
             )));
         }
-        let mut seen = std::collections::HashSet::new();
-        for &c in entries {
-            if !seen.insert(c) {
-                return Err(CryptoError::InvalidParameter(format!(
-                    "duplicate codepoint U+{:04X} in wordlist",
-                    c as u32
-                )));
-            }
-        }
+        validate_unique_codepoints(entries, "wordlist")?;
+        validate_input_chars(entries)?;
         Ok(Self {
             entries: entries.to_vec().into_boxed_slice(),
         })
@@ -244,7 +237,7 @@ pub const MIN_SAFE_BITS: f64 = 128.0;
 ///
 /// Bits numbered 0 = MSB of byte 0; `bit_in_byte = 7 - (bit_pos % 8)`.
 /// Bits beyond the input buffer are treated as 0.
-fn extract_bits_msb(bytes: &[u8], start_bit: usize, end_bit: usize) -> u32 {
+pub(crate) fn extract_bits_msb(bytes: &[u8], start_bit: usize, end_bit: usize) -> u32 {
     debug_assert!(start_bit <= end_bit);
     let n = end_bit - start_bit;
     let mut out: u32 = 0;
@@ -264,7 +257,7 @@ fn extract_bits_msb(bytes: &[u8], start_bit: usize, end_bit: usize) -> u32 {
 
 /// Insert `n_bits` bits of `value` (high bits first) into `bytes` at
 /// bit position `start_bit`. Grows `bytes` as required.
-fn insert_bits_msb(bytes: &mut Vec<u8>, value: u32, start_bit: usize, n_bits: usize) {
+pub(crate) fn insert_bits_msb(bytes: &mut Vec<u8>, value: u32, start_bit: usize, n_bits: usize) {
     for i in 0..n_bits {
         let bit_pos = start_bit + i;
         let byte_idx = bit_pos / 8;
@@ -277,99 +270,6 @@ fn insert_bits_msb(bytes: &mut Vec<u8>, value: u32, start_bit: usize, n_bits: us
             bytes[byte_idx] |= 1 << bit_in_byte;
         }
     }
-}
-
-// ---------------------------------------------------------------------------
-// Codepoint rejection
-// ---------------------------------------------------------------------------
-
-/// Classify a codepoint into a forbidden class, if any.
-///
-/// Rejects: ZWJ, Variation Selectors, Combining Diacritical Marks,
-/// BIDI marks, default-ignorable invisibles, control characters.
-fn reject_class(c: char) -> Option<&'static str> {
-    let cp = c as u32;
-    if cp == 0x200D {
-        return Some("ZWJ");
-    }
-    if (0xFE00..=0xFE0F).contains(&cp) {
-        return Some("VARIATION_SELECTOR");
-    }
-    if (0x0300..=0x036F).contains(&cp) {
-        return Some("COMBINING_MARK");
-    }
-    if cp == 0x200E || cp == 0x200F {
-        return Some("BIDI_MARK");
-    }
-    if (0x202A..=0x202E).contains(&cp) || (0x2066..=0x2069).contains(&cp) {
-        return Some("BIDI_MARK");
-    }
-    if cp == 0x200B || cp == 0x200C || cp == 0xFEFF || (0x2060..=0x2064).contains(&cp) {
-        return Some("DEFAULT_IGNORABLE");
-    }
-    // U+180E MONGOLIAN VOWEL SEPARATOR (default-ignorable)
-    if cp == 0x180E {
-        return Some("DEFAULT_IGNORABLE");
-    }
-    // U+206A..=U+206F additional BIDI / format controls (Arabic,
-    // Persian, Mongolian block-inverts etc.)
-    if (0x206A..=0x206F).contains(&cp) {
-        return Some("BIDI_MARK");
-    }
-    // U+061C ARABIC LETTER MARK
-    if cp == 0x061C {
-        return Some("BIDI_MARK");
-    }
-    if c.is_control() {
-        return Some("CONTROL");
-    }
-    None
-}
-
-/// Reject a codepoint whose NFKC canonical form decomposes into MULTIPLE
-/// codepoints.
-///
-/// A multi-codepoint NFKC decomposition (e.g., ligatures that split into
-/// base + combining mark) means the user could type the same visual
-/// symbol using two different byte sequences — silent recovery failure.
-///
-/// A single-codepoint NFKC that maps to a *different* single codepoint
-/// (e.g., `ⓕ` U+24D5 ↔ `f` U+0066) is NOT rejected because in our curated
-/// non-Latin default wordlist the NFKC partner is absent, so a manual
-/// typing collision is not realizable.
-fn reject_non_canonical(c: char) -> Option<&'static str> {
-    let mut multi = 0usize;
-    for _x in c.nfkc() {
-        multi += 1;
-    }
-    if multi != 1 {
-        Some("NFKC canonical form has multiple codepoints (silent malleability vector)")
-    } else {
-        None
-    }
-}
-
-fn validate_codepoint(c: char) -> Result<()> {
-    if let Some(class) = reject_class(c) {
-        return Err(CryptoError::RejectedCodepointClass {
-            codepoint: c,
-            class,
-        });
-    }
-    if let Some(reason) = reject_non_canonical(c) {
-        return Err(CryptoError::InvalidNormalization {
-            codepoint: c,
-            reason,
-        });
-    }
-    Ok(())
-}
-
-fn validate_input_chars(chars: &[char]) -> Result<()> {
-    for &c in chars {
-        validate_codepoint(c)?;
-    }
-    Ok(())
 }
 
 // ---------------------------------------------------------------------------
@@ -561,12 +461,19 @@ pub fn encode_phrase_custom(
             alphabet.len()
         )));
     }
+    if !(16..=4096).contains(&alphabet.len()) {
+        return Err(CryptoError::InvalidParameter(format!(
+            "custom alphabet size {} is outside the supported range 16..=4096",
+            alphabet.len()
+        )));
+    }
     if want_words == 0 {
         return Err(CryptoError::InvalidParameter(
             "want_words must be > 0".into(),
         ));
     }
 
+    validate_unique_codepoints(alphabet, "custom alphabet")?;
     validate_input_chars(alphabet)?;
 
     let bits_per_word = (alphabet.len() as u32).trailing_zeros() as usize;
@@ -622,6 +529,7 @@ pub fn encode_phrase_custom(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::recovery::alphabet::validate_codepoint;
 
     #[test]
     fn phrase_length_shape_constants() {
@@ -833,6 +741,63 @@ mod tests {
                 ..
             }
         ));
+    }
+
+    #[test]
+    fn wordlist_rejects_forbidden_codepoints() {
+        let chars: Vec<char> = (0x0300..0x0310)
+            .map(|cp| char::from_u32(cp).unwrap())
+            .collect();
+        assert!(matches!(
+            UnicodeWordlist::new(&chars),
+            Err(CryptoError::RejectedCodepointClass {
+                class: "COMBINING_MARK",
+                ..
+            })
+        ));
+    }
+
+    #[test]
+    fn custom_alphabet_rejects_duplicate_symbols() {
+        let mut alphabet: Vec<char> = (0u32..16)
+            .map(|i| char::from_u32(0xE000 + i).unwrap())
+            .collect();
+        alphabet[1] = alphabet[0];
+        assert!(matches!(
+            encode_phrase_custom(&[0u8; 16], &alphabet, 32),
+            Err(CryptoError::InvalidParameter(_))
+        ));
+    }
+
+    #[test]
+    fn custom_alphabet_rejects_sizes_below_supported_range() {
+        let alphabet: Vec<char> = (0u32..8)
+            .map(|i| char::from_u32(0xE000 + i).unwrap())
+            .collect();
+        assert!(matches!(
+            encode_phrase_custom(&[0u8; 48], &alphabet, 128),
+            Err(CryptoError::InvalidParameter(_))
+        ));
+    }
+
+    #[test]
+    fn custom_alphabet_rejects_sizes_above_supported_range() {
+        let alphabet: Vec<char> = (0u32..8192)
+            .map(|i| char::from_u32(0xF0000 + i).unwrap())
+            .collect();
+        assert!(matches!(
+            encode_phrase_custom(&[0u8; 2048], &alphabet, 128),
+            Err(CryptoError::InvalidParameter(_))
+        ));
+    }
+
+    #[test]
+    fn custom_alphabet_accepts_maximum_supported_size() {
+        let alphabet: Vec<char> = (0u32..4096)
+            .map(|i| char::from_u32(0xF0000 + i).unwrap())
+            .collect();
+        let result = encode_phrase_custom(&[0u8; 18], &alphabet, 12);
+        assert!(result.is_ok());
     }
 
     #[test]

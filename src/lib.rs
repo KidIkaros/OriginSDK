@@ -246,6 +246,10 @@ pub use primitives::blake3;
 /// Provides 256-bit post-quantum security against Grover's algorithm.
 /// See [`primitives::chacha40`] for full documentation.
 pub use primitives::chacha40;
+/// SHA-256 hash (raw SHA-2 — WebAuthn/TLS interop, not SHA-3).
+pub use primitives::sha256;
+/// SHA-512 hash (raw SHA-2).
+pub use primitives::sha512;
 /// SHA3-256 hash.
 pub use primitives::sha3_256;
 /// SHA3-512 hash.

@@ -51,6 +51,8 @@
 pub mod classical;
 pub mod hybrid;
 pub mod postquantum;
+/// ECDSA over P-256 (ES256) — interop with WebAuthn/FIDO2 passkeys.
+pub mod secp256r1;
 
 /// Hybrid-signature wire format (Ed25519 + Falcon-1024 serialization).
 pub mod wire;

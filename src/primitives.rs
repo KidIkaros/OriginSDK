@@ -8,9 +8,11 @@ pub mod chacha20;
 pub mod chacha20poly1305;
 pub mod chacha40;
 pub mod poly1305;
+pub mod sha2;
 pub mod sha3;
 pub mod tier;
 
+pub use sha2::{sha256, sha512};
 pub use sha3::{sha3_256, sha3_512, Shake128, Shake256};
 pub use tier::MemoryTier;
 

@@ -67,6 +67,7 @@ ed448 = "0.5"
 ed448-goldilocks = { version = "=0.14.0-pre.15", features = ["std", "signing", "pkcs8", "getrandom"] }
 elliptic-curve = "0.13"
 k256 = { version = "=0.14.0", default-features = false, features = ["arithmetic"] }  # pinned: audited RustCrypto secp256k1 — replaces hand-rolled internal::secp256k1 arithmetic
+p256 = { version = "=0.14.0", default-features = false, features = ["arithmetic", "ecdsa", "pkcs8", "sha256"] }  # pinned: audited RustCrypto secp256r1 — WebAuthn/ES256 passkey support
 signature = "2"
 subtle = "2.6.1"
 hex = "0.4"

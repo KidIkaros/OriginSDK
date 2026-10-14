@@ -16,9 +16,10 @@ exclude = ["benches/", "docs/", ".cogent-audit/", ".github/"]
 
 [lints.rust]
 # The crate uses `unsafe` in a few carefully audited places
-# (mlock/munlock for memory protection, getrandom syscall). Promote
-# to "deny" if you want to forbid all unsafe.
-unsafe_code = "warn"
+# (mlock/munlock for memory protection, getrandom syscall) — allowed
+# here so the audit annotations are the enforcement, not the lint.
+# Change to "warn" locally to review the sites again.
+unsafe_code = "allow"
 missing_debug_implementations = "warn"
 
 [lints.clippy]

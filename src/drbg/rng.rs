@@ -2,8 +2,8 @@
 
 //! Native ChaCha20 CSPRNG — replacement for `rand_chacha::ChaCha20Rng`.
 //!
-//! Implements `rand::RngCore` and `rand::SeedableRng` so existing callers
-//! in the crate can continue to use the standard RNG trait while the
+//! Implements `rand::RngCore` and `rand::SeedableRng` so callers
+//! can continue to use the standard RNG traits while the
 //! underlying implementation is fully native.
 
 use rand::{CryptoRng, RngCore, SeedableRng};

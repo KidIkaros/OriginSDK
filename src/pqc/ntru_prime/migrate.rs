@@ -234,7 +234,7 @@ mod v06_rq {
 mod tests {
     use super::v06_rq;
     use super::*;
-    use crate::internal::rng::ChaCha20Rng;
+    use crate::drbg::ChaCha20Rng;
     use crate::pqc::ntru_prime::NtruPrime;
 
     fn fabricate_v06_keypair() -> ([u8; V06_PK_SIZE], [u8; V06_SK_SIZE]) {

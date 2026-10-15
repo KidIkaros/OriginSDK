@@ -88,6 +88,73 @@ const V2_HEADER_LEN: usize = 4 + 1 + 1 + SALT_LEN + NONCE_LEN; // 46
 /// v2 blob size: header + ciphertext + tag.
 pub const BLOB_V2_LEN: usize = V2_HEADER_LEN + SEED_LEN + TAG_LEN; // 94
 
+/// Encapsulated v2 blob header framing: `magic(4) ‖ version(1) ‖ tier(1) ‖ salt(16) ‖ nonce(24)`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct BlobHeader {
+    tier: MemoryTier,
+    salt: [u8; SALT_LEN],
+    nonce: [u8; NONCE_LEN],
+}
+
+impl BlobHeader {
+    fn generate(tier: MemoryTier) -> Result<Self> {
+        let mut salt = [0u8; SALT_LEN];
+        crate::fill_random(&mut salt)?;
+
+        let mut nonce = [0u8; NONCE_LEN];
+        crate::fill_random(&mut nonce)?;
+
+        Ok(Self { tier, salt, nonce })
+    }
+
+    fn to_bytes(&self) -> [u8; V2_HEADER_LEN] {
+        let mut bytes = [0u8; V2_HEADER_LEN];
+        bytes[..4].copy_from_slice(BLOB_MAGIC);
+        bytes[4] = BLOB_VERSION;
+        bytes[5] = self.tier as u8;
+        bytes[6..6 + SALT_LEN].copy_from_slice(&self.salt);
+        bytes[6 + SALT_LEN..].copy_from_slice(&self.nonce);
+        bytes
+    }
+
+    fn parse_v2(blob: &[u8]) -> Result<Self> {
+        if blob.len() < BLOB_V2_LEN {
+            return Err(CryptoError::Serialization(format!(
+                "v2 blob too short ({} bytes, need {BLOB_V2_LEN})",
+                blob.len()
+            )));
+        }
+
+        let version = blob[4];
+        if version != BLOB_VERSION {
+            return Err(CryptoError::Serialization(format!(
+                "unsupported blob version: {version} (expected {BLOB_VERSION})"
+            )));
+        }
+
+        let tier_byte = blob[5];
+        let tier = tier_from_byte(tier_byte)
+            .ok_or_else(|| CryptoError::Serialization(format!("invalid tier byte: {tier_byte}")))?;
+
+        let mut salt = [0u8; SALT_LEN];
+        salt.copy_from_slice(&blob[6..6 + SALT_LEN]);
+
+        let mut nonce = [0u8; NONCE_LEN];
+        nonce.copy_from_slice(&blob[6 + SALT_LEN..6 + SALT_LEN + NONCE_LEN]);
+
+        Ok(Self { tier, salt, nonce })
+    }
+
+    fn aad(&self) -> [u8; 4 + 1 + 1 + SALT_LEN] {
+        let mut aad = [0u8; 4 + 1 + 1 + SALT_LEN];
+        aad[..4].copy_from_slice(BLOB_MAGIC);
+        aad[4] = BLOB_VERSION;
+        aad[5] = self.tier as u8;
+        aad[6..].copy_from_slice(&self.salt);
+        aad
+    }
+}
+
 /// Create an encrypted seed blob from a passphrase.
 ///
 /// Writes the v2 format: `magic(4) ‖ version(1) ‖ tier(1) ‖ salt(16) ‖ nonce(24) ‖ ct+tag(48)` = 94 bytes.
@@ -100,11 +167,7 @@ pub fn create_blob(
     tier: MemoryTier,
     seed: Option<&[u8; SEED_LEN]>,
 ) -> Result<Vec<u8>> {
-    let mut salt = [0u8; SALT_LEN];
-    crate::fill_random(&mut salt)?;
-
-    let mut nonce_bytes = [0u8; NONCE_LEN];
-    crate::fill_random(&mut nonce_bytes)?;
+    let header = BlobHeader::generate(tier)?;
 
     let raw_seed = if let Some(s) = seed {
         *s
@@ -114,25 +177,12 @@ pub fn create_blob(
         s
     };
 
-    let mut enc_key = derive_argon2_key(passphrase, &salt, tier)?;
-
-    // v2 AAD = magic + version + tier + salt (binds header to ciphertext).
-    let mut aad = Vec::with_capacity(4 + 1 + 1 + SALT_LEN);
-    aad.extend_from_slice(BLOB_MAGIC);
-    aad.push(BLOB_VERSION);
-    aad.push(tier as u8);
-    aad.extend_from_slice(&salt);
-
-    let ct = native::xchacha20_poly1305_seal(&enc_key, &nonce_bytes, &raw_seed, &aad);
-
+    let mut enc_key = derive_argon2_key(passphrase, &header.salt, header.tier)?;
+    let ct = native::xchacha20_poly1305_seal(&enc_key, &header.nonce, &raw_seed, &header.aad());
     enc_key.zeroize();
 
     let mut blob = Vec::with_capacity(BLOB_V2_LEN);
-    blob.extend_from_slice(BLOB_MAGIC);
-    blob.push(BLOB_VERSION);
-    blob.push(tier as u8);
-    blob.extend_from_slice(&salt);
-    blob.extend_from_slice(&nonce_bytes);
+    blob.extend_from_slice(&header.to_bytes());
     blob.extend_from_slice(&ct);
     Ok(blob)
 }
@@ -183,41 +233,12 @@ fn recover_seed_v1(blob: &[u8], passphrase: &[u8], tier: MemoryTier) -> Result<[
 
 /// Recover from a v2 blob: `magic(4) ‖ version(1) ‖ tier(1) ‖ salt(16) ‖ nonce(24) ‖ ct+tag(48)`.
 fn recover_seed_v2(blob: &[u8], passphrase: &[u8]) -> Result<[u8; SEED_LEN]> {
-    if blob.len() < BLOB_V2_LEN {
-        return Err(CryptoError::Serialization(format!(
-            "v2 blob too short ({} bytes, need {BLOB_V2_LEN})",
-            blob.len()
-        )));
-    }
+    let header = BlobHeader::parse_v2(blob)?;
+    let ct = &blob[V2_HEADER_LEN..];
 
-    let version = blob[4];
-    if version != BLOB_VERSION {
-        return Err(CryptoError::Serialization(format!(
-            "unsupported blob version: {version} (expected {BLOB_VERSION})"
-        )));
-    }
+    let mut enc_key = derive_argon2_key(passphrase, &header.salt, header.tier)?;
 
-    let tier_byte = blob[5];
-    let tier = tier_from_byte(tier_byte)
-        .ok_or_else(|| CryptoError::Serialization(format!("invalid tier byte: {tier_byte}")))?;
-
-    let salt = &blob[6..6 + SALT_LEN];
-    let nonce_bytes = &blob[6 + SALT_LEN..6 + SALT_LEN + NONCE_LEN];
-    let ct = &blob[6 + SALT_LEN + NONCE_LEN..];
-
-    let mut enc_key = derive_argon2_key(passphrase, salt, tier)?;
-
-    let mut nonce = [0u8; NONCE_LEN];
-    nonce.copy_from_slice(nonce_bytes);
-
-    // v2 AAD = magic + version + tier + salt.
-    let mut aad = Vec::with_capacity(4 + 1 + 1 + SALT_LEN);
-    aad.extend_from_slice(BLOB_MAGIC);
-    aad.push(BLOB_VERSION);
-    aad.push(tier_byte);
-    aad.extend_from_slice(salt);
-
-    let plaintext = native::xchacha20_poly1305_open(&enc_key, &nonce, ct, &aad)
+    let plaintext = native::xchacha20_poly1305_open(&enc_key, &header.nonce, ct, &header.aad())
         .map_err(|_| CryptoError::Decryption("blob decryption failed".into()))?;
 
     enc_key.zeroize();

@@ -117,7 +117,7 @@ impl NtruPrime {
     /// keypair for the same seed every time. This enables HKDF-style
     /// derivation in `signet-core::Identity`.
     pub fn generate_keypair_from_seed(seed: &[u8; 32]) -> (PublicKey, PrivateKey) {
-        use crate::internal::rng::ChaCha20Rng;
+        use crate::drbg::ChaCha20Rng;
         let mut rng = ChaCha20Rng::from_seed(*seed);
         Self::generate_keypair(&mut rng)
     }
@@ -336,7 +336,7 @@ fn derive_core_keypair(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::internal::rng::ChaCha20Rng;
+    use crate::drbg::ChaCha20Rng;
 
     #[test]
     fn test_ntru_prime_roundtrip() {

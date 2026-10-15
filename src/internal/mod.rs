@@ -19,7 +19,6 @@ pub mod getrandom;
 pub mod hkdf;
 pub mod hmac;
 pub mod mlock;
-pub mod rng;
 pub mod sha3;
 pub mod subtle;
 pub mod zeroize;

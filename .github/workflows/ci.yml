@@ -287,6 +287,8 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: Install cargo-fuzz
         run: cargo install cargo-fuzz --locked
+      - name: Prebuild fuzz targets
+        run: cargo +nightly fuzz build
       - name: Run fuzz targets for 60s each
         run: |
           # libFuzzer exits 0 on clean -max_total_time expiry; a crash, hang

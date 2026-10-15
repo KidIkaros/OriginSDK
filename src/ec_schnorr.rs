@@ -240,7 +240,7 @@ mod tests {
 
     #[test]
     fn test_verify_wrong_public_key_fails() {
-        let (sk1, pk1) = generate_keypair(&[42u8; 32]);
+        let (sk1, _pk1) = generate_keypair(&[42u8; 32]);
         let (_, pk2) = generate_keypair(&[99u8; 32]);
         let proof = prove(&sk1, b"test message").unwrap();
         assert!(!verify(&proof, &pk2, b"test message").unwrap());

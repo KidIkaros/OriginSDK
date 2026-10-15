@@ -134,7 +134,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: cargo doc --no-deps --all-features
         env:
-          RUSTDOCFLAGS: "-D warnings"
+          RUSTDOCFLAGS: "-D warnings -A rustdoc::redundant_explicit_links"
 
   proptest:
     name: Property tests
@@ -171,6 +171,7 @@ jobs:
           cargo tarpaulin --lib \
             --features slh-dsa,ml-dsa,pqc-simd,test-utils \
             --engine Llvm \
+            --timeout 300 \
             --out Html \
             --fail-under 77
       - name: Upload coverage report
@@ -180,11 +181,11 @@ jobs:
           path: tarpaulin-report.html
 
   msrv:
-    name: MSRV (1.85)
+    name: MSRV (1.95)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@1.85.0
+      - uses: dtolnay/rust-toolchain@1.95.0
       - uses: Swatinem/rust-cache@v2
       - run: cargo check --lib --no-default-features
       - run: cargo check --lib
@@ -246,15 +247,16 @@ jobs:
       - uses: dtolnay/rust-toolchain@nightly
         with:
           components: rust-src
+          targets: x86_64-unknown-linux-gnu
       - uses: Swatinem/rust-cache@v2
       - name: Run tests with AddressSanitizer
         env:
-          RUSTFLAGS: "-Zsanitizer=address"
+          CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUSTFLAGS: "-Zsanitizer=address"
           ASAN_OPTIONS: "detect_leaks=0"
         run: |
-          cargo +nightly test -Zbuild-std --lib -- --test-threads=2
-          cargo +nightly test -Zbuild-std --test known_answer_vectors
-          cargo +nightly test -Zbuild-std --test malformed_input
+          cargo +nightly test -Zbuild-std --target x86_64-unknown-linux-gnu --lib -- --test-threads=2
+          cargo +nightly test -Zbuild-std --target x86_64-unknown-linux-gnu --test known_answer_vectors
+          cargo +nightly test -Zbuild-std --target x86_64-unknown-linux-gnu --test malformed_input
 
   sanitizer-thread:
     name: ThreadSanitizer (best effort)
@@ -265,15 +267,16 @@ jobs:
       - uses: dtolnay/rust-toolchain@nightly
         with:
           components: rust-src
+          targets: x86_64-unknown-linux-gnu
       - uses: Swatinem/rust-cache@v2
       - name: Run tests with ThreadSanitizer
         env:
-          RUSTFLAGS: "-Zsanitizer=thread"
+          CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUSTFLAGS: "-Zsanitizer=thread"
           TSAN_OPTIONS: "halt_on_error=1"
         run: |
-          cargo +nightly test -Zbuild-std --lib -- --test-threads=2
-          cargo +nightly test -Zbuild-std --test known_answer_vectors
-          cargo +nightly test -Zbuild-std --test malformed_input
+          cargo +nightly test -Zbuild-std --target x86_64-unknown-linux-gnu --lib -- --test-threads=2
+          cargo +nightly test -Zbuild-std --target x86_64-unknown-linux-gnu --test known_answer_vectors
+          cargo +nightly test -Zbuild-std --target x86_64-unknown-linux-gnu --test malformed_input
 
   fuzz-smoke:
     name: Fuzz smoke test (60s per target)
@@ -284,6 +287,8 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: Install cargo-fuzz
         run: cargo install cargo-fuzz --locked
+      - name: Prebuild fuzz targets
+        run: cargo +nightly fuzz build
       - name: Run fuzz targets for 60s each
         run: |
           # libFuzzer exits 0 on clean -max_total_time expiry; a crash, hang

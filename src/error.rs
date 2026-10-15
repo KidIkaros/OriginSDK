@@ -2,7 +2,7 @@
 
 //! Unified error type for cryptographic operations.
 //!
-//! All fallible operations in this crate return [`Result<T>`](Result),
+//! All fallible operations in this crate return [`Result<T>`],
 //! which is `std::result::Result<T, CryptoError>`.
 //!
 //! # Error categories

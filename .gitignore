@@ -9,3 +9,4 @@ Cargo.lock
 .hermes/
 fuzz/target/
 fuzz/corpus/
+fuzz/artifacts/

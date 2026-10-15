@@ -10,8 +10,7 @@ license = "Apache-2.0"
 keywords = ["cryptography", "post-quantum", "encryption", "signatures", "aead"]
 categories = ["cryptography"]
 repository = "https://github.com/KidIkaros/OriginSDK"
-homepage = "https://github.com/KidIkaros/OriginSDK"
-rust-version = "1.85"
+rust-version = "1.95"
 exclude = ["benches/", "docs/", ".cogent-audit/", ".github/"]
 
 [lints.rust]

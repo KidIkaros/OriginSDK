@@ -26,12 +26,14 @@ fuzz_target!(|data: &[u8]| {
     let decrypted = chacha40_encrypt(&key, 0, &nonce, &ciphertext);
     assert_eq!(decrypted, plaintext, "ChaCha40 roundtrip failed");
 
-    // Wrong key produces different output (with high probability)
-    let mut wrong_key = key;
-    wrong_key[0] ^= 0x01;
-    let wrong_ct = chacha40_encrypt(&wrong_key, 0, &nonce, plaintext);
-    assert_ne!(
-        wrong_ct, ciphertext,
-        "wrong key should produce different ciphertext"
-    );
+    // Wrong key produces different output (for >=16B plaintext, collision probability is <= 2^-128)
+    if plaintext.len() >= 16 {
+        let mut wrong_key = key;
+        wrong_key[0] ^= 0x01;
+        let wrong_ct = chacha40_encrypt(&wrong_key, 0, &nonce, plaintext);
+        assert_ne!(
+            wrong_ct, ciphertext,
+            "wrong key should produce different ciphertext"
+        );
+    }
 });

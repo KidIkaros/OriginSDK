@@ -52,9 +52,36 @@ impl MlKem768Kem {
 
     /// Encapsulate to a peer's encapsulation key.
     ///
-    /// Returns `(ciphertext, shared_secret)`.
+    /// Returns `(ciphertext, shared_secret)`. Fresh randomness is drawn from
+    /// the OS.
     pub fn encapsulate(ek: &EncapsulationKey) -> (Ciphertext, SharedSecret) {
         let (ct, ss) = ek.0.encapsulate();
+        (Ciphertext(ct), ss.into())
+    }
+
+    /// Encapsulate with caller-supplied randomness (`m`, 32 bytes).
+    ///
+    /// This is the FIPS 203 `Encaps_internal` entry point: `(K, r) = G(m ‖ H(ek))`
+    /// and `c = Encrypt(ek, m, r)`. Supplying `m` makes encapsulation fully
+    /// deterministic, which protocols need for two things:
+    ///
+    /// - **MEX / dual-PRF hardening** — a protocol can derive `m` from both peer
+    ///   randomness *and* a long-term secret, so a subverted RNG cannot fix the
+    ///   shared secret (see PQ-WireGuard's `CCAKEM.Enc(spk, KDF1(σ, r))`).
+    /// - **Byte-exact test vectors** — transcripts and session keys become
+    ///   reproducible.
+    ///
+    /// # Warning
+    ///
+    /// `m` **must** be uniformly random and secret, and must never be reused
+    /// across encryptions to the same key. Callers mixing protocol secrets into
+    /// `m` are expected to hash them through a KDF first.
+    pub fn encapsulate_deterministic(
+        ek: &EncapsulationKey,
+        m: &[u8; SS_SIZE],
+    ) -> (Ciphertext, SharedSecret) {
+        let m: ml_kem::B32 = (*m).into();
+        let (ct, ss) = ek.0.encapsulate_deterministic(&m);
         (Ciphertext(ct), ss.into())
     }
 
@@ -251,5 +278,25 @@ mod tests {
         let (_, ek2) = MlKem768Kem::generate_keypair_from_seed(&seed);
         assert_eq!(bytes, ek2.as_bytes());
         assert_ne!(bytes, [0u8; EK_SIZE]);
+    }
+
+    #[test]
+    fn encapsulate_deterministic_is_reproducible() {
+        let seed = [31u8; SEED_SIZE];
+        let (dk, ek) = MlKem768Kem::generate_keypair_from_seed(&seed);
+        let m = [7u8; SS_SIZE];
+
+        let (ct1, ss1) = MlKem768Kem::encapsulate_deterministic(&ek, &m);
+        let (ct2, ss2) = MlKem768Kem::encapsulate_deterministic(&ek, &m);
+        assert_eq!(ct1.as_bytes(), ct2.as_bytes());
+        assert_eq!(ss1, ss2);
+
+        // The deterministic secret is the real one: decapsulation recovers it.
+        assert_eq!(MlKem768Kem::decapsulate(&dk, &ct1), ss1);
+
+        // Distinct randomness yields distinct ciphertext and secret.
+        let (ct3, ss3) = MlKem768Kem::encapsulate_deterministic(&ek, &[8u8; SS_SIZE]);
+        assert_ne!(ct1.as_bytes(), ct3.as_bytes());
+        assert_ne!(ss1, ss3);
     }
 }

@@ -47,7 +47,7 @@ let sig = bundle.sign_hybrid(b"sign this");
 | **Encryption** | XChaCha20-Poly1305, ChaCha20-BLAKE3, Serpent CBC, **ChaCha40** (512-bit key stream cipher) | ChaCha20-BLAKE3 (committing AEAD) |
 | **KDF** | Argon2id, HKDF-SHA3-256, HMAC-SHA3-256 | Argon2id for passwords, HKDF for derivation |
 | **Hashing** | BLAKE3, SHA3-256, SHAKE128/256, Skein-512/1024 | BLAKE3 or SHA3-256 |
-| **PQC KEM** | NTRU Prime (sntrup761), hybrid X25519+NTRU+Ed41417 | Hybrid KEM |
+| **PQC KEM** | NTRU Prime (sntrup761), ML-KEM-768, **hybrid X25519+sntrup761 (+ML-KEM-768)** | Hybrid KEM (`kem::hybrid`) |
 | **Ciphers** | ChaCha20 stream cipher, **ChaCha40** (PQ-hardened, 512-bit key, 40 rounds) | ChaCha40 for PQ-sensitive streams |
 | **Utilities** | ChaCha20-DRBG, seed hierarchy, Reed-Solomon, OTP/TOTP, compression, entropy analysis | -- |
 | **Recovery** | Unicode-codepoint recovery phrases (12 / 24-word, SHA-3-256 checksum) | Unicode cipher — NOT BIP-39 compatible |
@@ -146,6 +146,10 @@ origin_crypto_sdk::
     ntru_prime::        -- NTRU Prime sntrup761
     slhdsa::            -- SLH-DSA (feature-gated)
     mldsa::             -- ML-DSA (feature-gated)
+    ml_kem::            -- ML-KEM-768 (feature = "ml-kem")
+  kem::                 -- Key encapsulation mechanisms
+    hybrid::            -- Hybrid KEMs (X25519+NTRU [+ML-KEM]) + shared combiner
+  x25519::              -- X25519 Diffie-Hellman (RFC 7748)
   drbg::                -- ChaCha20 DRBG (auto-reseed at 16 MB)
     otp::               -- One-time pad (HOTP/TOTP, RFC 4226/6238)
   ocra::                -- OCRA challenge-response (RFC 6287 core)

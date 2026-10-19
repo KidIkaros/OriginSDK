@@ -162,6 +162,14 @@ pub mod signing;
 /// interchange, seed-based deterministic derivation, zeroize-on-drop.
 pub mod x25519;
 
+// ── Key encapsulation ──
+/// Key encapsulation mechanisms (KEMs).
+///
+/// Currently houses [`kem::hybrid`]: hybrid (classical + post-quantum) KEMs
+/// and the suite-agnostic shared-secret combiner that composes them. The
+/// counterpart to [`signing::hybrid`] on the key-establishment side.
+pub mod kem;
+
 // ── Randomness & DRBG ──
 pub mod drbg;
 

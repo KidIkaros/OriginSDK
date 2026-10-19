@@ -38,6 +38,17 @@ pub use crate::chacha20_blake3::ChaCha20Blake3;
 // ── Key agreement ──
 pub use crate::x25519::{X25519KeyPair, X25519PublicKey, X25519SharedSecret};
 
+// ── Key encapsulation (hybrid) ──
+pub use crate::kem::hybrid::{
+    combine_shared_secrets, X25519NtruCiphertext, X25519NtruKem, X25519NtruPublicKey,
+    X25519NtruSecretKey,
+};
+#[cfg(feature = "ml-kem")]
+pub use crate::kem::hybrid::{
+    X25519NtruMlKemCiphertext, X25519NtruMlKemKem, X25519NtruMlKemPublicKey,
+    X25519NtruMlKemSecretKey,
+};
+
 // ── KDF ──
 pub use crate::kdf::hkdf::{derive_subkeys, hkdf_sha3_256};
 pub use crate::kdf::Argon2id;

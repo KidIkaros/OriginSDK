@@ -158,7 +158,10 @@ pub fn combine_shared_secrets(
 
 /// X25519 encapsulation leg: samples an ephemeral scalar, returns
 /// `(ephemeral_public, shared_secret)`.
-fn x25519_encaps<R: RngCore + CryptoRng>(pk: &[u8; 32], rng: &mut R) -> Result<([u8; 32], [u8; 32])> {
+fn x25519_encaps<R: RngCore + CryptoRng>(
+    pk: &[u8; 32],
+    rng: &mut R,
+) -> Result<([u8; 32], [u8; 32])> {
     let mut scalar = [0u8; 32];
     rng.fill_bytes(&mut scalar);
     let eph = X25519KeyPair::from_secret_key(&scalar)?;
@@ -239,7 +242,8 @@ impl Drop for X25519NtruSecretKey {
 
 impl std::fmt::Debug for X25519NtruSecretKey {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("X25519NtruSecretKey").finish_non_exhaustive()
+        f.debug_struct("X25519NtruSecretKey")
+            .finish_non_exhaustive()
     }
 }
 
@@ -299,7 +303,13 @@ impl X25519NtruKem {
             x25519: x_public,
             ntru: ntru_pk,
         };
-        Ok((public, X25519NtruSecretKey { x25519: x_scalar, ntru: ntru_sk }))
+        Ok((
+            public,
+            X25519NtruSecretKey {
+                x25519: x_scalar,
+                ntru: ntru_sk,
+            },
+        ))
     }
 
     /// Encapsulate to a peer public key. Returns `(ciphertext, 32-byte key)`.
@@ -310,7 +320,10 @@ impl X25519NtruKem {
         let (x_ct, ss_x) = x25519_encaps(&pk.x25519, rng)?;
         let (ntru_ct, ss_n) = ntru::NtruPrime::encapsulate(&pk.ntru, rng);
 
-        let ct = X25519NtruCiphertext { x25519: x_ct, ntru: ntru_ct };
+        let ct = X25519NtruCiphertext {
+            x25519: x_ct,
+            ntru: ntru_ct,
+        };
         let mut key = [0u8; 32];
         combine_shared_secrets(
             &suite_context(SUITE_X25519_SNTRUP761),
@@ -322,10 +335,7 @@ impl X25519NtruKem {
     }
 
     /// Decapsulate a ciphertext to the 32-byte key.
-    pub fn decapsulate(
-        sk: &X25519NtruSecretKey,
-        ct: &X25519NtruCiphertext,
-    ) -> Result<[u8; 32]> {
+    pub fn decapsulate(sk: &X25519NtruSecretKey, ct: &X25519NtruCiphertext) -> Result<[u8; 32]> {
         let ss_x = x25519_decaps(&sk.x25519, &ct.x25519)?;
         let ss_n = ntru::NtruPrime::decapsulate(&ct.ntru, &sk.ntru)?;
         let mut key = [0u8; 32];
@@ -572,7 +582,11 @@ mod tests {
         };
         let reference = base(b"ctx", &[1u8; 32], &[2u8; 32]);
         assert_ne!(reference, base(b"other", &[1u8; 32], &[2u8; 32]), "context");
-        assert_ne!(reference, base(b"ctx", &[9u8; 32], &[2u8; 32]), "ciphertext");
+        assert_ne!(
+            reference,
+            base(b"ctx", &[9u8; 32], &[2u8; 32]),
+            "ciphertext"
+        );
         assert_ne!(reference, base(b"ctx", &[1u8; 32], &[9u8; 32]), "secret");
     }
 
@@ -608,7 +622,10 @@ mod tests {
         )
         .unwrap();
         let hex: String = out.iter().map(|b| format!("{b:02x}")).collect();
-        assert_eq!(hex, "9617883a11f3205a29d45295d97d10172d30f2794ad266aa5f18c283fe67795d");
+        assert_eq!(
+            hex,
+            "9617883a11f3205a29d45295d97d10172d30f2794ad266aa5f18c283fe67795d"
+        );
     }
 
     // ── Suite 0x0001 ──
@@ -652,7 +669,10 @@ mod tests {
     fn secret_key_debug_redacts() {
         let (_, sk) = X25519NtruKem::generate_keypair().unwrap();
         let rendered = format!("{sk:?}");
-        assert!(!rendered.contains("1763"), "Debug leaked length: {rendered}");
+        assert!(
+            !rendered.contains("1763"),
+            "Debug leaked length: {rendered}"
+        );
     }
 
     // ── Suite 0x0003 ──

@@ -2,7 +2,7 @@
 
 [package]
 name = "origin-crypto-sdk"
-version = "0.7.3"
+version = "0.7.4"
 edition = "2021"
 authors = ["Origin Contributors"]
 description = "Standalone cryptographic SDK with classical (Ed25519) and post-quantum (Falcon, SLH-DSA, ML-DSA, NTRU Prime, Curve41417) primitives. Hybrid signing by default."
@@ -56,7 +56,7 @@ ml-kem = { version = "=0.3.2", optional = true, features = ["zeroize", "getrando
 
 # Compression
 flate2 = "1.0"
-zstd = { version = "0.13", default-features = false, features = ["arrays"] }  # Zstd streaming + bulk, no std-only features
+zstd = { version = "0.14.3", default-features = false, features = ["arrays"] }  # Zstd streaming + bulk, no std-only features
 
 # Utility crates — kept until their dependents are replaced
 rand = "=0.8.7"

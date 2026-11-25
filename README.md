@@ -1,20 +1,38 @@
 # Origin Crypto SDK
 
-> ⚠️ **EXPERIMENTAL — NOT FOR PRODUCTION USE** ⚠️
+> ⚠️ **SECURITY STATUS — READ BEFORE USE** ⚠️
 >
-> This SDK is under active development and **has not undergone independent
-> security audit or formal review**. Cryptographic code is notoriously subtle;
-> an implementation that passes its own tests is not the same as one that is
-> safe to trust with real secrets.
+> This SDK has **not yet undergone independent security audit**. What that
+> means concretely depends on which component you use — the evidence base
+> is tiered, not uniform:
 >
-> - **Do not** use this in production systems.
-> - **Do not** use it to protect real funds, real identities, or real data.
-> - Treat every release (including patch releases) as experimental.
-> - The API, wire formats, and on-disk formats **may change without notice**,
->   and may do so in ways that break compatibility with previously written data.
+> - **Tier A — externally validated implementations** (battle-tested
+>   dependencies or upstream-audited crates): AEAD via `chacha20poly1305`,
+>   Argon2id KDF, Ed25519/X25519, SHA-2/SHA-3, Falcon via `falcon-rs`
+>   (FIPS 206, upstream KATs), secp256k1 arithmetic via `k256`
+>   (fiat-crypto, constant-time by construction).
+> - **Tier B — custom implementations verified against authoritative test
+>   vectors**: NTRU Prime (100/100 NIST KAT vectors byte-exact), native
+>   ChaCha20/Poly1305 (RFC 8439 vectors). These also passed an internal
+>   constant-time review with timing tests — but internal review is not
+>   independent review.
+> - **Tier C — custom constructions with internal evidence only**:
+>   hybrid signing composition, Ed41417 (Curve41417) ECC, EC-Schnorr
+>   composition, ChaCha20-DRBG, seed blob/container formats, Reed-Solomon
+>   sharding, memory handling. These are the design core of the SDK and
+>   carry the most novelty — and therefore the most unreviewed risk.
 >
-> Use for research, evaluation, and experimentation only. A rigorous external
-> audit is a prerequisite for any production deployment.
+> **Production use is a risk decision you own.** Tier A operations rest on
+> the same evidence as any mainstream deployment. Tier C operations do
+> not — no responsible party should represent otherwise until independent
+> review is commissioned (the audit package in `AUDIT_PACKAGE.md` is
+> prepared for exactly that). If you deploy Tier C functionality against
+> real secrets today, you are the reviewer of last resort.
+>
+> Wire formats are pinned by golden-vector tests and versioned (see
+> `src/algorithm_id.rs`); they follow semver, not whim.
+>
+> Full per-component evidence matrix: [STABILITY.md](STABILITY.md).
 
 Standalone Rust cryptographic SDK with classical and post-quantum primitives. Hybrid signing by default.
 

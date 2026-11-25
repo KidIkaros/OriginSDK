@@ -26,6 +26,10 @@
 //! println!("Shannon: {:.2} bits/byte", metrics.shannon_entropy);
 //! ```
 
+/// Structural bit/byte/block analysis — catches defects statistical
+/// moments miss (avalanche, transition entropy, block uniqueness).
+pub mod structural;
+
 // ---------------------------------------------------------------------------
 // Metrics container
 // ---------------------------------------------------------------------------

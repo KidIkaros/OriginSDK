@@ -178,9 +178,74 @@ pub struct QualityRequirements {
 }
 
 impl QualityRequirements {
+    /// Shannon-entropy achievability cap for a sample of `n` bytes.
+    ///
+    /// Byte-level entropy of `n` samples is mathematically capped at
+    /// log2(n) bits — a 32-byte seed can never exceed 5.0, and its
+    /// expected value under perfect uniformity is ~4.9. Applying the
+    /// fixed table (3.8-4.8) to seed-sized inputs is therefore unsound;
+    /// this cap relaxes the requirement to 90% of the theoretical maximum
+    /// when that maximum is the binding constraint. The 0.9 factor is a
+    /// heuristic margin — it sits several standard deviations below the
+    /// expected value of honest randomness at these sizes.
+    ///
+    /// Note the deeper limitation: at seed sizes most byte-distribution
+    /// checks become near-vacuous (min/collision entropy are inflated by
+    /// sparsity, chi-squared assumptions break down). Statistical
+    /// validation is only meaningful on pooled samples — see the
+    /// structural module's integration tests for the methodology.
+    fn shannon_cap(n_bytes: u32) -> f64 {
+        let n = n_bytes.max(2) as f64;
+        0.9 * n.log2().min(8.0)
+    }
+
+    /// Apply size-awareness to a base requirement set.
+    fn size_adjusted(mut self, bits: u32) -> Self {
+        let cap = Self::shannon_cap(bits / 8);
+        self.min_shannon = self.min_shannon.min(cap);
+        self
+    }
+
+    /// Requirements for a salt of the given bit length.
+    ///
+    /// Salts need uniqueness, not full entropy — the relaxed table is
+    /// ported from the cryp prototype's `_SALT_REQS` policy.
+    pub fn for_salt(bits: u32) -> Self {
+        let base = match bits {
+            128 => QualityRequirements {
+                min_shannon: 3.5,
+                min_min_entropy: 2.4,
+                min_collision: 3.2,
+                min_chi_squared_p: 0.0001,
+                max_serial_correlation: 0.8,
+                max_bit_bias_deviation: 0.25,
+                max_longest_run: 30,
+            },
+            192 => QualityRequirements {
+                min_shannon: 3.6,
+                min_min_entropy: 3.0,
+                min_collision: 3.5,
+                min_chi_squared_p: 0.0001,
+                max_serial_correlation: 0.8,
+                max_bit_bias_deviation: 0.2,
+                max_longest_run: 25,
+            },
+            _ => QualityRequirements {
+                min_shannon: 3.8,
+                min_min_entropy: 3.2,
+                min_collision: 3.6,
+                min_chi_squared_p: 0.0001,
+                max_serial_correlation: 0.8,
+                max_bit_bias_deviation: 0.15,
+                max_longest_run: 25,
+            },
+        };
+        base.size_adjusted(bits)
+    }
+
     /// Requirements for the given seed bit length.
     pub fn for_bits(bits: u32) -> Self {
-        match bits {
+        let base = match bits {
             128 => QualityRequirements {
                 min_shannon: 3.8,
                 min_min_entropy: 3.5,
@@ -209,11 +274,19 @@ impl QualityRequirements {
                 max_bit_bias_deviation: 0.12,
                 max_longest_run: 20,
             },
-        }
+        };
+        base.size_adjusted(bits)
     }
 }
 
 /// Check if entropy metrics meet quality requirements for a seed of `bits` bits.
+///
+/// `bits` should describe the analyzed sample size (seed bits for a single
+/// seed, total bits for pooled analysis). Entropy requirements are capped
+/// at what a sample of that size can achieve — see
+/// [`QualityRequirements::shannon_cap`]. Note that most byte-distribution
+/// checks are near-vacuous at single-seed sizes regardless; meaningful
+/// statistical validation requires pooled samples.
 ///
 /// Returns `(passed, warnings)` where `passed` is true if all checks pass.
 pub fn check_quality(metrics: &EntropyMetrics, bits: u32) -> (bool, Vec<String>) {
@@ -490,5 +563,47 @@ mod tests {
             "Bit bias too far from 0.5: {}",
             m.bit_bias
         );
+    }
+
+    #[test]
+    fn single_seed_shannon_cap_is_size_aware() {
+        // A 32-byte seed cannot exceed log2(32) = 5.0 bits/byte of byte-level
+        // entropy; the requirement must relax below the fixed table's 4.8.
+        let req = QualityRequirements::for_bits(256);
+        assert!(
+            req.min_shannon <= 4.5 + 1e-9,
+            "shannon requirement {} should be capped near 0.9*log2(32)=4.5",
+            req.min_shannon
+        );
+        // Large pooled samples keep the full table value.
+        let pooled = QualityRequirements::for_bits(256 * 100);
+        assert!((pooled.min_shannon - 4.8).abs() < 1e-9);
+    }
+
+    #[test]
+    fn salt_requirements_are_relaxed() {
+        let seed = QualityRequirements::for_bits(256);
+        let salt = QualityRequirements::for_salt(256);
+        assert!(salt.min_shannon < seed.min_shannon || salt.min_shannon <= 3.8 + 1e-9);
+        assert!(salt.min_min_entropy < seed.min_min_entropy);
+        assert!(salt.max_serial_correlation > seed.max_serial_correlation);
+        assert!(salt.max_longest_run > seed.max_longest_run);
+    }
+
+    #[test]
+    fn honest_random_pool_passes() {
+        // xorshift64 test data — same generator as the structural tests.
+        let mut state = 0x9E3779B97F4A7C15u64;
+        let mut data = Vec::with_capacity(3200);
+        while data.len() < 3200 {
+            state ^= state << 13;
+            state ^= state >> 7;
+            state ^= state << 17;
+            data.extend_from_slice(&state.to_le_bytes());
+        }
+        data.truncate(3200);
+        let m = analyze(&data);
+        let (passed, warnings) = check_quality(&m, 3200 * 8);
+        assert!(passed, "pooled random data should pass: {:?}", warnings);
     }
 }

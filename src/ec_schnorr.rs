@@ -99,12 +99,31 @@ pub fn prove(secret_key: &[u8; 32], message: &[u8]) -> Result<EcSchnorrProof> {
     let x = scalar_from_repr(secret_key)
         .ok_or_else(|| CryptoError::InvalidKey("Invalid secret key scalar".into()))?;
 
-    // Generate random nonce r
+    // Deterministic nonce derivation (EdDSA-style): r = reduce(H(domain ‖ secret ‖ message)).
+    //
+    // Replaces OS-RNG nonce generation. Rationale, in ascending order of importance:
+    // 1. Security: a Schnorr nonce that repeats or is predictable across two proofs
+    //    of the same key reveals the secret key. Deriving the nonce deterministically
+    //    from (key, message) eliminates the entire RNG-failure/weakness attack class —
+    //    the same reasoning behind Ed25519's design.
+    // 2. Purity/testability: prove() becomes a deterministic function of its inputs,
+    //    enabling golden vectors and reproducible tests.
+    // 3. No entropy cost per proof.
+    //
+    // The nonce never crosses the API boundary (only R = r·G is public), so
+    // determinism leaks nothing beyond what the proof itself reveals.
     let r = {
-        let mut rng = rand::thread_rng();
-        let mut buf = [0u8; 32];
-        rng.fill_bytes(&mut buf);
-        scalar_from_repr(&buf).ok_or(SchnorrError::RngFailed)?
+        let mut input = Vec::with_capacity(20 + 32 + message.len());
+        input.extend_from_slice(b"ec-schnorr-nonce-v1");
+        input.extend_from_slice(secret_key);
+        input.extend_from_slice(message);
+        let hash = sha3_256(&input);
+        let r = Scalar::reduce(&FieldBytes::from(hash));
+        // Nonce must be non-zero; probability of zero is ~2^-128 but fail loudly.
+        if bool::from(r.is_zero()) {
+            return Err(SchnorrError::RngFailed.into());
+        }
+        r
     };
 
     // R = r*G, P = x*G
@@ -312,4 +331,18 @@ mod tests {
         let proof = prove(&sk_bytes, &message).unwrap();
         assert!(verify(&proof, &pk_bytes, &message).unwrap());
     }
+
+    #[test]
+    fn test_prove_deterministic_and_message_bound() {
+        let (sk, _) = generate_keypair(&[7u8; 32]);
+        let p1 = prove(&sk, b"msg").unwrap();
+        let p2 = prove(&sk, b"msg").unwrap();
+        // deterministic: same inputs → identical proof
+        assert_eq!(p1.commitment, p2.commitment);
+        assert_eq!(p1.response, p2.response);
+        // message-bound: different message → different nonce/commitment
+        let p3 = prove(&sk, b"other").unwrap();
+        assert_ne!(p1.commitment, p3.commitment);
+    }
 }
+

@@ -15,6 +15,12 @@ signatures are no longer extractable as valid standalone signatures — this
 was the security defect being fixed. Byte-level container layouts in
 `FORMAT_REGISTRY.md` are unchanged; only the signed payload changed.
 
+### Security
+- **EC-Schnorr nonces are now deterministic** (EdDSA-style, derived from
+  domain-separated hash of key+message). Eliminates RNG-failure/weakness
+  key-recovery attacks on the proof system;  is now a pure function
+  of its inputs. Proofs for the same key+message are identical by design.
+
 ### Added
 - CycloneDX 1.6 CBOM generation: `cargo run --bin cbom > cbom.json`, with
   `ALL_ALGORITHM_IDS` as the drift-proof inventory source.

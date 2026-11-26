@@ -4,6 +4,23 @@ All notable changes to origin-crypto-sdk will be documented in this file.
 
 ## [Unreleased]
 
+### ⚠ BREAKING — hybrid signature wire format
+
+Hybrid signatures (`signing::hybrid` constructions) now sign
+`b"origin-hybrid-<construction>-v1" ‖ message` rather than the raw message
+(H-1 remediation, see `docs/AUDIT-NOTE-hybrid-combiner.md`). **Signatures
+produced before this change do not verify after it, and vice versa.** If you
+have stored hybrid signatures, they must be re-generated. Component
+signatures are no longer extractable as valid standalone signatures — this
+was the security defect being fixed. Byte-level container layouts in
+`FORMAT_REGISTRY.md` are unchanged; only the signed payload changed.
+
+### Added
+- CycloneDX 1.6 CBOM generation: `cargo run --bin cbom > cbom.json`, with
+  `ALL_ALGORITHM_IDS` as the drift-proof inventory source.
+- `docs/RESEARCH-NOTE-cryptanalysis-evidence.md` — evidence-first design
+  provenance; `STABILITY.md` reframed to rank evidence by independence.
+
 ## [0.7.2] — 2026-09-27
 
 _Alphabet-agnostic recovery phrases (format v2): a project can define its own

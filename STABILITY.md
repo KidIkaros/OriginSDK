@@ -92,3 +92,18 @@ Each component is assigned an evidence tier:
 Until items 1–2 are complete, Tier C components should be treated as
 unreviewed cryptographic research — which is a statement about evidence,
 not about the quality of the engineering.
+
+## Cryptographic inventory (CBOM)
+
+A CycloneDX 1.6 Cryptographic Bill of Materials is generated from the
+`AlgorithmId` inventory — the single source of truth in `src/algorithm_id.rs`:
+
+```
+cargo run --bin cbom > cbom.json
+```
+
+All 34 algorithm assets are classified by primitive, implementation platform,
+execution environment, and provenance (custom vs external). A unit test pins
+the inventory count so new variants cannot ship without CBOM coverage. (For
+context: none of the seven PQC libraries audited in arXiv:2605.17061 shipped
+cryptographic discovery/inventory tooling.)

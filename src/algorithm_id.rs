@@ -213,7 +213,77 @@ impl AlgorithmId {
                 | Self::Ed25519Skein512
         )
     }
+
+    /// CycloneDX primitive classification for CBOM generation.
+    pub fn primitive(self) -> &'static str {
+        match self {
+            Self::XChaCha20Poly1305 | Self::XChaCha20Poly1305Native | Self::ChaCha20Blake3 => "aead",
+            Self::Argon2id | Self::HkdfSha3_256 | Self::HkdfSha3_512 => "kdf",
+            Self::Sha3_256 | Self::Sha3_512 | Self::Blake3 | Self::Skein512 | Self::Skein1024 => "hash",
+            Self::Shake256 => "xof",
+            Self::Ed25519 | Self::Ed448 | Self::Falcon512 | Self::Falcon1024 | Self::SlhDsa
+            | Self::MlDsa | Self::Ed41417 | Self::Ed25519Falcon1024 | Self::Ed25519Falcon512
+            | Self::Ed448Falcon1024 | Self::Ed25519Blake3 | Self::Ed25519Shake256
+            | Self::Ed25519Skein512 => "signature",
+            Self::NtruPrime => "kem",
+            Self::X25519 => "key-agreement",
+            Self::Secp256k1 => "signature",
+            Self::ChaCha20Drbg => "drbg",
+            Self::Poly1305 | Self::SipHash | Self::HmacSha3_256 => "mac",
+            Self::SeedBlobV2 | Self::SeedBlobV1 => "other",
+        }
+    }
+
+    /// Implementation provenance for CBOM: external crate vs custom implementation.
+    pub fn implementation_provenance(self) -> &'static str {
+        if self.is_custom() {
+            "custom implementation (see STABILITY.md evidence tier)"
+        } else if self.is_hybrid() {
+            "custom composition of external primitives"
+        } else {
+            "externally maintained crate"
+        }
+    }
 }
+
+/// Complete algorithm inventory — the single source of truth for CBOM
+/// generation and downgrade-policy auditing. Must list every variant.
+pub const ALL_ALGORITHM_IDS: &[AlgorithmId] = &[
+    AlgorithmId::XChaCha20Poly1305,
+    AlgorithmId::XChaCha20Poly1305Native,
+    AlgorithmId::ChaCha20Blake3,
+    AlgorithmId::Argon2id,
+    AlgorithmId::HkdfSha3_256,
+    AlgorithmId::HkdfSha3_512,
+    AlgorithmId::Sha3_256,
+    AlgorithmId::Sha3_512,
+    AlgorithmId::Blake3,
+    AlgorithmId::Skein512,
+    AlgorithmId::Skein1024,
+    AlgorithmId::Shake256,
+    AlgorithmId::Ed25519,
+    AlgorithmId::Ed448,
+    AlgorithmId::Falcon512,
+    AlgorithmId::Falcon1024,
+    AlgorithmId::SlhDsa,
+    AlgorithmId::MlDsa,
+    AlgorithmId::Ed25519Falcon1024,
+    AlgorithmId::Ed25519Falcon512,
+    AlgorithmId::Ed448Falcon1024,
+    AlgorithmId::Ed25519Blake3,
+    AlgorithmId::Ed25519Shake256,
+    AlgorithmId::Ed25519Skein512,
+    AlgorithmId::NtruPrime,
+    AlgorithmId::X25519,
+    AlgorithmId::Ed41417,
+    AlgorithmId::Secp256k1,
+    AlgorithmId::ChaCha20Drbg,
+    AlgorithmId::Poly1305,
+    AlgorithmId::SipHash,
+    AlgorithmId::HmacSha3_256,
+    AlgorithmId::SeedBlobV2,
+    AlgorithmId::SeedBlobV1,
+];
 
 impl std::fmt::Display for AlgorithmId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

@@ -1,0 +1,549 @@
+{
+  "bomFormat": "CycloneDX",
+  "components": [
+    {
+      "bom-ref": "algorithm/0x0101",
+      "cryptoProperties": {
+        "algorithmProperties": {
+          "cryptoFunctions": [],
+          "executionEnvironment": "software-plain-ram",
+          "implementationPlatform": "rust",
+          "primitive": "aead"
+        },
+        "assetType": "algorithm"
+      },
+      "description": "externally maintained crate",
+      "name": "XChaCha20-Poly1305",
+      "type": "cryptographic-asset"
+    },
+    {
+      "bom-ref": "algorithm/0x0102",
+      "cryptoProperties": {
+        "algorithmProperties": {
+          "cryptoFunctions": [],
+          "executionEnvironment": "software-plain-ram",
+          "implementationPlatform": "rust",
+          "primitive": "aead"
+        },
+        "assetType": "algorithm"
+      },
+      "description": "custom implementation (see STABILITY.md evidence tier)",
+      "name": "XChaCha20-Poly1305 (native)",
+      "type": "cryptographic-asset"
+    },
+    {
+      "bom-ref": "algorithm/0x0103",
+      "cryptoProperties": {
+        "algorithmProperties": {
+          "cryptoFunctions": [],
+          "executionEnvironment": "software-plain-ram",
+          "implementationPlatform": "rust",
+          "primitive": "aead"
+        },
+        "assetType": "algorithm"
+      },
+      "description": "externally maintained crate",
+      "name": "ChaCha20-BLAKE3",
+      "type": "cryptographic-asset"
+    },
+    {
+      "bom-ref": "algorithm/0x0201",
+      "cryptoProperties": {
+        "algorithmProperties": {
+          "cryptoFunctions": [],
+          "executionEnvironment": "software-plain-ram",
+          "implementationPlatform": "rust",
+          "primitive": "kdf"
+        },
+        "assetType": "algorithm"
+      },
+      "description": "externally maintained crate",
+      "name": "Argon2id",
+      "type": "cryptographic-asset"
+    },
+    {
+      "bom-ref": "algorithm/0x0202",
+      "cryptoProperties": {
+        "algorithmProperties": {
+          "cryptoFunctions": [],
+          "executionEnvironment": "software-plain-ram",
+          "implementationPlatform": "rust",
+          "primitive": "kdf"
+        },
+        "assetType": "algorithm"
+      },
+      "description": "externally maintained crate",
+      "name": "HKDF-SHA3-256",
+      "type": "cryptographic-asset"
+    },
+    {
+      "bom-ref": "algorithm/0x0203",
+      "cryptoProperties": {
+        "algorithmProperties": {
+          "cryptoFunctions": [],
+          "executionEnvironment": "software-plain-ram",
+          "implementationPlatform": "rust",
+          "primitive": "kdf"
+        },
+        "assetType": "algorithm"
+      },
+      "description": "externally maintained crate",
+      "name": "HKDF-SHA3-512",
+      "type": "cryptographic-asset"
+    },
+    {
+      "bom-ref": "algorithm/0x0301",
+      "cryptoProperties": {
+        "algorithmProperties": {
+          "cryptoFunctions": [],
+          "executionEnvironment": "software-plain-ram",
+          "implementationPlatform": "rust",
+          "primitive": "hash"
+        },
+        "assetType": "algorithm"
+      },
+      "description": "externally maintained crate",
+      "name": "SHA3-256",
+      "type": "cryptographic-asset"
+    },
+    {
+      "bom-ref": "algorithm/0x0302",
+      "cryptoProperties": {
+        "algorithmProperties": {
+          "cryptoFunctions": [],
+          "executionEnvironment": "software-plain-ram",
+          "implementationPlatform": "rust",
+          "primitive": "hash"
+        },
+        "assetType": "algorithm"
+      },
+      "description": "externally maintained crate",
+      "name": "SHA3-512",
+      "type": "cryptographic-asset"
+    },
+    {
+      "bom-ref": "algorithm/0x0303",
+      "cryptoProperties": {
+        "algorithmProperties": {
+          "cryptoFunctions": [],
+          "executionEnvironment": "software-plain-ram",
+          "implementationPlatform": "rust",
+          "primitive": "hash"
+        },
+        "assetType": "algorithm"
+      },
+      "description": "externally maintained crate",
+      "name": "BLAKE3",
+      "type": "cryptographic-asset"
+    },
+    {
+      "bom-ref": "algorithm/0x0304",
+      "cryptoProperties": {
+        "algorithmProperties": {
+          "cryptoFunctions": [],
+          "executionEnvironment": "software-plain-ram",
+          "implementationPlatform": "rust",
+          "primitive": "hash"
+        },
+        "assetType": "algorithm"
+      },
+      "description": "externally maintained crate",
+      "name": "Skein-512",
+      "type": "cryptographic-asset"
+    },
+    {
+      "bom-ref": "algorithm/0x0305",
+      "cryptoProperties": {
+        "algorithmProperties": {
+          "cryptoFunctions": [],
+          "executionEnvironment": "software-plain-ram",
+          "implementationPlatform": "rust",
+          "primitive": "hash"
+        },
+        "assetType": "algorithm"
+      },
+      "description": "externally maintained crate",
+      "name": "Skein-1024",
+      "type": "cryptographic-asset"
+    },
+    {
+      "bom-ref": "algorithm/0x0306",
+      "cryptoProperties": {
+        "algorithmProperties": {
+          "cryptoFunctions": [],
+          "executionEnvironment": "software-plain-ram",
+          "implementationPlatform": "rust",
+          "primitive": "xof"
+        },
+        "assetType": "algorithm"
+      },
+      "description": "externally maintained crate",
+      "name": "SHAKE256",
+      "type": "cryptographic-asset"
+    },
+    {
+      "bom-ref": "algorithm/0x0401",
+      "cryptoProperties": {
+        "algorithmProperties": {
+          "cryptoFunctions": [],
+          "executionEnvironment": "software-plain-ram",
+          "implementationPlatform": "rust",
+          "primitive": "signature"
+        },
+        "assetType": "algorithm"
+      },
+      "description": "externally maintained crate",
+      "name": "Ed25519",
+      "type": "cryptographic-asset"
+    },
+    {
+      "bom-ref": "algorithm/0x0402",
+      "cryptoProperties": {
+        "algorithmProperties": {
+          "cryptoFunctions": [],
+          "executionEnvironment": "software-plain-ram",
+          "implementationPlatform": "rust",
+          "primitive": "signature"
+        },
+        "assetType": "algorithm"
+      },
+      "description": "externally maintained crate",
+      "name": "Ed448",
+      "type": "cryptographic-asset"
+    },
+    {
+      "bom-ref": "algorithm/0x0403",
+      "cryptoProperties": {
+        "algorithmProperties": {
+          "cryptoFunctions": [],
+          "executionEnvironment": "software-plain-ram",
+          "implementationPlatform": "rust",
+          "primitive": "signature"
+        },
+        "assetType": "algorithm"
+      },
+      "description": "externally maintained crate",
+      "name": "Falcon-512",
+      "type": "cryptographic-asset"
+    },
+    {
+      "bom-ref": "algorithm/0x0404",
+      "cryptoProperties": {
+        "algorithmProperties": {
+          "cryptoFunctions": [],
+          "executionEnvironment": "software-plain-ram",
+          "implementationPlatform": "rust",
+          "primitive": "signature"
+        },
+        "assetType": "algorithm"
+      },
+      "description": "externally maintained crate",
+      "name": "Falcon-1024",
+      "type": "cryptographic-asset"
+    },
+    {
+      "bom-ref": "algorithm/0x0405",
+      "cryptoProperties": {
+        "algorithmProperties": {
+          "cryptoFunctions": [],
+          "executionEnvironment": "software-plain-ram",
+          "implementationPlatform": "rust",
+          "primitive": "signature"
+        },
+        "assetType": "algorithm"
+      },
+      "description": "externally maintained crate",
+      "name": "SLH-DSA (SPHINCS+)",
+      "type": "cryptographic-asset"
+    },
+    {
+      "bom-ref": "algorithm/0x0406",
+      "cryptoProperties": {
+        "algorithmProperties": {
+          "cryptoFunctions": [],
+          "executionEnvironment": "software-plain-ram",
+          "implementationPlatform": "rust",
+          "primitive": "signature"
+        },
+        "assetType": "algorithm"
+      },
+      "description": "externally maintained crate",
+      "name": "ML-DSA (Dilithium)",
+      "type": "cryptographic-asset"
+    },
+    {
+      "bom-ref": "algorithm/0x0501",
+      "cryptoProperties": {
+        "algorithmProperties": {
+          "cryptoFunctions": [
+            "sign",
+            "verify"
+          ],
+          "executionEnvironment": "software-plain-ram",
+          "implementationPlatform": "rust",
+          "primitive": "signature"
+        },
+        "assetType": "algorithm"
+      },
+      "description": "custom composition of external primitives",
+      "name": "Ed25519+Falcon-1024",
+      "type": "cryptographic-asset"
+    },
+    {
+      "bom-ref": "algorithm/0x0502",
+      "cryptoProperties": {
+        "algorithmProperties": {
+          "cryptoFunctions": [
+            "sign",
+            "verify"
+          ],
+          "executionEnvironment": "software-plain-ram",
+          "implementationPlatform": "rust",
+          "primitive": "signature"
+        },
+        "assetType": "algorithm"
+      },
+      "description": "custom composition of external primitives",
+      "name": "Ed25519+Falcon-512",
+      "type": "cryptographic-asset"
+    },
+    {
+      "bom-ref": "algorithm/0x0503",
+      "cryptoProperties": {
+        "algorithmProperties": {
+          "cryptoFunctions": [
+            "sign",
+            "verify"
+          ],
+          "executionEnvironment": "software-plain-ram",
+          "implementationPlatform": "rust",
+          "primitive": "signature"
+        },
+        "assetType": "algorithm"
+      },
+      "description": "custom composition of external primitives",
+      "name": "Ed448+Falcon-1024",
+      "type": "cryptographic-asset"
+    },
+    {
+      "bom-ref": "algorithm/0x0504",
+      "cryptoProperties": {
+        "algorithmProperties": {
+          "cryptoFunctions": [
+            "sign",
+            "verify"
+          ],
+          "executionEnvironment": "software-plain-ram",
+          "implementationPlatform": "rust",
+          "primitive": "signature"
+        },
+        "assetType": "algorithm"
+      },
+      "description": "custom composition of external primitives",
+      "name": "Ed25519+BLAKE3",
+      "type": "cryptographic-asset"
+    },
+    {
+      "bom-ref": "algorithm/0x0505",
+      "cryptoProperties": {
+        "algorithmProperties": {
+          "cryptoFunctions": [
+            "sign",
+            "verify"
+          ],
+          "executionEnvironment": "software-plain-ram",
+          "implementationPlatform": "rust",
+          "primitive": "signature"
+        },
+        "assetType": "algorithm"
+      },
+      "description": "custom composition of external primitives",
+      "name": "Ed25519+SHAKE256",
+      "type": "cryptographic-asset"
+    },
+    {
+      "bom-ref": "algorithm/0x0506",
+      "cryptoProperties": {
+        "algorithmProperties": {
+          "cryptoFunctions": [
+            "sign",
+            "verify"
+          ],
+          "executionEnvironment": "software-plain-ram",
+          "implementationPlatform": "rust",
+          "primitive": "signature"
+        },
+        "assetType": "algorithm"
+      },
+      "description": "custom composition of external primitives",
+      "name": "Ed25519+Skein-512",
+      "type": "cryptographic-asset"
+    },
+    {
+      "bom-ref": "algorithm/0x0601",
+      "cryptoProperties": {
+        "algorithmProperties": {
+          "cryptoFunctions": [],
+          "executionEnvironment": "software-plain-ram",
+          "implementationPlatform": "rust",
+          "primitive": "kem"
+        },
+        "assetType": "algorithm"
+      },
+      "description": "custom implementation (see STABILITY.md evidence tier)",
+      "name": "NTRU Prime (sntrup761)",
+      "type": "cryptographic-asset"
+    },
+    {
+      "bom-ref": "algorithm/0x0602",
+      "cryptoProperties": {
+        "algorithmProperties": {
+          "cryptoFunctions": [],
+          "executionEnvironment": "software-plain-ram",
+          "implementationPlatform": "rust",
+          "primitive": "key-agreement"
+        },
+        "assetType": "algorithm"
+      },
+      "description": "externally maintained crate",
+      "name": "X25519",
+      "type": "cryptographic-asset"
+    },
+    {
+      "bom-ref": "algorithm/0x0701",
+      "cryptoProperties": {
+        "algorithmProperties": {
+          "cryptoFunctions": [],
+          "executionEnvironment": "software-plain-ram",
+          "implementationPlatform": "rust",
+          "primitive": "signature"
+        },
+        "assetType": "algorithm"
+      },
+      "description": "custom implementation (see STABILITY.md evidence tier)",
+      "name": "Ed41417 (Curve41417)",
+      "type": "cryptographic-asset"
+    },
+    {
+      "bom-ref": "algorithm/0x0702",
+      "cryptoProperties": {
+        "algorithmProperties": {
+          "cryptoFunctions": [],
+          "executionEnvironment": "software-plain-ram",
+          "implementationPlatform": "rust",
+          "primitive": "signature"
+        },
+        "assetType": "algorithm"
+      },
+      "description": "custom implementation (see STABILITY.md evidence tier)",
+      "name": "secp256k1",
+      "type": "cryptographic-asset"
+    },
+    {
+      "bom-ref": "algorithm/0x0801",
+      "cryptoProperties": {
+        "algorithmProperties": {
+          "cryptoFunctions": [],
+          "executionEnvironment": "software-plain-ram",
+          "implementationPlatform": "rust",
+          "primitive": "drbg"
+        },
+        "assetType": "algorithm"
+      },
+      "description": "custom implementation (see STABILITY.md evidence tier)",
+      "name": "ChaCha20-DRBG",
+      "type": "cryptographic-asset"
+    },
+    {
+      "bom-ref": "algorithm/0x0901",
+      "cryptoProperties": {
+        "algorithmProperties": {
+          "cryptoFunctions": [],
+          "executionEnvironment": "software-plain-ram",
+          "implementationPlatform": "rust",
+          "primitive": "mac"
+        },
+        "assetType": "algorithm"
+      },
+      "description": "custom implementation (see STABILITY.md evidence tier)",
+      "name": "Poly1305",
+      "type": "cryptographic-asset"
+    },
+    {
+      "bom-ref": "algorithm/0x0902",
+      "cryptoProperties": {
+        "algorithmProperties": {
+          "cryptoFunctions": [],
+          "executionEnvironment": "software-plain-ram",
+          "implementationPlatform": "rust",
+          "primitive": "mac"
+        },
+        "assetType": "algorithm"
+      },
+      "description": "custom implementation (see STABILITY.md evidence tier)",
+      "name": "SipHash-c-d",
+      "type": "cryptographic-asset"
+    },
+    {
+      "bom-ref": "algorithm/0x0903",
+      "cryptoProperties": {
+        "algorithmProperties": {
+          "cryptoFunctions": [],
+          "executionEnvironment": "software-plain-ram",
+          "implementationPlatform": "rust",
+          "primitive": "mac"
+        },
+        "assetType": "algorithm"
+      },
+      "description": "externally maintained crate",
+      "name": "HMAC-SHA3-256",
+      "type": "cryptographic-asset"
+    },
+    {
+      "bom-ref": "algorithm/0x0A01",
+      "cryptoProperties": {
+        "algorithmProperties": {
+          "cryptoFunctions": [],
+          "executionEnvironment": "software-plain-ram",
+          "implementationPlatform": "rust",
+          "primitive": "other"
+        },
+        "assetType": "algorithm"
+      },
+      "description": "custom implementation (see STABILITY.md evidence tier)",
+      "name": "Seed Blob v2",
+      "type": "cryptographic-asset"
+    },
+    {
+      "bom-ref": "algorithm/0x0A02",
+      "cryptoProperties": {
+        "algorithmProperties": {
+          "cryptoFunctions": [],
+          "executionEnvironment": "software-plain-ram",
+          "implementationPlatform": "rust",
+          "primitive": "other"
+        },
+        "assetType": "algorithm"
+      },
+      "description": "custom implementation (see STABILITY.md evidence tier)",
+      "name": "Seed Blob v1 (legacy)",
+      "type": "cryptographic-asset"
+    }
+  ],
+  "metadata": {
+    "component": {
+      "description": "Hybrid post-quantum cryptography SDK — see STABILITY.md for evidence tiers",
+      "name": "origin-crypto-sdk",
+      "type": "library",
+      "version": "0.7.3"
+    },
+    "tools": [
+      {
+        "name": "origin-crypto-sdk cbom generator",
+        "version": "0.7.3"
+      }
+    ]
+  },
+  "specVersion": "1.6",
+  "version": 1
+}

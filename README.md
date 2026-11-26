@@ -1,282 +1,140 @@
 # Origin Crypto SDK
 
-> ⚠️ **SECURITY STATUS — READ BEFORE USE** ⚠️
->
-> This SDK has **not yet undergone independent security audit**. What that
-> means concretely depends on which component you use — the evidence base
-> is tiered, not uniform:
->
-> - **Tier A — externally validated implementations** (battle-tested
->   dependencies or upstream-audited crates): AEAD via `chacha20poly1305`,
->   Argon2id KDF, Ed25519/X25519, SHA-2/SHA-3, Falcon via `falcon-rs`
->   (FIPS 206, upstream KATs), secp256k1 arithmetic via `k256`
->   (fiat-crypto, constant-time by construction).
-> - **Tier B — custom implementations verified against authoritative test
->   vectors**: NTRU Prime (100/100 NIST KAT vectors byte-exact), native
->   ChaCha20/Poly1305 (RFC 8439 vectors). These also passed an internal
->   constant-time review with timing tests — but internal review is not
->   independent review.
-> - **Tier C — custom constructions with internal evidence only**:
->   hybrid signing composition, Ed41417 (Curve41417) ECC, EC-Schnorr
->   composition, ChaCha20-DRBG, seed blob/container formats, Reed-Solomon
->   sharding, memory handling. These are the design core of the SDK and
->   carry the most novelty — and therefore the most unreviewed risk.
->
-> **Production use is a risk decision you own.** Tier A operations rest on
-> the same evidence as any mainstream deployment. Tier C operations do
-> not — no responsible party should represent otherwise until independent
-> review is commissioned (the audit package in `AUDIT_PACKAGE.md` is
-> prepared for exactly that). If you deploy Tier C functionality against
-> real secrets today, you are the reviewer of last resort.
->
-> Wire formats are pinned by golden-vector tests and versioned (see
-> `src/algorithm_id.rs`); they follow semver, not whim.
->
-> Full per-component evidence matrix: [STABILITY.md](STABILITY.md).
+**Hybrid post-quantum cryptography for Rust — secure if *either* the classical or the lattice assumption survives, and honest about exactly what evidence backs every component.**
 
-Standalone Rust cryptographic SDK with classical and post-quantum primitives. Hybrid signing by default.
-
-[![License: Apache-2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
-[![MSRV: 1.85](https://img.shields.io/badge/MSRV-1.85-orange.svg)](https://blog.rust-lang.org/2025/02/20/Rust-1.85.0.html)
+[![CI](https://github.com/KidIkaros/OriginSDK/actions/workflows/ci.yml/badge.svg)](https://github.com/KidIkaros/OriginSDK/actions)
 [![crates.io](https://img.shields.io/crates/v/origin-crypto-sdk.svg)](https://crates.io/crates/origin-crypto-sdk)
+[![docs.rs](https://img.shields.io/docsrs/origin-crypto-sdk)](https://docs.rs/origin-crypto-sdk)
+[![License: Apache-2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
+[![MSRV: 1.95](https://img.shields.io/badge/MSRV-1.95-orange.svg)](https://blog.rust-lang.org/)
 
-> **🌐 Live browser demo:** [kidikaros.github.io/origin-web](https://kidikaros.github.io/origin-web)
-> — signing, encryption, sharding, and entropy analysis compiled to WASM. Zero servers, zero network requests.
-
-## Quick Start
+> **Live browser demo:** [kidikaros.github.io/origin-web](https://kidikaros.github.io/origin-web) — signing, encryption, sharding, and entropy analysis compiled to WASM. Zero servers, zero network requests.
 
 ```rust
 use origin_crypto_sdk::prelude::*;
 
-// Hybrid Ed25519 + Falcon-1024 signature (recommended default)
-let master_seed = [0x42u8; 32];
-let bundle = HybridSigningKeyBundle::from_seed(&master_seed, "my-app")
-    .expect("valid seed");
-
+// Hybrid Ed25519 + Falcon-1024 signature — both must verify
+let bundle = HybridSigningKeyBundle::from_seed(&[0x42u8; 32], "my-app")?;
 let sig = bundle.sign_hybrid(b"sign this");
-// sig is an Ed25519 + Falcon-1024 hybrid signature — both must verify
 ```
 
-## What's Inside
+## Why hybrid-first
+
+Post-quantum security estimates keep moving *downward* — and the 2026 literature now includes subexponential classical attacks across the lattice design family (asymptotic, not yet practical — see [`docs/RESEARCH-NOTE-cryptanalysis-evidence.md`](docs/RESEARCH-NOTE-cryptanalysis-evidence.md)). Betting any system on a single assumption family is the monoculture risk. Origin's answer is structural, not selective:
+
+- **Signatures**: Ed25519 + Falcon AND-composed — a break of either alone breaks nothing
+- **KEMs**: X25519 + NTRU Prime (+ optional ML-KEM-768) hybrid encapsulation
+- **Domain-separated composition**: hybrid component signatures are cryptographically non-extractable — they cannot be replayed as standalone signatures (H-1 class, test-guarded)
+- **Deterministic where it matters**: EdDSA-style deterministic Schnorr nonces eliminate the RNG-failure key-recovery attack class
+
+## What's inside
 
 | Category | Primitives | Recommended |
 |----------|-----------|-------------|
 | **Signatures** | Ed25519, Falcon-512/1024, SLH-DSA, ML-DSA, Ed448, Ed41417 | Hybrid (Ed25519 + Falcon-1024) |
-| **Encryption** | XChaCha20-Poly1305, ChaCha20-BLAKE3, Serpent CBC, **ChaCha40** (512-bit key stream cipher) | ChaCha20-BLAKE3 (committing AEAD) |
-| **KDF** | Argon2id, HKDF-SHA3-256, HMAC-SHA3-256 | Argon2id for passwords, HKDF for derivation |
-| **Hashing** | BLAKE3, SHA3-256, SHAKE128/256, Skein-512/1024 | BLAKE3 or SHA3-256 |
-| **PQC KEM** | NTRU Prime (sntrup761), ML-KEM-768, **hybrid X25519+sntrup761 (+ML-KEM-768)** | Hybrid KEM (`kem::hybrid`) |
-| **Ciphers** | ChaCha20 stream cipher, **ChaCha40** (PQ-hardened, 512-bit key, 40 rounds) | ChaCha40 for PQ-sensitive streams |
-| **Utilities** | ChaCha20-DRBG, seed hierarchy, Reed-Solomon, OTP/TOTP, compression, entropy analysis | -- |
-| **Recovery** | Unicode-codepoint recovery phrases (12 / 24-word, SHA-3-256 checksum) | Unicode cipher — NOT BIP-39 compatible |
+| **Encryption** | XChaCha20-Poly1305, ChaCha20-BLAKE3, Serpent CBC, **ChaCha40** (512-bit key) | ChaCha20-BLAKE3 (committing AEAD) |
+| **KDF** | Argon2id, HKDF-SHA3-256/512, HMAC-SHA3-256 | Argon2id for passwords, HKDF for derivation |
+| **Hashing** | BLAKE3, SHA3-256/512, SHAKE128/256, Skein-512/1024 | BLAKE3 or SHA3-256 |
+| **PQC KEM** | NTRU Prime (sntrup761), ML-KEM-768, hybrid X25519+sntrup761 | Hybrid KEM (`kem::hybrid`) |
+| **Utilities** | ChaCha20-DRBG, seed hierarchy, Reed-Solomon, OTP/TOTP, entropy analysis | — |
+| **Recovery** | Unicode-codepoint recovery phrases (NOT BIP-39 compatible) | 12/24-word, SHA-3-256 checksum |
 
-## Recovery Phrases
+## Radical transparency: evidence tiers, not vibes
 
-The `recovery::unicode_cipher` module provides a BIP-39-shaped recovery phrase codec using Unicode codepoints instead of an English wordlist.
+Most crypto libraries say "don't use in production" or nothing at all. Origin publishes exactly what evidence backs each component — the first PQC SDK we know of to ship a machine-readable cryptographic inventory (CycloneDX CBOM: `cargo run --bin cbom`).
 
-- **NOT BIP-39 compatible**: uses a curated Unicode codepoint wordlist and SHA-3-256 (not SHA-256). Phrases generated here cannot be recovered by other BIP-39 wallets — recovery requires this module.
-- **Strict NFKC safety**: the decoder rejects ZWJ, Variation Selectors, Combining Marks, BIDI marks, default-ignorable characters, and multi-codepoint NFKC decompositions. No silent canonicalization.
-- **12 or 24 words**: 12-word = 128-bit entropy + 4-bit SHA-3-256 checksum; 24-word = 256-bit entropy + 8-bit checksum.
-- **Custom alphabets**: power-of-2 sized (16, 32, ..., 4096), with a 128-bit safety floor.
+| Tier | Meaning | Components |
+|------|---------|-----------|
+| **A** | Externally validated implementations | AEAD crates, Argon2id, Ed25519/X25519, SHA-2/3, Falcon (`falcon-rs`), `k256` |
+| **B** | Custom implementations, reference-vector proven | NTRU Prime (100/100 design-team KAT byte-exact), native ChaCha20/Poly1305 (RFC 8439) — internal constant-time review complete |
+| **C** | Custom constructions, internal evidence only | hybrid composition, Ed41417, EC-Schnorr, DRBG, formats, sharding |
+
+**What this means for you**: Tier A deployment carries mainstream-equivalent risk. Tier C is the design core — novel, internally reviewed, and **not yet independently audited** (the audit package in [`AUDIT_PACKAGE.md`](AUDIT_PACKAGE.md) is prepared for exactly that engagement). If you deploy Tier C against real secrets today, you are the reviewer of last resort.
+
+Evidence is ranked by independence, not authority — standards-body endorsement is explicitly *not* treated as evidence (the Dual_EC lesson). The design deviations here (NTRU Prime over Kyber, Curve41417, hybrid composition) are deliberate, expert-guided positions documented in [`SECURITY.md`](SECURITY.md) and the research note.
+
+Full per-component matrix: **[STABILITY.md](STABILITY.md)** · Wire formats are golden-vector pinned and semver-versioned.
+
+## Quick start
+
+```toml
+[dependencies]
+origin-crypto-sdk = "0.7"
+
+# minimal: no parallel, no optional PQC
+# origin-crypto-sdk = { version = "0.7", default-features = false }
+
+# with hash-based + lattice signature alternatives
+# origin-crypto-sdk = { version = "0.7", features = ["slh-dsa", "ml-dsa"] }
+```
+
+Two layers for signing:
+
+```rust
+// Layer 1: OOP signers (easy)
+use origin_crypto_sdk::signing::postquantum::Falcon1024Signer;
+let signer = Falcon1024Signer::from_seed(&[0x42u8; 32])?;
+signer.sign(b"hello")?;
+
+// Layer 2: raw primitives (custom composition)
+use origin_crypto_sdk::pqc::falcon1024::{self, sign, verify};
+let (pk, sk) = falcon1024::generate_keypair_from_seed(&seed)?;
+let sig = sign(b"hello", &sk)?;
+verify(b"hello", &sig, &pk)?;
+```
+
+```bash
+cargo run --example hybrid_sign
+cargo run --example encrypt_file
+cargo run --example seed_tree
+```
+
+## Highlights
+
+- **Constant-time discipline**: internal CT review sweep complete; timing tests in CI; verification hygiene on Ed25519/Falcon/Ed448 paths
+- **Test-evidence depth**: 500+ lib tests, property tests, differential tests, NTRU Prime + Falcon KATs, malformed-input and adversarial suites, ASan/TSan, fuzz smoke — 20+ CI jobs on every push
+- **Correct statistics**: entropy analysis uses size-aware thresholds and pooled validation (small samples *cannot* meet large-sample bounds — the math is in the test docs)
+- **Memory hygiene**: zeroizing types, `mlock` support, secure cleanup paths
+- **WASM**: the entire SDK compiles to `wasm32-unknown-unknown` — the demo is proof
+
+## Recovery phrases
+
+BIP-39-shaped Unicode-codepoint phrases — **not BIP-39 compatible** (curated codepoint list, SHA-3-256 checksum). Strict NFKC safety: rejects ZWJ, variation selectors, combining marks, BIDI marks. 12-word (128-bit) or 24-word (256-bit); custom alphabets with a 128-bit floor.
 
 ```rust
 use origin_crypto_sdk::recovery::unicode_cipher::{
     encode_phrase, decode_phrase, PhraseLength, UnicodeWordlist,
 };
-
-let entropy = [0x42u8; 32]; // 256-bit for 24-word phrase
-let phrase = encode_phrase(&entropy, &UnicodeWordlist::default(), PhraseLength::Words24)
-    .expect("valid entropy");
-let recovered = decode_phrase(&phrase, &UnicodeWordlist::default())
-    .expect("valid phrase");
-assert_eq!(recovered, entropy);
+let phrase = encode_phrase(&entropy, &UnicodeWordlist::default(), PhraseLength::Words24)?;
+assert_eq!(decode_phrase(&phrase, &UnicodeWordlist::default())?, entropy);
 ```
 
-See the [module docs](https://docs.rs/origin-crypto-sdk/latest/origin_crypto_sdk/recovery/unicode_cipher/index.html) for the full API surface.
+## Threat modeling & duress
 
-## Features
+For users facing legal compulsion or physical coercion: **no duress/self-destruct primitive, by deliberate design** (18 U.S.C. §2232 risk). Application-level patterns — operational deniability, distinguishable decoy vaults, jurisdictional matrix — in [`docs/duress-pattern.md`](docs/duress-pattern.md).
 
-| Feature | Enables | Default |
-|---------|---------|---------|
-| `parallel` | Rayon-based parallel ops | **yes** |
-| `slh-dsa` | SLH-DSA / SPHINCS+ (FIPS 205, hash-based signatures) | no |
-| `ml-dsa` | ML-DSA / Dilithium (FIPS 204, lattice signatures) | no |
-| `pqc-simd` | SIMD acceleration for NTRU Prime (placeholder) | no |
-
-```toml
-# Minimal (no parallel, no optional PQC)
-origin-crypto-sdk = { version = "0.6", default-features = false }
-
-# With FIPS 204 + FIPS 205 signatures
-origin-crypto-sdk = { version = "0.6", features = ["slh-dsa", "ml-dsa"] }
-```
-
-## Security Posture
-
-- **Hybrid-first**: signatures remain secure if *either* classical or PQ primitive breaks
-- **Committing AEAD by default**: ChaCha20-BLAKE3 prevents partitioning oracle attacks
-- **External + custom implementations**: see [SECURITY.md](SECURITY.md) for a full source table
-- Custom PQC implementations (NTRU Prime, Ed41417) are **not independently audited**
-- Constant-time verification on Ed25519, Falcon, Ed448 paths
-- Memory zeroing via `zeroize` where applicable
-
-**Do not use custom implementations in production without independent audit.**
-
-## Threat Modeling & Duress Patterns
-
-If your application serves users facing legal compulsion or physical coercion
-(journalists, activists, dissidents), the SDK ships **no duress or self-destruct
-primitive** by deliberate design. Active-wipe / self-destruct features have
-been prosecuted under 18 U.S.C. §2232 ("destruction of property to prevent
-seizure"); see the Tunick matter (TechCrunch 2026-07-24).
-
-For application-level guidance on:
-
-- **Pattern P1**: Operational deniability — keep sensitive state off the device the user carries (EFF SSD clean-traveler pattern)
-- **Pattern P2**: Distinguishable decoy vault — three vaults, duress passphrase silently routes to decoy (no destruction occurs; §2232 risk avoided)
-- **Pattern P3**: Indistinguishable plausible deniability — VeraCrypt-style hidden volume; operationally fragile
-- **Jurisdictional matrix**: US, UK (Investigatory Powers Act 2016), EU (member-state variance), authoritarian regimes
-
-…see [`docs/duress-pattern.md`](docs/duress-pattern.md).
-
-## Module Map
+## Module map
 
 ```
-origin_crypto_sdk::
-  signing::             -- Ed25519, Falcon, SLH-DSA, ML-DSA, hybrid
-    hybrid::            -- HybridSigningKeyBundle (recommended)
-    classical::         -- Ed25519 alone
-    postquantum::       -- Falcon-512/1024 alone (OOP signers)
-    legacy_shim::       -- Deprecated: old `hybrid::*` re-exports
-  aead::                -- XChaCha20-Poly1305
-    symmetric::         -- Serpent CBC (non-AEAD)
-    streaming::         -- Streaming encryption
-  chacha20_blake3::     -- ChaCha20-BLAKE3 (committing AEAD)
-  chacha40::            -- ChaCha40 (PQ-hardened stream cipher, 512-bit key)
-  chacha20::            -- ChaCha20 stream cipher (RFC 8439)
-  kdf::                 -- Argon2id, HKDF-SHA3-256
-    mac::               -- HMAC-SHA3-256 (keyed hash)
-  pqc::                 -- Raw PQC primitives (advanced)
-    falcon512::         -- Falcon-512
-    falcon1024::        -- Falcon-1024
-    ed448::             -- Ed448 (Goldilocks, RFC 8032)
-    curve41417::        -- Curve41417 / Ed41417
-    ntru_prime::        -- NTRU Prime sntrup761
-    slhdsa::            -- SLH-DSA (feature-gated)
-    mldsa::             -- ML-DSA (feature-gated)
-    ml_kem::            -- ML-KEM-768 (feature = "ml-kem")
-  kem::                 -- Key encapsulation mechanisms
-    hybrid::            -- Hybrid KEMs (X25519+NTRU [+ML-KEM]) + shared combiner
-  x25519::              -- X25519 Diffie-Hellman (RFC 7748)
-  drbg::                -- ChaCha20 DRBG (auto-reseed at 16 MB)
-    otp::               -- One-time pad (HOTP/TOTP, RFC 4226/6238)
-  ocra::                -- OCRA challenge-response (RFC 6287 core)
-  entropy::             -- Entropy quality analysis
-  seed::                -- Hierarchical seed derivation
-    gen::               -- Multi-hash seed generation
-  blob::                -- Seed-blob storage format (v1/v2, tier-aware)
-  error_correction::    -- Reed-Solomon over GF(2^8) (experimental utility)
-  compression::         -- DEFLATE helpers used by `compressed` (experimental utility)
-  compressed::          -- Atomic compress-then-encrypt container
-  siphash::             -- SipHash-c-d compute-hardener (experimental utility)
-  stealth::             -- Stealth address primitives
-    kdf::               -- Stealth master/child key derivation
-    pow::               -- Hashcash PoW for enumeration rate-limiting
-  recovery::            -- Unicode recovery phrase codec (NOT BIP-39 compatible)
-    unicode_cipher::    -- Encode/decode Unicode-phrase backups
-  ec_schnorr::          -- secp256k1 Schnorr (native, zero deps)
-  prelude::             -- Common re-exports
-  test_utils::          -- Deterministic test helpers (feature = "test-utils")
-  types::               -- Zeroizing byte array newtypes (XNonce, CNonce, Seed, etc.)
-  error::               -- CryptoError, Result alias
+signing::    Ed25519, Falcon, SLH-DSA, ML-DSA + hybrid composition
+kem::        X25519, NTRU Prime, ML-KEM + hybrid KEM combiner
+aead::       XChaCha20-Poly1305, Serpent CBC, streaming
+pqc::        raw primitives: falcon512/1024, ed448, curve41417, ntru_prime, slhdsa, mldsa
+seed::       hierarchical seed derivation          recovery::  Unicode phrase codec
+drbg::       ChaCha20-DRBG (auto-reseed)           stealth::   stealth addresses + PoW
+entropy::    structural entropy analysis           blob::      seed-blob storage (v1/v2)
+ec_schnorr:: secp256k1 Schnorr (deterministic)     ocra::      OCRA challenge-response
 ```
 
-> **Note**: Utility modules marked `(experimental utility)` are public API but their wire formats and surface are not yet frozen — see each module's docs. The `internal` and `primitives` implementation layers are crate-private and unreachable from outside the crate; see `docs/ARCHITECTURE.md` for the layer rules.
-
-## Usage: Two Layers for Signing
-
-```rust
-// Layer 1: OOP signers (easy, recommended for single-primitive use)
-use origin_crypto_sdk::signing::postquantum::Falcon1024Signer;
-let signer = Falcon1024Signer::from_seed(&[0x42u8; 32]).expect("valid seed");
-signer.sign(b"hello").expect("sign failed");
-
-// Layer 2: Raw primitives (advanced, for custom composition)
-use origin_crypto_sdk::pqc::falcon1024::{FalconPrivateKey, FalconPublicKey, sign, verify};
-let (pk, sk) = falcon1024::generate_keypair_from_seed(&seed).expect("keygen");
-let sig = sign(b"hello", &sk).expect("sign failed");
-verify(b"hello", &sig, &pk).expect("verify failed");
-```
-
-The `signing::postquantum` OOP types are thin wrappers over `pqc::` — no duplicate implementations.
-
-## Examples
-
-```bash
-cargo run --example hybrid_sign
-cargo run --example encrypt_file
-cargo run --example chacha40_encrypt
-cargo run --example kdf_derive
-cargo run --example seed_tree
-```
+Full annotated map in the rendered docs. The `internal`/`primitives` layers are crate-private — see `docs/ARCHITECTURE.md` for layer rules.
 
 ## Requirements
 
-- **MSRV**: Rust 1.85
-- **Platform**: Linux, macOS, Windows (requires `getrandom`)
-
-## License
-
-Apache-2.0 — see [LICENSE](LICENSE).
+- **MSRV**: Rust 1.95 · **Platform**: Linux, macOS, Windows (`getrandom`)
+- **License**: Apache-2.0
 
 ## Links
 
-- [Documentation](https://docs.rs/origin-crypto-sdk)
-- [Security Notes](SECURITY.md)
-- [Changelog](CHANGELOG.md)
-- [Migration Guide](MIGRATION.md) — for 0.3 → 0.4 and earlier transitions
-- [Maintenance Policy](docs/MAINTENANCE_POLICY.md)
-- [Repository](https://github.com/KidIkaros/OriginSDK)
-
-## API Stability
-
-**Pre-1.0 notice**: This crate is at version 0.7.2. Per [Cargo's SemVer guidance](https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html#pre-1-0), anything below 1.0 may contain breaking changes in minor releases.
-
-**Stable** (breaking changes will require a major version bump):
-- `CryptoError` variants and their `Display` output
-- `HybridSigningKeyBundle` API (`from_seed`, `from_seed_cached`, `sign_hybrid`, `verify`)
-- `XChaCha20Poly1305::encrypt_aad` / `decrypt_aad` signatures
-- `ChaCha20Blake3::encrypt` / `decrypt` signatures
-- `Argon2id::derive_key` signature
-- `fill_random` (public RNG boundary)
-- `algorithm_id::AlgorithmId` enum variants and numeric values
-- `algorithm_id::DowngradePolicy` API
-
-**Unstable** (may change in minor releases):
-- The exact set of items in `prelude::*`
-- Low-level PQC module APIs (`pqc::falcon1024`, `pqc::ed448`, `pqc::ntru_prime`, `pqc::curve41417`)
-- `test_utils` API
-- `blob` module internal format (v2 format is frozen, but API may change)
-- `drbg` module API
-- `ec_schnorr` module API
-- `stealth` module API
-- `ocra` module API
-
-**Experimental** (custom implementations, not for production use):
-- `pqc::ntru_prime` — custom NTRU Prime KEM
-- `pqc::curve41417` — custom Ed41417
-- `primitives::chacha20` — native ChaCha20 (use `aead` module for production)
-- `primitives::poly1305` — native Poly1305 (use `aead` module for production)
-- `drbg` — custom ChaCha20-DRBG
-- `signing::hybrid` — hybrid compositions (novel, needs formal analysis)
-- `blob` — custom persistence format
-- `ec_schnorr` — custom secp256k1 arithmetic
-- `error_correction` — custom Reed-Solomon (bounded-distance decoder; see module docs)
-- `siphash`, `compression` — internal utilities exposed for testing
-
-**Frozen** (will not change):
-- Wire formats of `HybridSignatureOutput` byte representations
-- AEAD ciphertext format (16-byte Poly1305 tag appended to ciphertext)
-- Domain separation labels for `HybridSigningKeyBundle::from_seed`
-- Seed Blob v2 format (`ORGB` magic, 94 bytes)
-- `AlgorithmId` numeric assignments (stable, will not be reused)
+- [Documentation](https://docs.rs/origin-crypto-sdk) · [Security Notes](SECURITY.md) · [Stability Matrix](STABILITY.md) · [Changelog](CHANGELOG.md)
+- [Research Note: cryptanalysis evidence](docs/RESEARCH-NOTE-cryptanalysis-evidence.md) · [Audit package](AUDIT_PACKAGE.md) · [Duress patterns](docs/duress-pattern.md)
+- [Migration Guide](MIGRATION.md) · [Maintenance Policy](docs/MAINTENANCE_POLICY.md)

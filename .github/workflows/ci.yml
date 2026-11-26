@@ -39,6 +39,13 @@ jobs:
       - run: cargo test --test ntru_prime_kat
         timeout-minutes: 5
       - run: cargo test --test falcon_kat
+      - run: cargo test --test format_golden_vectors
+      - run: cargo test --test hybrid_rigorous -- --test-threads=2
+      - run: cargo test --test recovery_phrase_v2
+      - run: cargo test --test x25519_key_agreement
+      - run: cargo test --test structural_integration -- --test-threads=2
+      - run: cargo test --test fuzz_like_testing -- --test-threads=2
+      - run: cargo test --bins
         timeout-minutes: 15
 
   hybrid-security:

@@ -12,6 +12,7 @@
 //! 7. **Side-channel timing** — basic timing variance checks
 
 use ed25519_dalek::SigningKey as Ed25519Sk;
+use ed25519_dalek::{Signer, Verifier};
 use origin_crypto_sdk::pqc::ed448::SigningKey as Ed448Sk;
 use origin_crypto_sdk::pqc::falcon1024;
 use origin_crypto_sdk::pqc::falcon512;
@@ -501,24 +502,34 @@ fn edge_case_large_shake256_output_1kb() {
 // 6. CROSS-CONSTRUCTION CONSISTENCY
 // =============================================================================
 
-/// Same key + same message should produce same Ed25519 component across constructions
+/// H-1 non-separability: domain-separated payloads mean component signatures
+/// must DIFFER across constructions and from standalone signatures over the
+/// same message — otherwise a hybrid component is extractable/replayable as
+/// a standalone signature (cross-context replay).
 #[test]
-fn cross_construction_ed25519_component_consistency() {
+fn cross_construction_ed25519_component_non_separability() {
     let sk = Ed25519Sk::from_bytes(&[42u8; 32]);
     let msg = b"test message";
 
     let sig1 = Ed25519Blake3::sign(&sk, msg);
     let sig2 = Ed25519Skein512::sign(&sk, msg);
     let sig3 = Ed25519Shake256::sign(&sk, msg, 64);
+    let standalone = sk.sign(msg);
 
-    // All three should have the same Ed25519 signature (same SK, same msg)
-    assert_eq!(sig1.ed25519_sig.to_bytes(), sig2.ed25519_sig.to_bytes());
-    assert_eq!(sig1.ed25519_sig.to_bytes(), sig3.ed25519_sig.to_bytes());
+    // Distinct constructions => distinct domains => distinct component sigs
+    assert_ne!(sig1.ed25519_sig.to_bytes(), sig2.ed25519_sig.to_bytes());
+    assert_ne!(sig1.ed25519_sig.to_bytes(), sig3.ed25519_sig.to_bytes());
+    assert_ne!(sig2.ed25519_sig.to_bytes(), sig3.ed25519_sig.to_bytes());
+
+    // No hybrid component is a valid standalone signature over the raw message
+    assert_ne!(sig1.ed25519_sig.to_bytes(), standalone.to_bytes());
+    assert!(sk.verifying_key().verify(msg, &sig1.ed25519_sig).is_err());
 }
 
-/// Same key + same message should produce same Ed448 component across constructions
+/// H-1 non-separability for Ed448 components: distinct constructions must
+/// produce distinct component signatures over the same message.
 #[test]
-fn cross_construction_ed448_component_consistency() {
+fn cross_construction_ed448_component_non_separability() {
     let sk = Ed448Sk::from_bytes(&[42u8; 57]).unwrap();
     let msg = b"test message";
 
@@ -526,8 +537,9 @@ fn cross_construction_ed448_component_consistency() {
     let sig2 = Ed448Skein512::sign(&sk, msg);
     let sig3 = Ed448Shake256::sign(&sk, msg, 64);
 
-    assert_eq!(sig1.ed448_sig.to_bytes(), sig2.ed448_sig.to_bytes());
-    assert_eq!(sig1.ed448_sig.to_bytes(), sig3.ed448_sig.to_bytes());
+    assert_ne!(sig1.ed448_sig.to_bytes(), sig2.ed448_sig.to_bytes());
+    assert_ne!(sig1.ed448_sig.to_bytes(), sig3.ed448_sig.to_bytes());
+    assert_ne!(sig2.ed448_sig.to_bytes(), sig3.ed448_sig.to_bytes());
 }
 
 // =============================================================================

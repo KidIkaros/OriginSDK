@@ -69,6 +69,21 @@ fn falcon512_check(pk: &Falcon512PublicKey, msg: &[u8], sig: &Falcon512Signature
 // ============================================================================
 
 /// Ed25519 + BLAKE3 hash combiner (non-KDF)
+/// Domain-separated signing payload: `domain ‖ message`.
+///
+/// H-1 remediation: component signatures must not be byte-identical to
+/// standalone signatures over the same message — otherwise the Ed25519 half
+/// of a hybrid signature is extractable and replayable as a standalone
+/// Ed25519 signature (cross-context replay). Binding the construction
+/// identity into the signed payload makes hybrid component signatures
+/// invalid outside their hybrid context. Wire-format breaking change.
+fn hybrid_payload(domain: &[u8], message: &[u8]) -> Vec<u8> {
+    let mut v = Vec::with_capacity(domain.len() + message.len());
+    v.extend_from_slice(domain);
+    v.extend_from_slice(message);
+    v
+}
+
 #[derive(Clone, Debug)]
 pub struct Ed25519Blake3 {
     /// The Ed25519 signature.
@@ -80,6 +95,8 @@ pub struct Ed25519Blake3 {
 impl Ed25519Blake3 {
     /// Sign message with Ed25519 and compute BLAKE3 hash of message
     pub fn sign(signing_key: &Ed25519SigningKey, message: &[u8]) -> Self {
+        let __hybrid_payload = hybrid_payload(b"origin-hybrid-ed25519-blake3-v1", message);
+        let message = __hybrid_payload.as_slice();
         Self {
             ed25519_sig: signing_key.sign(message),
             blake3_hash: blake3::hash(message),
@@ -88,6 +105,8 @@ impl Ed25519Blake3 {
 
     /// Verify Ed25519 signature and check BLAKE3 hash matches message
     pub fn verify(verifying_key: &Ed25519VerifyingKey, message: &[u8], sig: &Self) -> Result<()> {
+        let __hybrid_payload = hybrid_payload(b"origin-hybrid-ed25519-blake3-v1", message);
+        let message = __hybrid_payload.as_slice();
         verify_sig_and_digest(
             ed25519_check(verifying_key, message, &sig.ed25519_sig),
             message,
@@ -109,6 +128,8 @@ pub struct Ed25519Shake256 {
 impl Ed25519Shake256 {
     /// Sign message with Ed25519 and compute SHAKE256 output of message
     pub fn sign(signing_key: &Ed25519SigningKey, message: &[u8], shake_len: usize) -> Self {
+        let __hybrid_payload = hybrid_payload(b"origin-hybrid-ed25519-shake256-v1", message);
+        let message = __hybrid_payload.as_slice();
         Self {
             ed25519_sig: signing_key.sign(message),
             shake_output: shake256_output(message, shake_len),
@@ -117,6 +138,8 @@ impl Ed25519Shake256 {
 
     /// Verify Ed25519 signature and check SHAKE256 output matches message
     pub fn verify(verifying_key: &Ed25519VerifyingKey, message: &[u8], sig: &Self) -> Result<()> {
+        let __hybrid_payload = hybrid_payload(b"origin-hybrid-ed25519-shake256-v1", message);
+        let message = __hybrid_payload.as_slice();
         verify_sig_and_digest(
             ed25519_check(verifying_key, message, &sig.ed25519_sig),
             message,
@@ -138,6 +161,8 @@ pub struct Ed25519Skein512 {
 impl Ed25519Skein512 {
     /// Sign message with Ed25519 and compute Skein-512 hash
     pub fn sign(signing_key: &Ed25519SigningKey, message: &[u8]) -> Self {
+        let __hybrid_payload = hybrid_payload(b"origin-hybrid-ed25519-skein512-v1", message);
+        let message = __hybrid_payload.as_slice();
         Self {
             ed25519_sig: signing_key.sign(message),
             skein512_hash: skein512(message),
@@ -146,6 +171,8 @@ impl Ed25519Skein512 {
 
     /// Verify Ed25519 signature and check Skein-512 hash matches message
     pub fn verify(verifying_key: &Ed25519VerifyingKey, message: &[u8], sig: &Self) -> Result<()> {
+        let __hybrid_payload = hybrid_payload(b"origin-hybrid-ed25519-skein512-v1", message);
+        let message = __hybrid_payload.as_slice();
         verify_sig_and_digest(
             ed25519_check(verifying_key, message, &sig.ed25519_sig),
             message,
@@ -167,6 +194,8 @@ pub struct Ed448Shake256 {
 impl Ed448Shake256 {
     /// Sign message with Ed448 and compute SHAKE256 output
     pub fn sign(signing_key: &Ed448SigningKey, message: &[u8], shake_len: usize) -> Self {
+        let __hybrid_payload = hybrid_payload(b"origin-hybrid-ed448-shake256-v1", message);
+        let message = __hybrid_payload.as_slice();
         Self {
             ed448_sig: signing_key.sign(message),
             shake_output: shake256_output(message, shake_len),
@@ -175,6 +204,8 @@ impl Ed448Shake256 {
 
     /// Verify Ed448 signature and check SHAKE256 output
     pub fn verify(verifying_key: &Ed448VerifyingKey, message: &[u8], sig: &Self) -> Result<()> {
+        let __hybrid_payload = hybrid_payload(b"origin-hybrid-ed448-shake256-v1", message);
+        let message = __hybrid_payload.as_slice();
         verify_sig_and_digest(
             ed448_check(verifying_key, message, &sig.ed448_sig),
             message,
@@ -196,6 +227,8 @@ pub struct Ed448Skein512 {
 impl Ed448Skein512 {
     /// Sign message with Ed448 and compute Skein-512 hash
     pub fn sign(signing_key: &Ed448SigningKey, message: &[u8]) -> Self {
+        let __hybrid_payload = hybrid_payload(b"origin-hybrid-ed448-skein512-v1", message);
+        let message = __hybrid_payload.as_slice();
         Self {
             ed448_sig: signing_key.sign(message),
             skein512_hash: skein512(message),
@@ -204,6 +237,8 @@ impl Ed448Skein512 {
 
     /// Verify Ed448 signature and check Skein-512 hash
     pub fn verify(verifying_key: &Ed448VerifyingKey, message: &[u8], sig: &Self) -> Result<()> {
+        let __hybrid_payload = hybrid_payload(b"origin-hybrid-ed448-skein512-v1", message);
+        let message = __hybrid_payload.as_slice();
         verify_sig_and_digest(
             ed448_check(verifying_key, message, &sig.ed448_sig),
             message,
@@ -225,6 +260,8 @@ pub struct Ed448Sha3_256 {
 impl Ed448Sha3_256 {
     /// Sign message with Ed448 and compute SHA3-256 hash
     pub fn sign(signing_key: &Ed448SigningKey, message: &[u8]) -> Self {
+        let __hybrid_payload = hybrid_payload(b"origin-hybrid-ed448-sha3-256-v1", message);
+        let message = __hybrid_payload.as_slice();
         Self {
             ed448_sig: signing_key.sign(message),
             sha3_hash: sha3_256(message),
@@ -233,6 +270,8 @@ impl Ed448Sha3_256 {
 
     /// Verify Ed448 signature and check SHA3-256 hash
     pub fn verify(verifying_key: &Ed448VerifyingKey, message: &[u8], sig: &Self) -> Result<()> {
+        let __hybrid_payload = hybrid_payload(b"origin-hybrid-ed448-sha3-256-v1", message);
+        let message = __hybrid_payload.as_slice();
         verify_sig_and_digest(
             ed448_check(verifying_key, message, &sig.ed448_sig),
             message,
@@ -266,7 +305,7 @@ impl Ed25519Falcon1024 {
         falcon_sk: &FalconPrivateKey,
         message: &[u8],
     ) -> Self {
-        Self::try_sign(ed25519_sk, falcon_sk, message).expect("Falcon signing failed")
+Self::try_sign(ed25519_sk, falcon_sk, message).expect("Falcon signing failed")
     }
 
     /// Sign with both Ed25519 and Falcon-1024 keys, returning an error on failure.
@@ -275,6 +314,8 @@ impl Ed25519Falcon1024 {
         falcon_sk: &FalconPrivateKey,
         message: &[u8],
     ) -> Result<Self> {
+        let __hybrid_payload = hybrid_payload(b"origin-hybrid-ed25519-falcon1024-v1", message);
+        let message = __hybrid_payload.as_slice();
         Ok(Self {
             ed25519_sig: ed25519_sk.sign(message),
             falcon_sig: falcon_sign(message, falcon_sk)?,
@@ -288,6 +329,8 @@ impl Ed25519Falcon1024 {
         message: &[u8],
         sig: &Self,
     ) -> Result<()> {
+        let __hybrid_payload = hybrid_payload(b"origin-hybrid-ed25519-falcon1024-v1", message);
+        let message = __hybrid_payload.as_slice();
         both_must_verify(
             || ed25519_check(ed25519_pk, message, &sig.ed25519_sig),
             || falcon1024_check(falcon_pk, message, &sig.falcon_sig),
@@ -315,7 +358,7 @@ impl Ed25519Falcon512 {
         falcon_sk: &Falcon512PrivateKey,
         message: &[u8],
     ) -> Self {
-        Self::try_sign(ed25519_sk, falcon_sk, message).expect("Falcon-512 signing failed")
+Self::try_sign(ed25519_sk, falcon_sk, message).expect("Falcon-512 signing failed")
     }
 
     /// Sign with both Ed25519 and Falcon-512 keys, returning an error on failure.
@@ -324,6 +367,8 @@ impl Ed25519Falcon512 {
         falcon_sk: &Falcon512PrivateKey,
         message: &[u8],
     ) -> Result<Self> {
+        let __hybrid_payload = hybrid_payload(b"origin-hybrid-ed25519-falcon512-v1", message);
+        let message = __hybrid_payload.as_slice();
         Ok(Self {
             ed25519_sig: ed25519_sk.sign(message),
             falcon_sig: falcon512_sign(message, falcon_sk)?,
@@ -337,6 +382,8 @@ impl Ed25519Falcon512 {
         message: &[u8],
         sig: &Self,
     ) -> Result<()> {
+        let __hybrid_payload = hybrid_payload(b"origin-hybrid-ed25519-falcon512-v1", message);
+        let message = __hybrid_payload.as_slice();
         both_must_verify(
             || ed25519_check(ed25519_pk, message, &sig.ed25519_sig),
             || falcon512_check(falcon_pk, message, &sig.falcon_sig),
@@ -360,7 +407,7 @@ impl Ed448Falcon1024 {
     /// Panics if Falcon signing fails (e.g. malformed private key).
     /// Use [`Ed448Falcon1024::try_sign`] for a fallible variant.
     pub fn sign(ed448_sk: &Ed448SigningKey, falcon_sk: &FalconPrivateKey, message: &[u8]) -> Self {
-        Self::try_sign(ed448_sk, falcon_sk, message).expect("Falcon signing failed")
+Self::try_sign(ed448_sk, falcon_sk, message).expect("Falcon signing failed")
     }
 
     /// Sign with both Ed448 and Falcon-1024 keys, returning an error on failure.
@@ -369,6 +416,8 @@ impl Ed448Falcon1024 {
         falcon_sk: &FalconPrivateKey,
         message: &[u8],
     ) -> Result<Self> {
+        let __hybrid_payload = hybrid_payload(b"origin-hybrid-ed448-falcon1024-v1", message);
+        let message = __hybrid_payload.as_slice();
         Ok(Self {
             ed448_sig: ed448_sk.sign(message),
             falcon_sig: falcon_sign(message, falcon_sk)?,
@@ -382,6 +431,8 @@ impl Ed448Falcon1024 {
         message: &[u8],
         sig: &Self,
     ) -> Result<()> {
+        let __hybrid_payload = hybrid_payload(b"origin-hybrid-ed448-falcon1024-v1", message);
+        let message = __hybrid_payload.as_slice();
         both_must_verify(
             || ed448_check(ed448_pk, message, &sig.ed448_sig),
             || falcon1024_check(falcon_pk, message, &sig.falcon_sig),
@@ -421,6 +472,9 @@ impl Ed25519ChaCha20Blake3Sha3_256 {
 
     /// Sign with derived keys using HKDF
     pub fn sign(master_seed: &[u8], domain: &str, message: &[u8]) -> Result<Self> {
+        let __hybrid_domain = format!("origin-hybrid-ed25519-chacha20-blake3-sha3-256-v1:{domain}");
+        let __hybrid_payload = hybrid_payload(__hybrid_domain.as_bytes(), message);
+        let message = __hybrid_payload.as_slice();
         let (ed_sk, chacha_key, hash_key) = Self::derive_component_keys(master_seed, domain)?;
         Ok(Self {
             ed25519_sig: ed_sk.sign(message),
@@ -431,6 +485,9 @@ impl Ed25519ChaCha20Blake3Sha3_256 {
 
     /// Verify all three components
     pub fn verify(master_seed: &[u8], domain: &str, message: &[u8], sig: &Self) -> Result<()> {
+        let __hybrid_domain = format!("origin-hybrid-ed25519-chacha20-blake3-sha3-256-v1:{domain}");
+        let __hybrid_payload = hybrid_payload(__hybrid_domain.as_bytes(), message);
+        let message = __hybrid_payload.as_slice();
         let (ed_sk, chacha_key, hash_key) = Self::derive_component_keys(master_seed, domain)?;
         ed25519_check(&ed_sk.verifying_key(), message, &sig.ed25519_sig)?;
         ct_eq_or_failed(

@@ -84,6 +84,23 @@ the AND-combiner sense; consumers comparing construction names may
 overestimate them. Recommend documenting the distinction in the module
 docs or renaming the family.
 
+
+## Remediation — IMPLEMENTED (2026-11)
+
+Domain separation is now applied in `src/signing/hybrid/constructions.rs`:
+every hybrid construction signs/verifies `b"origin-hybrid-<construction>-v1" ‖ message`
+(the KDF construction incorporates the user-supplied domain:
+`origin-hybrid-ed25519-chacha20-blake3-sha3-256-v1:<domain>`).
+Component signatures are no longer byte-identical to standalone signatures
+over the same message, closing the cross-context replay channel.
+
+**This is a wire-format breaking change**: hybrid signatures produced before
+this change do not verify after it, and vice versa. The two tests that
+previously asserted byte-identical components across constructions
+(`cross_construction_*_component_consistency`) were rewritten to assert the
+opposite (non-separability), including a direct check that a hybrid Ed25519
+component does not verify as a standalone signature over the raw message.
+
 ## References
 
 - Bindel, Hale et al. — hybrid/combiner non-separability analysis (academic lineage): weak/strong non-separability definitions

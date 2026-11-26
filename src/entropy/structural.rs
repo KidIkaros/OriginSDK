@@ -26,7 +26,7 @@
 //! bit-level, Hamming, avalanche, byte-uniqueness, and transition-entropy
 //! bounds from the input size (normal approximation, z = 4, and an exact
 //! binomial occupancy tail for byte repetition; see
-//! [`StructuralThresholds::for_bits`]). `max_run_length` and
+//! [`crate::entropy::structural::StructuralThresholds::for_bits`]). `max_run_length` and
 //! `block_uniqueness` remain heuristic empirical bounds — they are caps
 //! on events already improbable under randomness, not sampling estimates.
 //! Treat marginal failures as signals for investigation, not proof of
@@ -537,7 +537,11 @@ mod tests {
         assert!(metrics.byte.byte_uniqueness < 0.01);
         let (passed, warnings) = check_quality(&metrics, 256);
         assert!(!passed);
-        assert!(warnings.len() >= 3, "expected several warnings: {:?}", warnings);
+        assert!(
+            warnings.len() >= 3,
+            "expected several warnings: {:?}",
+            warnings
+        );
     }
 
     #[test]
@@ -614,6 +618,10 @@ mod tests {
         let data: Vec<u8> = (0..32u8).map(|x| x.wrapping_mul(2)).collect();
         let metrics = analyze_bit_patterns(&data);
         // Aggregate balance is decent, but the LSB position is fully biased.
-        assert!(metrics.max_bit_bias > 0.4, "LSB bias not detected: {}", metrics.max_bit_bias);
+        assert!(
+            metrics.max_bit_bias > 0.4,
+            "LSB bias not detected: {}",
+            metrics.max_bit_bias
+        );
     }
 }

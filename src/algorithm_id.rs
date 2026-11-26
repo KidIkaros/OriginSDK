@@ -217,13 +217,26 @@ impl AlgorithmId {
     /// CycloneDX primitive classification for CBOM generation.
     pub fn primitive(self) -> &'static str {
         match self {
-            Self::XChaCha20Poly1305 | Self::XChaCha20Poly1305Native | Self::ChaCha20Blake3 => "aead",
+            Self::XChaCha20Poly1305 | Self::XChaCha20Poly1305Native | Self::ChaCha20Blake3 => {
+                "aead"
+            }
             Self::Argon2id | Self::HkdfSha3_256 | Self::HkdfSha3_512 => "kdf",
-            Self::Sha3_256 | Self::Sha3_512 | Self::Blake3 | Self::Skein512 | Self::Skein1024 => "hash",
+            Self::Sha3_256 | Self::Sha3_512 | Self::Blake3 | Self::Skein512 | Self::Skein1024 => {
+                "hash"
+            }
             Self::Shake256 => "xof",
-            Self::Ed25519 | Self::Ed448 | Self::Falcon512 | Self::Falcon1024 | Self::SlhDsa
-            | Self::MlDsa | Self::Ed41417 | Self::Ed25519Falcon1024 | Self::Ed25519Falcon512
-            | Self::Ed448Falcon1024 | Self::Ed25519Blake3 | Self::Ed25519Shake256
+            Self::Ed25519
+            | Self::Ed448
+            | Self::Falcon512
+            | Self::Falcon1024
+            | Self::SlhDsa
+            | Self::MlDsa
+            | Self::Ed41417
+            | Self::Ed25519Falcon1024
+            | Self::Ed25519Falcon512
+            | Self::Ed448Falcon1024
+            | Self::Ed25519Blake3
+            | Self::Ed25519Shake256
             | Self::Ed25519Skein512 => "signature",
             Self::NtruPrime => "kem",
             Self::X25519 => "key-agreement",

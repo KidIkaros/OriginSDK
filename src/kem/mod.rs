@@ -3,10 +3,10 @@
 //! Key encapsulation mechanisms.
 //!
 //! The SDK has always shipped the *ingredients* for hybrid KEMs
-//! ([`crate::x25519`], [`crate::pqc::ntru_prime`], [`crate::pqc::ml_kem`]) but
+//! ([`crate::x25519`], [`crate::pqc::ntru_prime`], and ML-KEM when present) but
 //! never the *combination*. This module provides it:
 //!
-//! - [`hybrid`] — hybrid (classical + post-quantum) KEMs, plus the shared,
+//! - [`crate::kem::hybrid`] — hybrid (classical + post-quantum) KEMs, plus the shared,
 //!   suite-agnostic combiner that downstream products (Vallum, Stoa, …) build
 //!   on.
 //!
@@ -14,6 +14,6 @@
 //!
 //! Hybrid compositions are novel. The component primitives are individually
 //! studied; the *combination* — domain separation, binding, and leg ordering —
-//! is not. See [`hybrid`] for the construction and its combiner lemma.
+//! is not. See [`crate::kem::hybrid`] for the construction and its combiner lemma.
 
 pub mod hybrid;

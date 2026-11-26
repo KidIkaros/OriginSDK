@@ -62,11 +62,19 @@ mod tests {
     /// ALL_ALGORITHM_IDS is updated. Prevents silent inventory drift.
     #[test]
     fn inventory_complete_and_unique() {
-        assert_eq!(ALL_ALGORITHM_IDS.len(), 34, "variant count changed — update ALL_ALGORITHM_IDS");
+        assert_eq!(
+            ALL_ALGORITHM_IDS.len(),
+            34,
+            "variant count changed — update ALL_ALGORITHM_IDS"
+        );
         let mut ids: Vec<u16> = ALL_ALGORITHM_IDS.iter().map(|i| *i as u16).collect();
         ids.sort();
         ids.dedup();
-        assert_eq!(ids.len(), ALL_ALGORITHM_IDS.len(), "duplicate inventory entries");
+        assert_eq!(
+            ids.len(),
+            ALL_ALGORITHM_IDS.len(),
+            "duplicate inventory entries"
+        );
         // every variant's metadata must be non-empty
         for id in ALL_ALGORITHM_IDS {
             assert!(!id.name().is_empty());

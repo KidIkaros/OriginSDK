@@ -353,4 +353,3 @@ mod tests {
         assert_ne!(p1.commitment, p3.commitment);
     }
 }
-

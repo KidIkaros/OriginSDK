@@ -305,7 +305,7 @@ impl Ed25519Falcon1024 {
         falcon_sk: &FalconPrivateKey,
         message: &[u8],
     ) -> Self {
-Self::try_sign(ed25519_sk, falcon_sk, message).expect("Falcon signing failed")
+        Self::try_sign(ed25519_sk, falcon_sk, message).expect("Falcon signing failed")
     }
 
     /// Sign with both Ed25519 and Falcon-1024 keys, returning an error on failure.
@@ -358,7 +358,7 @@ impl Ed25519Falcon512 {
         falcon_sk: &Falcon512PrivateKey,
         message: &[u8],
     ) -> Self {
-Self::try_sign(ed25519_sk, falcon_sk, message).expect("Falcon-512 signing failed")
+        Self::try_sign(ed25519_sk, falcon_sk, message).expect("Falcon-512 signing failed")
     }
 
     /// Sign with both Ed25519 and Falcon-512 keys, returning an error on failure.
@@ -407,7 +407,7 @@ impl Ed448Falcon1024 {
     /// Panics if Falcon signing fails (e.g. malformed private key).
     /// Use [`Ed448Falcon1024::try_sign`] for a fallible variant.
     pub fn sign(ed448_sk: &Ed448SigningKey, falcon_sk: &FalconPrivateKey, message: &[u8]) -> Self {
-Self::try_sign(ed448_sk, falcon_sk, message).expect("Falcon signing failed")
+        Self::try_sign(ed448_sk, falcon_sk, message).expect("Falcon signing failed")
     }
 
     /// Sign with both Ed448 and Falcon-1024 keys, returning an error on failure.

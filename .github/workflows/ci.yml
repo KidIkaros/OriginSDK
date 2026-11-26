@@ -19,6 +19,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - run: cargo check --all-targets
+      - run: ./scripts/check-ci-test-coverage.sh
 
   test:
     name: Test

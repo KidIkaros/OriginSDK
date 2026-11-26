@@ -284,7 +284,7 @@ impl QualityRequirements {
 /// `bits` should describe the analyzed sample size (seed bits for a single
 /// seed, total bits for pooled analysis). Entropy requirements are capped
 /// at what a sample of that size can achieve — see
-/// [`QualityRequirements::shannon_cap`]. Note that most byte-distribution
+/// `QualityRequirements::shannon_cap`. Note that most byte-distribution
 /// checks are near-vacuous at single-seed sizes regardless; meaningful
 /// statistical validation requires pooled samples.
 ///

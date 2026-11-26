@@ -16,7 +16,6 @@ use k256::{
     },
     AffinePoint, FieldBytes, ProjectivePoint, Scalar,
 };
-use rand::RngCore;
 
 /// An EC-Schnorr proof of knowledge of a discrete logarithm.
 #[derive(Debug, Clone)]

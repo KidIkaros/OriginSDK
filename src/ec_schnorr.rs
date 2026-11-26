@@ -146,7 +146,13 @@ pub fn prove(secret_key: &[u8; 32], message: &[u8]) -> Result<EcSchnorrProof> {
 }
 
 /// Verify an EC-Schnorr proof.
-pub fn verify(proof: &EcSchnorrProof, public_key: &[u8], message: &[u8]) -> Result<bool> {
+///
+/// Returns `Ok(())` if the proof is valid. An *invalid* proof is
+/// `Err(SchnorrError::VerificationFailed)`; malformed inputs are their
+/// specific error variants. This matches the crate-wide verify convention
+/// (`Result<()>`, invalid = error) — callers never face a three-way
+/// Err/Ok(false)/Ok(true) split.
+pub fn verify(proof: &EcSchnorrProof, public_key: &[u8], message: &[u8]) -> Result<()> {
     // Parse commitment point R
     let r_affine = parse_non_identity_point(&proof.commitment, SchnorrError::InvalidCommitment)?;
 
@@ -170,7 +176,11 @@ pub fn verify(proof: &EcSchnorrProof, public_key: &[u8], message: &[u8]) -> Resu
     let e_p = ProjectivePoint::from(p_affine) * challenge;
     let r_plus_ep = ProjectivePoint::from(r_affine) + e_p;
 
-    Ok(s_g == r_plus_ep)
+    if s_g == r_plus_ep {
+        Ok(())
+    } else {
+        Err(SchnorrError::VerificationFailed.into())
+    }
 }
 
 /// Batch verify multiple EC-Schnorr proofs.
@@ -178,18 +188,16 @@ pub fn batch_verify(
     proofs: &[EcSchnorrProof],
     public_keys: &[impl AsRef<[u8]>],
     messages: &[impl AsRef<[u8]>],
-) -> Result<bool> {
+) -> Result<()> {
     if proofs.len() != public_keys.len() || proofs.len() != messages.len() {
         return Err(CryptoError::InvalidParameter(
             "Mismatched input lengths for batch verify".into(),
         ));
     }
     for (proof, (pk, msg)) in proofs.iter().zip(public_keys.iter().zip(messages.iter())) {
-        if !verify(proof, pk.as_ref(), msg.as_ref())? {
-            return Ok(false);
-        }
+        verify(proof, pk.as_ref(), msg.as_ref())?;
     }
-    Ok(true)
+    Ok(())
 }
 
 /// Compute the Fiat-Shamir challenge: e = SHA3-256(R || P || message)
@@ -246,7 +254,7 @@ mod tests {
         let (sk_bytes, pk_bytes) = generate_keypair(&seed);
         let message = b"test message for EC-Schnorr";
         let proof = prove(&sk_bytes, message).unwrap();
-        assert!(verify(&proof, &pk_bytes, message).unwrap());
+        verify(&proof, &pk_bytes, message).unwrap();
     }
 
     #[test]
@@ -254,7 +262,7 @@ mod tests {
         let seed = [42u8; 32];
         let (sk_bytes, pk_bytes) = generate_keypair(&seed);
         let proof = prove(&sk_bytes, b"original message").unwrap();
-        assert!(!verify(&proof, &pk_bytes, b"different message").unwrap());
+        assert!(verify(&proof, &pk_bytes, b"different message").is_err());
     }
 
     #[test]
@@ -262,7 +270,7 @@ mod tests {
         let (sk1, _pk1) = generate_keypair(&[42u8; 32]);
         let (_, pk2) = generate_keypair(&[99u8; 32]);
         let proof = prove(&sk1, b"test message").unwrap();
-        assert!(!verify(&proof, &pk2, b"test message").unwrap());
+        assert!(verify(&proof, &pk2, b"test message").is_err());
     }
 
     #[test]
@@ -293,7 +301,7 @@ mod tests {
             pks.push(pk);
             msgs.push(msg);
         }
-        assert!(batch_verify(&proofs, &pks, &msgs).unwrap());
+        batch_verify(&proofs, &pks, &msgs).unwrap();
     }
 
     #[test]
@@ -312,7 +320,7 @@ mod tests {
         proofs.push(prove(&sk, b"correct message").unwrap());
         pks.push(pk);
         msgs.push(b"wrong message".to_vec());
-        assert!(!batch_verify(&proofs, &pks, &msgs).unwrap());
+        assert!(batch_verify(&proofs, &pks, &msgs).is_err());
     }
 
     #[test]
@@ -320,7 +328,7 @@ mod tests {
         let seed = [42u8; 32];
         let (sk_bytes, pk_bytes) = generate_keypair(&seed);
         let proof = prove(&sk_bytes, b"").unwrap();
-        assert!(verify(&proof, &pk_bytes, b"").unwrap());
+        verify(&proof, &pk_bytes, b"").unwrap();
     }
 
     #[test]
@@ -329,7 +337,7 @@ mod tests {
         let (sk_bytes, pk_bytes) = generate_keypair(&seed);
         let message = vec![0xABu8; 1_000_000];
         let proof = prove(&sk_bytes, &message).unwrap();
-        assert!(verify(&proof, &pk_bytes, &message).unwrap());
+        verify(&proof, &pk_bytes, &message).unwrap();
     }
 
     #[test]

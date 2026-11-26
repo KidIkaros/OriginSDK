@@ -15,6 +15,13 @@ signatures are no longer extractable as valid standalone signatures — this
 was the security defect being fixed. Byte-level container layouts in
 `FORMAT_REGISTRY.md` are unchanged; only the signed payload changed.
 
+### ⚠ BREAKING — ec_schnorr verify semantics
+
+`ec_schnorr::verify` and `batch_verify` now return `Result<()>` instead of
+`Result<bool>`, matching the crate-wide verification convention: valid proof
+= `Ok(())`, invalid proof = `Err(VerificationFailed)`, malformed input =
+specific error variants. The three-way Err/Ok(false)/Ok(true) split is gone.
+
 ### Security
 - **EC-Schnorr nonces are now deterministic** (EdDSA-style, derived from
   domain-separated hash of key+message). Eliminates RNG-failure/weakness

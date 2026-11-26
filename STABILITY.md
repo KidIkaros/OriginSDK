@@ -5,13 +5,41 @@ see `AUDIT_PACKAGE.md` for the prepared review package.
 
 Production use of cryptographic software is a risk decision. This document
 exists so that decision can be made with accurate information rather than a
-blanket warning. Each component is assigned an evidence tier:
+blanket warning.
+
+## Evidentiary posture
+
+This SDK does not treat standardization-body endorsement — NIST or otherwise —
+as evidence of security. The historical record (Dual_EC_DRBG most sharply)
+shows endorsement can be neutral or negative signal, and the post-quantum
+literature shows security estimates for standardized lattice schemes being
+revised *downward* repeatedly after selection (see
+`docs/RESEARCH-NOTE-cryptanalysis-evidence.md`). Evidence is ranked here by
+independence, not authority:
+
+1. **Public cryptanalysis** — published attempts to break the construction
+2. **Independent implementations and differential testing**
+3. **Academic security analysis with scrutinized assumptions**
+4. **Reference test vectors** — correctness evidence only, whatever the source
+5. **Standards endorsement** — not treated as evidence
+
+The custom constructions in this crate are not deviations-from-a-baseline;
+they are deliberate expert-guided design decisions (independent cryptographic
+consultant; rationale documented per-component in `SECURITY.md` §"Standards
+Posture"). NTRU Prime over Kyber, Curve41417 over NIST curves, and hybrid
+AND-composition are positions *against* the monoculture, taken on published
+cryptanalytic reasoning — the same reasoning the 2026 subexponential lattice
+results later corroborated structurally. The honest residual gap is breadth
+of scrutiny: one expert's design review, however strong, is not independent
+public review. That is what the external audit gate is for.
+
+Each component is assigned an evidence tier:
 
 - **Tier A** — externally validated implementation (audited or battle-tested
   upstream). Risk profile equivalent to mainstream deployments of the same
   primitives.
 - **Tier B** — custom implementation, verified byte-exact against
-  authoritative test vectors (NIST KAT / RFC), internally constant-time
+  independent reference test vectors (design-team KAT / RFC vectors — correctness evidence, not endorsement), internally constant-time
   reviewed with timing tests. Residual risk: implementation flaws that
   vectors do not reach (edge cases, composition, side channels internal
   review missed).
@@ -29,9 +57,9 @@ blanket warning. Each component is assigned an evidence tier:
 | Argon2id KDF | A | `argon2` crate (pinned) | — |
 | Ed25519 / X25519 | A | `ed25519-dalek` / `x25519-dalek` | — |
 | SHA-2 / SHA-3 / SHAKE | A | `sha2` / `sha3` crates | — |
-| Falcon-512/1024 | A | `falcon-rs` — FIPS 206, upstream NIST KATs pass | in-crate KAT verification blocked on unpublished ACVP vectors |
+| Falcon-512/1024 | A | `falcon-rs` — widely reviewed implementation of the published Falcon design, upstream KATs pass | in-crate KAT verification blocked on unpublished ACVP vectors |
 | secp256k1 arithmetic | A | `k256` — fiat-crypto, CT by construction | — |
-| NTRU Prime (sntrup761) | B | 100/100 NIST KAT byte-exact (`tests/ntru_prime_kat.rs`), CT review, timing tests, fuzz targets | custom implementation; expert review pending |
+| NTRU Prime (sntrup761) | B | 100/100 design-team reference KAT byte-exact (`tests/ntru_prime_kat.rs`), CT review, timing tests, fuzz targets | custom implementation; expert review pending |
 | Native ChaCha20 / Poly1305 | B | RFC 8439 test vectors in-crate | custom implementation of a standard algorithm |
 | Hybrid signing | C | golden vectors, rigorous/adversarial/security test files, proptest | novel composition — internal separability audit in `docs/AUDIT-NOTE-hybrid-combiner.md` (finding H-1 open); external review pending |
 | Ed41417 (Curve41417) ECC | C | internal test vectors | custom ECC — highest-risk component in the crate |

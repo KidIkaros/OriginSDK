@@ -1,7 +1,8 @@
 # Audit Note: Hybrid Signature Combiner — Separability Analysis
 
 **Date:** 2026-12-21 · **Scope:** `src/signing/hybrid/` · **Method:** literature-anchored
-internal review (IETF hybrid-signature design requirements, composite-signature
+internal review (academic combiner-security literature — Bindel, Stebila,
+Hale lineage on signature non-separability — and composite-signature
 practices) · **Status:** internal finding, external review still required
 
 ## Summary
@@ -42,9 +43,13 @@ binds it to the hybrid context. Consequently:
   variants) produce mutually interchangeable components — a component lifted
   from one construction's artifact verifies inside any other.
 
-**Why this matters:** the emerging standard practice for composite/hybrid
-signatures (IETF LAMPS composite-signature design) prefixes a fixed
-domain-separator (the composite algorithm identifier) into the signed
+**Why this matters on structural grounds:** the weakness does not depend on
+any standards document. It is a *cross-context replay* property: the
+component signature bytes are valid in two contexts (standalone and hybrid)
+simultaneously. Domain separation is the generic countermeasure — the same
+principle this crate already applies correctly in its HKDF key derivation.
+The composite-signature design work (IETF LAMPS) independently arrived at
+the same construction: a fixed domain separator is prefixed into the signed
 payload of each component precisely so components are non-extractable.
 The downgrade resistance therefore does not rely solely on format-layer
 discipline at every verifier, forever.
@@ -81,8 +86,8 @@ docs or renaming the family.
 
 ## References
 
-- IETF hybrid signature design requirements (draft-ietf-pquip-hybrid-signature-spectrums lineage): weak/strong non-separability definitions
-- Composite ML-DSA practice (draft-ietf-lamps-pq-composite-sigs): domain-separated component payloads
+- Bindel, Hale et al. — hybrid/combiner non-separability analysis (academic lineage): weak/strong non-separability definitions
+- IETF LAMPS composite-signature design (draft-ietf-lamps-pq-composite-sigs): independent convergence on domain-separated component payloads — cited as corroboration, not authority
 - Shaw, "quantum-safe" (arXiv:2605.17061): insecure combiner implementations as a known production risk; externally-anchored readiness dimensions
 
 ## Disposition

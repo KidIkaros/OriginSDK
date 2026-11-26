@@ -33,7 +33,7 @@ blanket warning. Each component is assigned an evidence tier:
 | secp256k1 arithmetic | A | `k256` — fiat-crypto, CT by construction | — |
 | NTRU Prime (sntrup761) | B | 100/100 NIST KAT byte-exact (`tests/ntru_prime_kat.rs`), CT review, timing tests, fuzz targets | custom implementation; expert review pending |
 | Native ChaCha20 / Poly1305 | B | RFC 8439 test vectors in-crate | custom implementation of a standard algorithm |
-| Hybrid signing | C | golden vectors, rigorous/adversarial/security test files, proptest | novel composition — binding, domain separation, downgrade resistance unreviewed |
+| Hybrid signing | C | golden vectors, rigorous/adversarial/security test files, proptest | novel composition — internal separability audit in `docs/AUDIT-NOTE-hybrid-combiner.md` (finding H-1 open); external review pending |
 | Ed41417 (Curve41417) ECC | C | internal test vectors | custom ECC — highest-risk component in the crate |
 | EC-Schnorr composition | C | Fiat-Shamir over audited `k256` arithmetic | composition itself unreviewed |
 | ChaCha20-DRBG | C | statistical validation, entropy tests | custom DRBG construction |
